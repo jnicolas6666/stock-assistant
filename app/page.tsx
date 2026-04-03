@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { TrendingUp, Send } from "lucide-react";
+import Twemoji from "react-twemoji";
 import {
   TrendUp, TrendDown, Minus, ArrowUp, ArrowDown,
 } from "@phosphor-icons/react";
@@ -586,6 +587,7 @@ export default function Home() {
               {msg.role === "user" ? (
                 msg.content
               ) : (
+                <Twemoji options={{ className: "twemoji", ext: ".svg", folder: "svg" }}>
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
                   components={{
@@ -610,6 +612,7 @@ export default function Home() {
                 >
                   {msg.content}
                 </ReactMarkdown>
+                </Twemoji>
               )}
             </div>
             {msg.role === "assistant" && msg.charts && msg.charts.length > 0 && msg.charts.map((chart, ci) => (
@@ -730,6 +733,7 @@ export default function Home() {
           0%, 100% { opacity: 1; transform: scale(1); }
           50% { opacity: 0.2; transform: scale(0.5); }
         }
+        .twemoji { width: 1.2em; height: 1.2em; display: inline-block; vertical-align: -0.2em; }
         * { box-sizing: border-box; }
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
