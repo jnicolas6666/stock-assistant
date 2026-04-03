@@ -4,7 +4,6 @@ import { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { TrendingUp, Send } from "lucide-react";
-import Twemoji from "react-twemoji";
 import {
   TrendUp, TrendDown, Minus, ArrowUp, ArrowDown,
 } from "@phosphor-icons/react";
@@ -16,6 +15,115 @@ import {
   CartesianGrid, Tooltip, Legend,
   ResponsiveContainer,
 } from "recharts";
+
+// ── Inline animated icons for AI responses ──────────────────────────────────
+
+const EMOJI_TO_ICON: Record<string, string> = {
+  "🏦": "bank",   "🏛️": "bank",
+  "📊": "barchart",
+  "📈": "trendup",
+  "📉": "trenddown",
+  "🔍": "search",  "🔎": "search",
+  "💼": "briefcase",
+  "✅": "check",
+  "⚠️": "warning", "⚠": "warning",
+  "💰": "money",   "💵": "money",
+  "💡": "lightbulb",
+  "🎯": "target",
+};
+
+function InlineIcon({ type }: { type: string }) {
+  const c = "#e05520";
+  const a = (len: number, delay = 0) => ({
+    strokeDasharray: len, strokeDashoffset: len,
+    animation: `drawStroke 0.65s ease forwards ${delay}s`,
+  } as React.CSSProperties);
+  const scaleUp = (delay = 0) => ({
+    transform: "scaleY(0)",
+    animation: `scaleBarUp 0.45s ease forwards ${delay}s`,
+  } as React.CSSProperties);
+
+  const wrap = (children: React.ReactNode) => (
+    <span style={{ display: "inline-flex", alignItems: "center", verticalAlign: "middle", margin: "0 2px" }}>
+      <svg width={18} height={18} viewBox="0 0 20 20" fill="none">
+        {children}
+      </svg>
+    </span>
+  );
+
+  switch (type) {
+    case "bank": return wrap(<>
+      <polyline points="1,8 10,2 19,8" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={a(22,0)}/>
+      <line x1="1" y1="8" x2="19" y2="8" stroke={c} strokeWidth="1.5" style={a(18,0.2)}/>
+      <line x1="4" y1="10" x2="4" y2="16" stroke={c} strokeWidth="1.8" strokeLinecap="round" style={a(6,0.4)}/>
+      <line x1="10" y1="10" x2="10" y2="16" stroke={c} strokeWidth="1.8" strokeLinecap="round" style={a(6,0.5)}/>
+      <line x1="16" y1="10" x2="16" y2="16" stroke={c} strokeWidth="1.8" strokeLinecap="round" style={a(6,0.6)}/>
+      <line x1="1" y1="17" x2="19" y2="17" stroke={c} strokeWidth="2" strokeLinecap="round" style={a(18,0.75)}/>
+    </>);
+    case "barchart": return wrap(<>
+      <rect x="2" y="12" width="4" height="6" rx="1" fill={c} opacity="0.65" style={{...scaleUp(0.1), transformOrigin:"4px 18px"}}/>
+      <rect x="8" y="7" width="4" height="11" rx="1" fill={c} opacity="0.82" style={{...scaleUp(0.28), transformOrigin:"10px 18px"}}/>
+      <rect x="14" y="3" width="4" height="15" rx="1" fill={c} style={{...scaleUp(0.46), transformOrigin:"16px 18px"}}/>
+    </>);
+    case "trendup": return wrap(<>
+      <polyline points="1,16 6,11 11,14 19,4" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={a(28,0)}/>
+      <polyline points="14,4 19,4 19,9" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={a(14,0.5)}/>
+    </>);
+    case "trenddown": return wrap(<>
+      <polyline points="1,4 6,9 11,6 19,16" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={a(28,0)}/>
+      <polyline points="14,16 19,16 19,11" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={a(14,0.5)}/>
+    </>);
+    case "search": return wrap(<>
+      <circle cx="8" cy="8" r="6" stroke={c} strokeWidth="1.8" style={a(38,0)}/>
+      <line x1="13" y1="13" x2="19" y2="19" stroke={c} strokeWidth="2" strokeLinecap="round" style={a(9,0.5)}/>
+    </>);
+    case "briefcase": return wrap(<>
+      <rect x="1" y="7" width="18" height="11" rx="2" stroke={c} strokeWidth="1.8" style={a(58,0)}/>
+      <path d="M7 7V5a3 3 0 0 1 6 0v2" stroke={c} strokeWidth="1.8" strokeLinecap="round" style={a(12,0.4)}/>
+      <line x1="1" y1="13" x2="19" y2="13" stroke={c} strokeWidth="1.3" strokeOpacity="0.4" style={a(18,0.65)}/>
+    </>);
+    case "check": return wrap(<>
+      <circle cx="10" cy="10" r="8" stroke={c} strokeWidth="1.8" style={a(50,0)}/>
+      <polyline points="6,10 9,13 14,7" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={a(12,0.45)}/>
+    </>);
+    case "warning": return wrap(<>
+      <polygon points="10,2 19,17 1,17" stroke={c} strokeWidth="1.8" strokeLinejoin="round" fill="none" style={a(46,0)}/>
+      <line x1="10" y1="8" x2="10" y2="12" stroke={c} strokeWidth="2" strokeLinecap="round" style={a(4,0.5)}/>
+      <circle cx="10" cy="15" r="1.2" fill={c} style={{opacity:0, animation:"popIn 0.2s ease forwards 0.75s"}}/>
+    </>);
+    case "money": return wrap(<>
+      <circle cx="10" cy="10" r="8" stroke={c} strokeWidth="1.8" style={a(50,0)}/>
+      <line x1="10" y1="5" x2="10" y2="15" stroke={c} strokeWidth="1.5" strokeLinecap="round" style={a(10,0.4)}/>
+      <path d="M7.5 7.5 Q10 6 12.5 7.5 Q10 9.5 7.5 11 Q10 13 12.5 11" stroke={c} strokeWidth="1.4" strokeLinecap="round" fill="none" style={a(20,0.55)}/>
+    </>);
+    case "lightbulb": return wrap(<>
+      <path d="M10 2a6 6 0 0 1 4 10.2V14H6v-1.8A6 6 0 0 1 10 2z" stroke={c} strokeWidth="1.8" strokeLinejoin="round" style={a(32,0)}/>
+      <line x1="7" y1="16" x2="13" y2="16" stroke={c} strokeWidth="1.8" strokeLinecap="round" style={a(6,0.5)}/>
+      <line x1="8.5" y1="18" x2="11.5" y2="18" stroke={c} strokeWidth="1.8" strokeLinecap="round" style={a(3,0.65)}/>
+    </>);
+    case "target": return wrap(<>
+      <circle cx="10" cy="10" r="8" stroke={c} strokeWidth="1.5" style={a(50,0)}/>
+      <circle cx="10" cy="10" r="4.5" stroke={c} strokeWidth="1.5" style={a(28,0.3)}/>
+      <circle cx="10" cy="10" r="1.5" fill={c} style={{opacity:0, animation:"popIn 0.2s ease forwards 0.65s"}}/>
+    </>);
+    default: return null;
+  }
+}
+
+function withIcons(children: React.ReactNode): React.ReactNode {
+  return React.Children.map(children, (child) => {
+    if (typeof child !== "string") return child;
+    const parts = child.split(/(\p{Extended_Pictographic}\uFE0F?)/gu);
+    if (parts.length === 1) return child;
+    return parts.map((part, i) => {
+      const iconType = EMOJI_TO_ICON[part] ?? EMOJI_TO_ICON[part.replace(/\uFE0F$/, "")];
+      if (iconType) return <InlineIcon key={i} type={iconType} />;
+      return part || null;
+    });
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 type ChartSpec = {
   type: "line" | "bar" | "area";
@@ -685,32 +793,38 @@ export default function Home() {
               {msg.role === "user" ? (
                 msg.content
               ) : (
-                <Twemoji options={{ className: "twemoji", ext: ".svg", folder: "svg" }}>
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
                   components={{
                     table: ({ children }) => (
-                      <table style={{ borderCollapse: "collapse", width: "100%", marginTop: 8, fontSize: 13 }}>{children}</table>
+                      <table style={{ borderCollapse: "collapse", width: "100%", marginTop: 8, fontSize: 12 }}>{children}</table>
                     ),
                     th: ({ children }) => (
-                      <th style={{ padding: "6px 10px", borderBottom: "1px solid rgba(255,255,255,0.08)", textAlign: "left", color: "#888", fontWeight: 600 }}>{children}</th>
+                      <th style={{ padding: "6px 10px", borderBottom: "1px solid rgba(255,255,255,0.1)", textAlign: "left", color: "#666", fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em" }}>{withIcons(children)}</th>
                     ),
                     td: ({ children }) => (
-                      <td style={{ padding: "6px 10px", borderBottom: "1px solid rgba(255,255,255,0.05)", color: "#e5e5e5" }}>{children}</td>
+                      <td style={{ padding: "6px 10px", borderBottom: "1px solid rgba(255,255,255,0.04)", color: "#d0d0d0" }}>{withIcons(children)}</td>
                     ),
-                    p: ({ children }) => <p style={{ margin: "4px 0", lineHeight: 1.6 }}>{children}</p>,
-                    ul: ({ children }) => <ul style={{ margin: "6px 0", paddingLeft: 18 }}>{children}</ul>,
-                    li: ({ children }) => <li style={{ marginBottom: 3 }}>{children}</li>,
-                    strong: ({ children }) => <strong style={{ color: "#f5f5f5", fontWeight: 600 }}>{children}</strong>,
-                    h3: ({ children }) => <h3 style={{ margin: "10px 0 4px", fontSize: 14, color: "#f5f5f5", fontWeight: 600 }}>{children}</h3>,
+                    p: ({ children }) => <p style={{ margin: "6px 0", lineHeight: 1.7 }}>{withIcons(children)}</p>,
+                    ul: ({ children }) => <ul style={{ margin: "6px 0", paddingLeft: 16 }}>{children}</ul>,
+                    ol: ({ children }) => <ol style={{ margin: "6px 0", paddingLeft: 16 }}>{children}</ol>,
+                    li: ({ children }) => <li style={{ marginBottom: 4, lineHeight: 1.6 }}>{withIcons(children)}</li>,
+                    strong: ({ children }) => <strong style={{ color: "#f0f0f0", fontWeight: 600 }}>{children}</strong>,
+                    h2: ({ children }) => (
+                      <div style={{ margin: "14px 0 6px", display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: "#f0f0f0", letterSpacing: "-0.01em" }}>{withIcons(children)}</span>
+                        <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, rgba(224,85,32,0.3), transparent)" }}/>
+                      </div>
+                    ),
+                    h3: ({ children }) => <h3 style={{ margin: "10px 0 4px", fontSize: 12, fontWeight: 700, color: "#e05520", textTransform: "uppercase", letterSpacing: "0.06em" }}>{withIcons(children)}</h3>,
                     a: ({ href, children }) => <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: "#e05520", textDecoration: "underline" }}>{children}</a>,
-                    blockquote: ({ children }) => <blockquote style={{ margin: "8px 0", paddingLeft: 12, borderLeft: "3px solid #e05520", color: "#888" }}>{children}</blockquote>,
+                    blockquote: ({ children }) => <blockquote style={{ margin: "10px 0 4px", padding: "8px 12px", borderLeft: "2px solid #e05520", backgroundColor: "rgba(224,85,32,0.05)", borderRadius: "0 4px 4px 0", color: "#888", fontSize: 12 }}>{children}</blockquote>,
                     code: ({ children }) => <code style={{ backgroundColor: "#1a1a1a", padding: "1px 5px", borderRadius: 3, fontSize: 12, color: "#e05520" }}>{children}</code>,
+                    hr: () => <hr style={{ border: "none", borderTop: "1px solid rgba(255,255,255,0.06)", margin: "10px 0" }}/>,
                   }}
                 >
                   {msg.content}
                 </ReactMarkdown>
-                </Twemoji>
               )}
             </div>
             {msg.role === "assistant" && msg.charts && msg.charts.length > 0 && msg.charts.map((chart, ci) => (
@@ -799,6 +913,9 @@ export default function Home() {
       )}
 
       <style>{`
+        @keyframes scaleBarUp {
+          to { transform: scaleY(1); }
+        }
         @keyframes bubbleFloat {
           0%, 100% { transform: translate(0, 0); }
           33%  { transform: translate(var(--dx), var(--dy)); }
@@ -839,7 +956,6 @@ export default function Home() {
           0%, 100% { opacity: 1; transform: scale(1); }
           50% { opacity: 0.2; transform: scale(0.5); }
         }
-        .twemoji { width: 1.2em; height: 1.2em; display: inline-block; vertical-align: -0.2em; }
         * { box-sizing: border-box; }
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
