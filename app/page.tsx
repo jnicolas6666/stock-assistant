@@ -39,7 +39,7 @@ const EMOJI_TO_ICON: Record<string, string> = {
 };
 
 function InlineIcon({ type }: { type: string }) {
-  const c = "#c0091e";
+  const c = "#cc1100";
   const a = (len: number, delay = 0) => ({
     strokeDasharray: len, strokeDashoffset: len,
     animation: `drawStroke 0.65s ease forwards ${delay}s`,
@@ -211,7 +211,7 @@ function FloatingBubble({ symbol, name, color, left, top, size, dx, dy, dur, del
     }}>
       <div style={{
         width: size, height: size, borderRadius: "50%",
-        backgroundColor: "#0d0806",
+        backgroundColor: "#ffffff",
         border: `1.5px solid ${color}40`,
         display: "flex", alignItems: "center", justifyContent: "center",
         boxShadow: `0 0 18px ${color}1a, 0 4px 12px rgba(0,0,0,0.4)`,
@@ -274,8 +274,8 @@ function AnalystRatingsCard({ data }: { data: AnalystRatingsSpec }) {
 
   return (
     <div style={{
-      backgroundColor: "#110a08",
-      border: "1px solid rgba(255,255,255,0.08)",
+      backgroundColor: "#fafaf8",
+      border: "1px solid rgba(28,26,27,0.1)",
       borderRadius: 8,
       padding: "14px 16px",
       marginTop: 10,
@@ -313,7 +313,7 @@ function AnalystRatingsCard({ data }: { data: AnalystRatingsSpec }) {
         {bars.map((b) => (
           <div key={b.label} style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 72, fontSize: 11, color: "#666", textAlign: "right" as const, flexShrink: 0 }}>{b.label}</div>
-            <div style={{ flex: 1, height: 6, backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 3, overflow: "hidden" }}>
+            <div style={{ flex: 1, height: 6, backgroundColor: "rgba(28,26,27,0.06)", borderRadius: 3, overflow: "hidden" }}>
               <div style={{
                 height: "100%",
                 width: `${total > 0 ? (b.count / total) * 100 : 0}%`,
@@ -328,7 +328,7 @@ function AnalystRatingsCard({ data }: { data: AnalystRatingsSpec }) {
       </div>
 
       {/* Footer stats */}
-      <div style={{ display: "flex", gap: 12, borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: 10 }}>
+      <div style={{ display: "flex", gap: 12, borderTop: "1px solid rgba(28,26,27,0.06)", paddingTop: 10 }}>
         <div style={{ flex: 1, textAlign: "center" as const }}>
           <div style={{ fontSize: 16, fontWeight: 700, color: "#22c55e" }}>{bullish}</div>
           <div style={{ fontSize: 10, color: "#555", marginTop: 1 }}>Bullish</div>
@@ -373,8 +373,8 @@ function SuggestionIcon({ name }: { name: string }) {
     <svg width="34" height="34" viewBox="0 0 34 34" fill="none">
       <defs>
         <linearGradient id={`lg-${id}`} x1="0" y1="0" x2="34" y2="0" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#c0091e" stopOpacity="0.3"/>
-          <stop offset="100%" stopColor="#c0091e"/>
+          <stop offset="0%" stopColor="#cc1100" stopOpacity="0.3"/>
+          <stop offset="100%" stopColor="#cc1100"/>
         </linearGradient>
         <filter id={`glow-${id}`}>
           <feGaussianBlur stdDeviation="1.5" result="blur"/>
@@ -386,11 +386,11 @@ function SuggestionIcon({ name }: { name: string }) {
         stroke={`url(#lg-${id})`} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
         style={{ strokeDasharray: 80, strokeDashoffset: 80, animation: "drawStroke 1.2s ease forwards 0.1s" }}
       />
-      <circle cx="31" cy="8" r="3" fill="#c0091e" filter={`url(#glow-${id})`}
+      <circle cx="31" cy="8" r="3" fill="#cc1100" filter={`url(#glow-${id})`}
         style={{ animation: "popIn 0.3s ease forwards 1.2s", transform: "scale(0)", transformOrigin: "31px 8px" }}
       />
       <polyline points="3,27 10,19 16,22 22,12 31,8"
-        stroke="#c0091e" strokeWidth="0.4" strokeLinecap="round" strokeLinejoin="round" strokeOpacity="0.2"
+        stroke="#cc1100" strokeWidth="0.4" strokeLinecap="round" strokeLinejoin="round" strokeOpacity="0.2"
       />
     </svg>
   );
@@ -398,13 +398,13 @@ function SuggestionIcon({ name }: { name: string }) {
     <svg width="34" height="34" viewBox="0 0 34 34" fill="none">
       <defs>
         <linearGradient id={`bar1-${id}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#c0091e"/><stop offset="100%" stopColor="#c0091e" stopOpacity="0.3"/>
+          <stop offset="0%" stopColor="#cc1100"/><stop offset="100%" stopColor="#cc1100" stopOpacity="0.3"/>
         </linearGradient>
         <linearGradient id={`bar2-${id}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#c0091e" stopOpacity="0.8"/><stop offset="100%" stopColor="#c0091e" stopOpacity="0.2"/>
+          <stop offset="0%" stopColor="#cc1100" stopOpacity="0.8"/><stop offset="100%" stopColor="#cc1100" stopOpacity="0.2"/>
         </linearGradient>
         <linearGradient id={`bar3-${id}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#c0091e" stopOpacity="0.6"/><stop offset="100%" stopColor="#c0091e" stopOpacity="0.1"/>
+          <stop offset="0%" stopColor="#cc1100" stopOpacity="0.6"/><stop offset="100%" stopColor="#cc1100" stopOpacity="0.1"/>
         </linearGradient>
       </defs>
       <rect x="4" y="30" width="6" height="0" rx="1.5" fill={`url(#bar1-${id})`}
@@ -427,15 +427,15 @@ function SuggestionIcon({ name }: { name: string }) {
           <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
         </filter>
       </defs>
-      <circle cx="14" cy="14" r="9" stroke="#c0091e" strokeWidth="2.2" strokeOpacity="0.25"/>
-      <circle cx="14" cy="14" r="9" stroke="#c0091e" strokeWidth="2.2"
+      <circle cx="14" cy="14" r="9" stroke="#cc1100" strokeWidth="2.2" strokeOpacity="0.25"/>
+      <circle cx="14" cy="14" r="9" stroke="#cc1100" strokeWidth="2.2"
         style={{ strokeDasharray: 56, strokeDashoffset: 56, animation: "drawStroke 0.9s ease forwards 0.1s" }}
         filter={`url(#sglow-${id})`}
       />
-      <line x1="20.5" y1="20.5" x2="30" y2="30" stroke="#c0091e" strokeWidth="2.2" strokeLinecap="round"
+      <line x1="20.5" y1="20.5" x2="30" y2="30" stroke="#cc1100" strokeWidth="2.2" strokeLinecap="round"
         style={{ strokeDasharray: 14, strokeDashoffset: 14, animation: "drawStroke 0.4s ease forwards 0.9s" }}
       />
-      <circle cx="14" cy="14" r="4" fill="#c0091e" fillOpacity="0.12"
+      <circle cx="14" cy="14" r="4" fill="#cc1100" fillOpacity="0.12"
         style={{ animation: "scanPulse 2s ease-in-out infinite 1.3s" }}
       />
     </svg>
@@ -449,18 +449,18 @@ function SuggestionIcon({ name }: { name: string }) {
           <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
         </filter>
       </defs>
-      <circle cx="17" cy="11" r="5.5" stroke="#c0091e" strokeWidth="2"
+      <circle cx="17" cy="11" r="5.5" stroke="#cc1100" strokeWidth="2"
         style={{ strokeDasharray: 35, strokeDashoffset: 35, animation: "drawStroke 0.7s ease forwards 0.1s" }}
         filter={`url(#aglow-${id})`}
       />
       <path d="M5 30 C5 22 10 18 17 18 C24 18 29 22 29 30"
-        stroke="#c0091e" strokeWidth="2" strokeLinecap="round"
+        stroke="#cc1100" strokeWidth="2" strokeLinecap="round"
         style={{ strokeDasharray: 50, strokeDashoffset: 50, animation: "drawStroke 0.8s ease forwards 0.7s" }}
       />
-      <line x1="22" y1="19" x2="30" y2="11" stroke="#c0091e" strokeWidth="1.5" strokeLinecap="round" strokeOpacity="0.5"
+      <line x1="22" y1="19" x2="30" y2="11" stroke="#cc1100" strokeWidth="1.5" strokeLinecap="round" strokeOpacity="0.5"
         style={{ strokeDasharray: 12, strokeDashoffset: 12, animation: "drawStroke 0.3s ease forwards 1.4s" }}
       />
-      <polyline points="25,14 30,11 27,7" stroke="#c0091e" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+      <polyline points="25,14 30,11 27,7" stroke="#cc1100" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
         style={{ strokeDasharray: 14, strokeDashoffset: 14, animation: "drawStroke 0.4s ease forwards 1.6s" }}
       />
     </svg>
@@ -482,7 +482,7 @@ function PixelWizard() {
         <rect x="7" y="1" width="4" height="1" fill="#7c3aed"/>
         <rect x="6" y="2" width="6" height="1" fill="#7c3aed"/>
         <rect x="5" y="3" width="8" height="1" fill="#7c3aed"/>
-        <rect x="4" y="4" width="10" height="1" fill="#c0091e"/>
+        <rect x="4" y="4" width="10" height="1" fill="#cc1100"/>
 
         {/* Face */}
         <rect x="5" y="5" width="8" height="4" fill="#fcd34d"/>
@@ -551,12 +551,12 @@ function ChartMessage({ chart }: { chart: ChartSpec }) {
     margin: { top: 10, right: 20, left: 10, bottom: 5 },
   };
   const axisStyle = { fill: "#444", fontSize: 10 };
-  const gridStyle = { stroke: "rgba(255,255,255,0.05)" };
+  const gridStyle = { stroke: "rgba(28,26,27,0.06)" };
   const tooltipStyle = {
     contentStyle: {
-      backgroundColor: "#1e1410",
-      border: "1px solid rgba(255,255,255,0.1)",
-      color: "#cfd8d7",
+      backgroundColor: "#ffffff",
+      border: "1px solid rgba(28,26,27,0.1)",
+      color: "#6b6460",
       borderRadius: 6,
       padding: "6px 10px",
       fontSize: 12,
@@ -620,8 +620,8 @@ function ChartMessage({ chart }: { chart: ChartSpec }) {
 
   return (
     <div style={{
-      backgroundColor: "#110a08",
-      border: "1px solid rgba(255,255,255,0.08)",
+      backgroundColor: "#fafaf8",
+      border: "1px solid rgba(28,26,27,0.1)",
       borderRadius: 8,
       padding: "12px 14px",
       marginTop: 10,
@@ -684,13 +684,13 @@ export default function Home() {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh", backgroundColor: "#000" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100vh", backgroundColor: "#f5f2ee" }}>
       {/* Header */}
       <header style={{
         height: 52,
         padding: "0 20px",
-        borderBottom: "1px solid rgba(255,255,255,0.08)",
-        backgroundColor: "#000",
+        borderBottom: "1px solid rgba(28,26,27,0.1)",
+        backgroundColor: "#f5f2ee",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
@@ -699,14 +699,14 @@ export default function Home() {
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{
             width: 30, height: 30,
-            background: "#c0091e",
+            background: "#cc1100",
             borderRadius: 8,
             display: "flex", alignItems: "center", justifyContent: "center",
           }}>
             <TrendingUp size={16} color="#fff" strokeWidth={2.5} />
           </div>
           <div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: "#f3f3eb", letterSpacing: "-0.01em" }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "#1d1a1b", letterSpacing: "-0.01em" }}>
               Market Assistant
             </div>
             <div style={{ fontSize: 10, color: "#555", marginTop: -1 }}>
@@ -719,7 +719,7 @@ export default function Home() {
           color: "#555",
           padding: "3px 8px",
           borderRadius: 4,
-          border: "1px solid rgba(255,255,255,0.08)",
+          border: "1px solid rgba(28,26,27,0.1)",
           letterSpacing: "0.02em",
         }}>
           EDUCATIONAL USE ONLY
@@ -740,7 +740,7 @@ export default function Home() {
             padding: "0 20px",
           }}>
             <div style={{ marginBottom: 16 }}><PixelWizard /></div>
-            <div style={{ fontSize: 20, fontWeight: 600, marginBottom: 6, color: "#f3f3eb", letterSpacing: "-0.02em" }}>
+            <div style={{ fontSize: 20, fontWeight: 600, marginBottom: 6, color: "#1d1a1b", letterSpacing: "-0.02em" }}>
               Market Assistant
             </div>
             <div style={{ color: "#555", marginBottom: 24, fontSize: 13 }}>
@@ -750,14 +750,14 @@ export default function Home() {
               {SUGGESTIONS.map((s) => (
                 <button key={s.text} onClick={() => sendMessage(s.text)} style={{
                   padding: "12px 14px", textAlign: "left", borderRadius: 8,
-                  border: "1px solid rgba(255,255,255,0.08)", backgroundColor: "#1e1410",
+                  border: "1px solid rgba(28,26,27,0.1)", backgroundColor: "#ffffff",
                   cursor: "pointer", width: "100%", transition: "border-color 0.15s, background 0.15s",
                 }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = "#c0091e"; e.currentTarget.style.backgroundColor = "#2e1e18"; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.backgroundColor = "#1e1410"; }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = "#cc1100"; e.currentTarget.style.backgroundColor = "#ede8e4"; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(28,26,27,0.1)"; e.currentTarget.style.backgroundColor = "#ffffff"; }}
                 >
                   <div style={{ marginBottom: 6 }}><SuggestionIcon name={s.icon} /></div>
-                  <div style={{ fontSize: 12, fontWeight: 500, color: "#f3f3eb", lineHeight: 1.4 }}>{s.text}</div>
+                  <div style={{ fontSize: 12, fontWeight: 500, color: "#1d1a1b", lineHeight: 1.4 }}>{s.text}</div>
                   <div style={{ fontSize: 11, color: "#555", marginTop: 3 }}>{s.sub}</div>
                 </button>
               ))}
@@ -772,8 +772,8 @@ export default function Home() {
                 autoFocus
                 style={{
                   flex: 1, padding: "10px 14px", borderRadius: 8,
-                  border: "1px solid rgba(255,255,255,0.12)", backgroundColor: "#1e1410",
-                  color: "#f3f3eb", fontSize: 13, outline: "none",
+                  border: "1px solid rgba(28,26,27,0.14)", backgroundColor: "#ffffff",
+                  color: "#1d1a1b", fontSize: 13, outline: "none",
                 }}
               />
               <button
@@ -781,7 +781,7 @@ export default function Home() {
                 disabled={!input.trim()}
                 style={{
                   width: 36, height: 36, borderRadius: 8, border: "none", flexShrink: 0,
-                  backgroundColor: input.trim() ? "#c0091e" : "#1a1a1a",
+                  backgroundColor: input.trim() ? "#cc1100" : "#1a1a1a",
                   color: input.trim() ? "#fff" : "#444",
                   cursor: input.trim() ? "pointer" : "not-allowed",
                   display: "flex", alignItems: "center", justifyContent: "center",
@@ -809,9 +809,9 @@ export default function Home() {
               maxWidth: msg.role === "user" ? "70%" : "80%",
               padding: msg.role === "user" ? "9px 14px" : "12px 16px",
               borderRadius: msg.role === "user" ? "14px 14px 3px 14px" : "14px 14px 14px 3px",
-              backgroundColor: msg.role === "user" ? "#c0091e" : "#111",
-              border: msg.role === "user" ? "none" : "1px solid rgba(255,255,255,0.08)",
-              color: msg.role === "user" ? "#fff" : "#cfd8d7",
+              backgroundColor: msg.role === "user" ? "#cc1100" : "#111",
+              border: msg.role === "user" ? "none" : "1px solid rgba(28,26,27,0.1)",
+              color: msg.role === "user" ? "#fff" : "#6b6460",
               fontSize: 13,
               lineHeight: 1.6,
               wordBreak: "break-word",
@@ -826,10 +826,10 @@ export default function Home() {
                       <table style={{ borderCollapse: "collapse", width: "100%", marginTop: 8, fontSize: 12 }}>{children}</table>
                     ),
                     th: ({ children }) => (
-                      <th style={{ padding: "6px 10px", borderBottom: "1px solid rgba(255,255,255,0.1)", textAlign: "left", color: "#666", fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em" }}>{withIcons(children)}</th>
+                      <th style={{ padding: "6px 10px", borderBottom: "1px solid rgba(28,26,27,0.1)", textAlign: "left", color: "#666", fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em" }}>{withIcons(children)}</th>
                     ),
                     td: ({ children }) => (
-                      <td style={{ padding: "6px 10px", borderBottom: "1px solid rgba(255,255,255,0.04)", color: "#d0d0d0" }}>{withIcons(children)}</td>
+                      <td style={{ padding: "6px 10px", borderBottom: "1px solid rgba(28,26,27,0.05)", color: "#d0d0d0" }}>{withIcons(children)}</td>
                     ),
                     p: ({ children }) => <p style={{ margin: "6px 0", lineHeight: 1.7 }}>{withIcons(children)}</p>,
                     ul: ({ children }) => <ul style={{ margin: "6px 0", paddingLeft: 16 }}>{children}</ul>,
@@ -839,13 +839,13 @@ export default function Home() {
                     h2: ({ children }) => (
                       <div style={{ margin: "14px 0 6px", display: "flex", alignItems: "center", gap: 8 }}>
                         <span style={{ fontSize: 13, fontWeight: 700, color: "#f0f0f0", letterSpacing: "-0.01em" }}>{withIcons(children)}</span>
-                        <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, rgba(224,85,32,0.3), transparent)" }}/>
+                        <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, rgba(204,17,0,0.25), transparent)" }}/>
                       </div>
                     ),
-                    h3: ({ children }) => <h3 style={{ margin: "10px 0 4px", fontSize: 12, fontWeight: 700, color: "#c0091e", textTransform: "uppercase", letterSpacing: "0.06em" }}>{withIcons(children)}</h3>,
-                    a: ({ href, children }) => <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: "#c0091e", textDecoration: "underline" }}>{children}</a>,
-                    blockquote: ({ children }) => <blockquote style={{ margin: "10px 0 4px", padding: "8px 12px", borderLeft: "2px solid #c0091e", backgroundColor: "rgba(224,85,32,0.05)", borderRadius: "0 4px 4px 0", color: "#888", fontSize: 12 }}>{children}</blockquote>,
-                    code: ({ children }) => <code style={{ backgroundColor: "#2e1e18", padding: "1px 5px", borderRadius: 3, fontSize: 12, color: "#c0091e" }}>{children}</code>,
+                    h3: ({ children }) => <h3 style={{ margin: "10px 0 4px", fontSize: 12, fontWeight: 700, color: "#cc1100", textTransform: "uppercase", letterSpacing: "0.06em" }}>{withIcons(children)}</h3>,
+                    a: ({ href, children }) => <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: "#cc1100", textDecoration: "underline" }}>{children}</a>,
+                    blockquote: ({ children }) => <blockquote style={{ margin: "10px 0 4px", padding: "8px 12px", borderLeft: "2px solid #cc1100", backgroundColor: "rgba(224,85,32,0.05)", borderRadius: "0 4px 4px 0", color: "#888", fontSize: 12 }}>{children}</blockquote>,
+                    code: ({ children }) => <code style={{ backgroundColor: "#ede8e4", padding: "1px 5px", borderRadius: 3, fontSize: 12, color: "#cc1100" }}>{children}</code>,
                     hr: () => <hr style={{ border: "none", borderTop: "1px solid rgba(255,255,255,0.06)", margin: "10px 0" }}/>,
                   }}
                 >
@@ -871,14 +871,14 @@ export default function Home() {
             <div style={{
               padding: "10px 14px",
               borderRadius: "14px 14px 14px 3px",
-              backgroundColor: "#1e1410",
-              border: "1px solid rgba(255,255,255,0.08)",
+              backgroundColor: "#ffffff",
+              border: "1px solid rgba(28,26,27,0.1)",
               display: "flex", gap: 4, alignItems: "center",
             }}>
               {[0, 1, 2].map((i) => (
                 <div key={i} style={{
                   width: 5, height: 5, borderRadius: "50%",
-                  backgroundColor: "#c0091e",
+                  backgroundColor: "#cc1100",
                   animation: "pulse 1.2s ease-in-out infinite",
                   animationDelay: `${i * 0.18}s`,
                 }} />
@@ -895,8 +895,8 @@ export default function Home() {
       {messages.length > 0 && (
       <div style={{
         padding: "10px 14px",
-        borderTop: "1px solid rgba(255,255,255,0.08)",
-        backgroundColor: "#000",
+        borderTop: "1px solid rgba(28,26,27,0.1)",
+        backgroundColor: "#f5f2ee",
         display: "flex", gap: 8, alignItems: "center", flexShrink: 0,
       }}>
         <input
@@ -909,9 +909,9 @@ export default function Home() {
             flex: 1,
             padding: "9px 14px",
             borderRadius: 8,
-            border: "1px solid rgba(255,255,255,0.1)",
-            backgroundColor: "#1e1410",
-            color: "#f3f3eb",
+            border: "1px solid rgba(28,26,27,0.1)",
+            backgroundColor: "#ffffff",
+            color: "#1d1a1b",
             fontSize: 13,
             outline: "none",
             opacity: loading ? 0.6 : 1,
@@ -924,7 +924,7 @@ export default function Home() {
             width: 34, height: 34,
             borderRadius: 8,
             border: "none",
-            backgroundColor: input.trim() && !loading ? "#c0091e" : "#1a1a1a",
+            backgroundColor: input.trim() && !loading ? "#cc1100" : "#1a1a1a",
             color: input.trim() && !loading ? "#fff" : "#444",
             cursor: input.trim() && !loading ? "pointer" : "not-allowed",
             display: "flex", alignItems: "center", justifyContent: "center",
@@ -976,7 +976,7 @@ export default function Home() {
         }
         @keyframes wandGlow {
           0%, 100% { filter: drop-shadow(0 0 2px #fde047); opacity: 1; }
-          50% { filter: drop-shadow(0 0 6px #c0091e) drop-shadow(0 0 12px #c0091e); opacity: 0.9; }
+          50% { filter: drop-shadow(0 0 6px #cc1100) drop-shadow(0 0 12px #cc1100); opacity: 0.9; }
         }
         @keyframes starTwinkle {
           0%, 100% { opacity: 1; transform: scale(1); }
@@ -985,7 +985,7 @@ export default function Home() {
         * { box-sizing: border-box; }
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+        ::-webkit-scrollbar-thumb { background: rgba(28,26,27,0.1); border-radius: 2px; }
       `}</style>
     </div>
   );
