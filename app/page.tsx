@@ -6,7 +6,6 @@ import remarkGfm from "remark-gfm";
 import { TrendingUp, Send } from "lucide-react";
 import {
   TrendUp, TrendDown, Minus, ArrowUp, ArrowDown,
-  ChartLine, ChartBar, Briefcase, MagnifyingGlass,
 } from "@phosphor-icons/react";
 import {
   LineChart, Line,
@@ -46,18 +45,11 @@ type Message = {
 };
 
 const SUGGESTIONS = [
-  { text: "Show TD Bank's price chart (3 months)", sub: "Price history · TD.TO", icon: "ChartLine" },
-  { text: "Compare Canadian banks P/E ratios", sub: "Peer comparison · Big 6", icon: "ChartBar" },
-  { text: "TD Bank earnings vs estimates", sub: "8 quarters · EPS history", icon: "MagnifyingGlass" },
-  { text: "What do analysts think of TD?", sub: "Analyst consensus · Ratings", icon: "Briefcase" },
+  { text: "Show TD Bank's price chart (3 months)", sub: "Price history · TD.TO", icon: "📊" },
+  { text: "Compare Canadian banks P/E ratios", sub: "Peer comparison · Big 6", icon: "📊" },
+  { text: "TD Bank earnings vs estimates", sub: "8 quarters · EPS history", icon: "🔍" },
+  { text: "What do analysts think of TD?", sub: "Analyst consensus · Ratings", icon: "🧑‍💼" },
 ];
-
-const ICON_MAP: Record<string, React.ReactNode> = {
-  ChartLine:      <ChartLine size={18} color="#e05520" weight="duotone" />,
-  ChartBar:       <ChartBar size={18} color="#e05520" weight="duotone" />,
-  MagnifyingGlass:<MagnifyingGlass size={18} color="#e05520" weight="duotone" />,
-  Briefcase:      <Briefcase size={18} color="#e05520" weight="duotone" />,
-};
 
 const CONSENSUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
   strongBuy:  { label: "Strong Buy",  color: "#22c55e", bg: "rgba(34,197,94,0.1)" },
@@ -464,7 +456,7 @@ export default function Home() {
                 onMouseEnter={e => { e.currentTarget.style.borderColor = "#e05520"; e.currentTarget.style.backgroundColor = "#1a1a1a"; }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.backgroundColor = "#111"; }}
                 >
-                  <div style={{ marginBottom: 6 }}>{ICON_MAP[s.icon]}</div>
+                  <div style={{ marginBottom: 6, fontSize: 20 }}>{s.icon}</div>
                   <div style={{ fontSize: 12, fontWeight: 500, color: "#f5f5f5", lineHeight: 1.4 }}>{s.text}</div>
                   <div style={{ fontSize: 11, color: "#555", marginTop: 3 }}>{s.sub}</div>
                 </button>
