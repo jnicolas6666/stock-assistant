@@ -1,5 +1,17 @@
 import yahooFinance from "yahoo-finance2";
 
+yahooFinance.setGlobalConfig({ validation: { logErrors: false } });
+
+// Spoof a browser User-Agent so Vercel's server IPs don't get blocked by Yahoo Finance
+const FETCH_OPTS = {
+  fetchOptions: {
+    headers: {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "Accept-Language": "en-US,en;q=0.5",
+    },
+  },
+};
+
 // Tool definitions for Anthropic API
 export const toolDefinitions = [
   {
@@ -116,7 +128,7 @@ export const toolDefinitions = [
 
 async function searchTicker(query: string) {
   try {
-    const results = await yahooFinance.search(query, { quotesCount: 3, newsCount: 0 });
+    const results = await yahooFinance.search(query, { quotesCount: 3, newsCount: 0 }, FETCH_OPTS);
     return (results.quotes || []).slice(0, 3).map((q: any) => ({
       symbol: q.symbol,
       shortname: q.shortname || q.longname,
@@ -130,7 +142,7 @@ async function searchTicker(query: string) {
 
 async function getQuote(symbol: string) {
   try {
-    const q = await yahooFinance.quote(symbol);
+    const q = await yahooFinance.quote(symbol, {}, FETCH_OPTS);
     return {
       symbol: q.symbol,
       longName: q.longName,
@@ -160,7 +172,7 @@ async function getAnalystData(symbol: string) {
   try {
     const summary = await yahooFinance.quoteSummary(symbol, {
       modules: ["financialData"],
-    });
+    }, FETCH_OPTS);
     const fd = summary.financialData;
     if (!fd) return { error: "No analyst data available for this symbol." };
     return {
@@ -179,7 +191,7 @@ async function getAnalystData(symbol: string) {
 
 async function getNews(symbol: string) {
   try {
-    const results = await yahooFinance.search(symbol, { quotesCount: 0, newsCount: 5 });
+    const results = await yahooFinance.search(symbol, { quotesCount: 0, newsCount: 5 }, FETCH_OPTS);
     return (results.news || []).map((n: any) => ({
       title: n.title,
       publisher: n.publisher,
@@ -195,7 +207,7 @@ async function getFundamentals(symbol: string) {
   try {
     const summary = await yahooFinance.quoteSummary(symbol, {
       modules: ["defaultKeyStatistics", "financialData", "summaryProfile"],
-    });
+    }, FETCH_OPTS);
     const ks = summary.defaultKeyStatistics as any;
     const fd = summary.financialData as any;
     const sp = summary.summaryProfile as any;
@@ -246,7 +258,7 @@ async function getHistoricalPrices(symbol: string, period: string) {
     const days = PERIOD_DAYS[period] ?? 90;
     const period1 = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
-    const rows = await yahooFinance.historical(symbol, { period1, interval: "1d" });
+    const rows = await yahooFinance.historical(symbol, { period1, interval: "1d" }, FETCH_OPTS);
 
     // Limit to 100 points max
     const step = rows.length > 100 ? Math.ceil(rows.length / 100) : 1;
@@ -270,7 +282,7 @@ async function getEarnings(symbol: string) {
   try {
     const summary = await yahooFinance.quoteSummary(symbol, {
       modules: ["earningsHistory"],
-    });
+    }, FETCH_OPTS);
     const history = (summary.earningsHistory as any)?.history;
     if (!history || !Array.isArray(history)) return { error: "No earnings history available." };
 
