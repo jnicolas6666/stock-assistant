@@ -173,6 +173,11 @@ async function getQuote(symbol: string) {
   }
 }
 
+// Finnhub free tier only supports US-listed symbols — strip exchange suffixes
+function fh(symbol: string) {
+  return encodeURIComponent(symbol.replace(/\.(TO|TSX|V|CN)$/i, ""));
+}
+
 async function finnhubGet(path: string) {
   const key = process.env.FINNHUB_API_KEY;
   const res = await fetch(`https://finnhub.io/api/v1${path}&token=${key}`, { cache: "no-store" });
@@ -185,7 +190,7 @@ async function finnhubGet(path: string) {
 async function getAnalystData(symbol: string) {
   try {
     // Fetch last 3 months of recommendations
-    const recs = await finnhubGet(`/stock/recommendation?symbol=${encodeURIComponent(symbol)}`);
+    const recs = await finnhubGet(`/stock/recommendation?symbol=${fh(symbol)}`);
     if (!Array.isArray(recs) || recs.length === 0) return { error: "No analyst data available." };
 
     const latest = recs[0];
@@ -221,7 +226,7 @@ async function getAnalystData(symbol: string) {
 
 async function getNews(symbol: string) {
   try {
-    const sym = encodeURIComponent(symbol);
+    const sym = fh(symbol);
     const to = new Date().toISOString().slice(0, 10);
     const from = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const news = await finnhubGet(`/company-news?symbol=${sym}&from=${from}&to=${to}`);
@@ -239,7 +244,7 @@ async function getNews(symbol: string) {
 
 async function getFundamentals(symbol: string) {
   try {
-    const sym = encodeURIComponent(symbol);
+    const sym = fh(symbol);
     const [profile, metrics] = await Promise.all([
       finnhubGet(`/stock/profile2?symbol=${sym}`),
       finnhubGet(`/stock/metric?symbol=${sym}&metric=all`),
@@ -324,7 +329,7 @@ async function getHistoricalPrices(symbol: string, period: string) {
 
 async function getEarnings(symbol: string) {
   try {
-    const sym = encodeURIComponent(symbol);
+    const sym = fh(symbol);
     const data = await finnhubGet(`/stock/earnings?symbol=${sym}`);
     if (!Array.isArray(data) || data.length === 0) return { error: "No earnings data available." };
     return data.slice(0, 8).map((e: any) => ({
