@@ -173,25 +173,40 @@ async function getQuote(symbol: string) {
   }
 }
 
+// Strip .TO suffix for Finnhub (uses US market symbols for Canadian cross-listed stocks)
+function finnhubSymbol(symbol: string) {
+  return symbol.replace(/\.TO$/i, "").replace(/\.TSX$/i, "");
+}
+
+async function finnhubGet(path: string) {
+  const key = process.env.FINNHUB_API_KEY;
+  const res = await fetch(`https://finnhub.io/api/v1${path}&token=${key}`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`Finnhub returned ${res.status}`);
+  return res.json();
+}
+
 async function getAnalystData(symbol: string) {
   try {
-    const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=financialData`;
-    const res = await fetch(url, {
-      headers: YF_HEADERS,
-      cache: "no-store",
-    });
-    if (!res.ok) return { error: `Yahoo Finance returned ${res.status}` };
-    const json = await res.json();
-    const fd = json?.quoteSummary?.result?.[0]?.financialData;
-    if (!fd) return { error: "No analyst data available." };
+    const sym = finnhubSymbol(symbol);
+    const [recs, target] = await Promise.all([
+      finnhubGet(`/stock/recommendation?symbol=${sym}`),
+      finnhubGet(`/stock/price-target?symbol=${sym}`),
+    ]);
+    const latest = Array.isArray(recs) && recs.length > 0 ? recs[0] : null;
+    if (!latest && !target?.targetMean) return { error: "No analyst data available." };
+    const total = (latest?.strongBuy ?? 0) + (latest?.buy ?? 0) + (latest?.hold ?? 0) + (latest?.sell ?? 0) + (latest?.strongSell ?? 0);
     return {
-      recommendationKey: fd.recommendationKey,
-      recommendationMean: fd.recommendationMean?.raw,
-      numberOfAnalystOpinions: fd.numberOfAnalystOpinions?.raw,
-      targetMeanPrice: fd.targetMeanPrice?.raw,
-      targetHighPrice: fd.targetHighPrice?.raw,
-      targetLowPrice: fd.targetLowPrice?.raw,
-      targetMedianPrice: fd.targetMedianPrice?.raw,
+      period: latest?.period,
+      strongBuy: latest?.strongBuy,
+      buy: latest?.buy,
+      hold: latest?.hold,
+      sell: latest?.sell,
+      strongSell: latest?.strongSell,
+      totalAnalysts: total,
+      targetMean: target?.targetMean,
+      targetHigh: target?.targetHigh,
+      targetLow: target?.targetLow,
+      targetMedian: target?.targetMedian,
     };
   } catch (e: any) {
     return { error: e.message };
@@ -200,12 +215,16 @@ async function getAnalystData(symbol: string) {
 
 async function getNews(symbol: string) {
   try {
-    const results = await yahooFinance.search(symbol, { quotesCount: 0, newsCount: 5 }, FETCH_OPTS);
-    return (results.news || []).map((n: any) => ({
-      title: n.title,
-      publisher: n.publisher,
-      link: n.link,
-      publishedAt: n.providerPublishTime,
+    const sym = finnhubSymbol(symbol);
+    const to = new Date().toISOString().slice(0, 10);
+    const from = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const news = await finnhubGet(`/company-news?symbol=${sym}&from=${from}&to=${to}`);
+    if (!Array.isArray(news) || news.length === 0) return { error: "No recent news found." };
+    return news.slice(0, 5).map((n: any) => ({
+      headline: n.headline,
+      source: n.source,
+      summary: n.summary ? n.summary.slice(0, 250) : null,
+      date: new Date(n.datetime * 1000).toISOString().slice(0, 10),
     }));
   } catch (e: any) {
     return { error: e.message };
@@ -214,42 +233,43 @@ async function getNews(symbol: string) {
 
 async function getFundamentals(symbol: string) {
   try {
-    const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=defaultKeyStatistics%2CfinancialData%2CsummaryProfile`;
-    const res = await fetch(url, {
-      headers: YF_HEADERS,
-      cache: "no-store",
-    });
-    if (!res.ok) return { error: `Yahoo Finance returned ${res.status}` };
-    const json = await res.json();
-    const r = json?.quoteSummary?.result?.[0];
-    if (!r) return { error: "No data returned." };
-    const ks = r.defaultKeyStatistics;
-    const fd = r.financialData;
-    const sp = r.summaryProfile;
+    const sym = finnhubSymbol(symbol);
+    const [profile, metrics] = await Promise.all([
+      finnhubGet(`/stock/profile2?symbol=${sym}`),
+      finnhubGet(`/stock/metric?symbol=${sym}&metric=all`),
+    ]);
+    const m = metrics?.metric ?? {};
     return {
-      trailingEPS: ks?.trailingEps?.raw,
-      forwardEPS: ks?.forwardEps?.raw,
-      priceToBook: ks?.priceToBook?.raw,
-      beta: ks?.beta?.raw,
-      shortRatio: ks?.shortRatio?.raw,
-      earningsGrowth: ks?.earningsQuarterlyGrowth?.raw != null ? Math.round(ks.earningsQuarterlyGrowth.raw * 10000) / 100 : null,
-      revenueGrowth: fd?.revenueGrowth?.raw != null ? Math.round(fd.revenueGrowth.raw * 10000) / 100 : null,
-      fiftyTwoWeekChange: ks?.["52WeekChange"]?.raw != null ? Math.round(ks["52WeekChange"].raw * 10000) / 100 : null,
-      totalRevenue: fd?.totalRevenue?.raw,
-      grossMargins: fd?.grossMargins?.raw != null ? Math.round(fd.grossMargins.raw * 10000) / 100 : null,
-      operatingMargins: fd?.operatingMargins?.raw != null ? Math.round(fd.operatingMargins.raw * 10000) / 100 : null,
-      profitMargins: fd?.profitMargins?.raw != null ? Math.round(fd.profitMargins.raw * 10000) / 100 : null,
-      returnOnEquity: fd?.returnOnEquity?.raw != null ? Math.round(fd.returnOnEquity.raw * 10000) / 100 : null,
-      returnOnAssets: fd?.returnOnAssets?.raw != null ? Math.round(fd.returnOnAssets.raw * 10000) / 100 : null,
-      debtToEquity: fd?.debtToEquity?.raw,
-      currentRatio: fd?.currentRatio?.raw,
-      freeCashflow: fd?.freeCashflow?.raw,
-      revenuePerShare: fd?.revenuePerShare?.raw,
-      longBusinessSummary: sp?.longBusinessSummary,
-      sector: sp?.sector,
-      industry: sp?.industry,
-      fullTimeEmployees: sp?.fullTimeEmployees,
-      website: sp?.website,
+      sector: profile?.finnhubIndustry,
+      industry: profile?.finnhubIndustry,
+      fullTimeEmployees: profile?.employeeTotal,
+      website: profile?.weburl,
+      // Valuation
+      peRatioAnnual: m.peNormalizedAnnual,
+      peTTM: m.peTTM,
+      priceToBook: m.pbAnnual,
+      priceToSales: m.psTTM,
+      beta: m.beta,
+      // Per-share
+      epsAnnual: m.epsNormalizedAnnual,
+      revenuePerShare: m.revenuePerShareAnnual,
+      // Growth
+      revenueGrowthAnnual: m.revenueGrowthAnnual ? Math.round(m.revenueGrowthAnnual * 100) / 100 : null,
+      epsGrowth3Y: m.epsGrowth3Y ? Math.round(m.epsGrowth3Y * 100) / 100 : null,
+      // Margins & Returns
+      grossMargin: m.grossMarginAnnual ? Math.round(m.grossMarginAnnual * 100) / 100 : null,
+      netMargin: m.netProfitMarginAnnual ? Math.round(m.netProfitMarginAnnual * 100) / 100 : null,
+      returnOnEquity: m.roeAnnual ? Math.round(m.roeAnnual * 100) / 100 : null,
+      returnOnAssets: m.roaAnnual ? Math.round(m.roaAnnual * 100) / 100 : null,
+      // Balance sheet
+      debtToEquity: m["totalDebt/totalEquityAnnual"],
+      currentRatio: m.currentRatioAnnual,
+      // Dividend
+      dividendYield: m.dividendYieldIndicatedAnnual,
+      // 52-week
+      fiftyTwoWeekHigh: m["52WeekHigh"],
+      fiftyTwoWeekLow: m["52WeekLow"],
+      fiftyTwoWeekReturn: m["52WeekPriceReturnDaily"] ? Math.round(m["52WeekPriceReturnDaily"] * 100) / 100 : null,
     };
   } catch (e: any) {
     return { error: e.message };
@@ -298,30 +318,16 @@ async function getHistoricalPrices(symbol: string, period: string) {
 
 async function getEarnings(symbol: string) {
   try {
-    const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=earningsHistory`;
-    const res = await fetch(url, {
-      headers: YF_HEADERS,
-      cache: "no-store",
-    });
-    if (!res.ok) return { error: `Yahoo Finance returned ${res.status}` };
-    const json = await res.json();
-    const history = json?.quoteSummary?.result?.[0]?.earningsHistory?.history;
-    if (!history) return { error: "No earnings history available." };
-    const QUARTERS = ["Q1", "Q2", "Q3", "Q4"];
-    return history.slice(-8).map((e: any) => {
-      const ts = e.quarter?.raw;
-      let quarter = "N/A";
-      if (ts) {
-        const d = new Date(ts * 1000);
-        quarter = `${QUARTERS[Math.floor(d.getMonth() / 3)]} ${d.getFullYear()}`;
-      }
-      return {
-        quarter,
-        actual: e.epsActual?.raw ?? null,
-        estimate: e.epsEstimate?.raw ?? null,
-        surprise: e.surprisePercent?.raw != null ? Math.round(e.surprisePercent.raw * 100) / 100 : null,
-      };
-    });
+    const sym = finnhubSymbol(symbol);
+    const data = await finnhubGet(`/stock/earnings?symbol=${sym}`);
+    if (!Array.isArray(data) || data.length === 0) return { error: "No earnings data available." };
+    return data.slice(0, 8).map((e: any) => ({
+      quarter: e.period,
+      actual: e.actual,
+      estimate: e.estimate,
+      surprise: e.surprise,
+      surprisePercent: e.surprisePercent != null ? Math.round(e.surprisePercent * 100) / 100 : null,
+    }));
   } catch (e: any) {
     return { error: e.message };
   }
