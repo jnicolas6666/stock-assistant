@@ -113,13 +113,21 @@ function InlineIcon({ type }: { type: string }) {
 function withIcons(children: React.ReactNode): React.ReactNode {
   return React.Children.map(children, (child) => {
     if (typeof child !== "string") return child;
-    const parts = child.split(/(\p{Extended_Pictographic}\uFE0F?)/gu);
-    if (parts.length === 1) return child;
-    return parts.map((part, i) => {
-      const iconType = EMOJI_TO_ICON[part] ?? EMOJI_TO_ICON[part.replace(/\uFE0F$/, "")];
-      if (iconType) return <InlineIcon key={i} type={iconType} />;
-      return part || null;
-    });
+    const knownEmoji = Object.keys(EMOJI_TO_ICON);
+    let parts: Array<string | React.ReactNode> = [child];
+    for (const emoji of knownEmoji) {
+      const next: Array<string | React.ReactNode> = [];
+      for (const part of parts) {
+        if (typeof part !== "string") { next.push(part); continue; }
+        const segs = part.split(emoji);
+        segs.forEach((seg, i) => {
+          if (seg) next.push(seg);
+          if (i < segs.length - 1) next.push(<InlineIcon key={emoji + i} type={EMOJI_TO_ICON[emoji]} />);
+        });
+      }
+      parts = next;
+    }
+    return parts as React.ReactNode[];
   });
 }
 
