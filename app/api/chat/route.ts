@@ -38,7 +38,7 @@ SENTIMENT / OPINION QUESTIONS — whenever a user asks about general opinion, se
 - When you have numeric data that would be clearer as a chart, always use generate_chart.
 - Available chart types: "line" for price history, "area" for price history with fill, "bar" for comparisons and distributions.
 - For generate_chart data array: each item must be a flat object. For price history: [{ date: "Jan 1", close: 150.5 }, ...]. For comparisons: [{ metric: "P/E", AAPL: 28.5, MSFT: 32.1 }, ...].
-- Colors to use in series: #e05520 (primary/accent), #888888 (secondary), #22c55e (positive/green), #ef4444 (negative/red), #3b82f6 (blue), #a855f7 (purple).`;
+- Colors to use in series: #c0091e (primary/accent), #888888 (secondary), #22c55e (positive/green), #ef4444 (negative/red), #3b82f6 (blue), #a855f7 (purple).`;
 
 type ChartSpec = {
   type: "line" | "bar" | "area";
