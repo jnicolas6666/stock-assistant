@@ -4,7 +4,6 @@ import { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { TrendingUp, Send } from "lucide-react";
-import { Icon } from "@iconify/react";
 import {
   TrendUp, TrendDown, Minus, ArrowUp, ArrowDown,
 } from "@phosphor-icons/react";
@@ -46,10 +45,10 @@ type Message = {
 };
 
 const SUGGESTIONS = [
-  { text: "Show TD Bank's price chart (3 months)", sub: "Price history · TD.TO", icon: "fluent-emoji:chart-increasing" },
-  { text: "Compare Canadian banks P/E ratios", sub: "Peer comparison · Big 6", icon: "fluent-emoji:bar-chart" },
-  { text: "TD Bank earnings vs estimates", sub: "8 quarters · EPS history", icon: "fluent-emoji:magnifying-glass-tilted-left" },
-  { text: "What do analysts think of TD?", sub: "Analyst consensus · Ratings", icon: "fluent-emoji:briefcase" },
+  { text: "Show TD Bank's price chart (3 months)", sub: "Price history · TD.TO", icon: "linechart" },
+  { text: "Compare Canadian banks P/E ratios", sub: "Peer comparison · Big 6", icon: "barchart" },
+  { text: "TD Bank earnings vs estimates", sub: "8 quarters · EPS history", icon: "search" },
+  { text: "What do analysts think of TD?", sub: "Analyst consensus · Ratings", icon: "analyst" },
 ];
 
 const CONSENSUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
@@ -167,6 +166,106 @@ function AnalystRatingsCard({ data }: { data: AnalystRatingsSpec }) {
         )}
       </div>
     </div>
+  );
+}
+
+function SuggestionIcon({ name }: { name: string }) {
+  const id = Math.random().toString(36).slice(2);
+  if (name === "linechart") return (
+    <svg width="34" height="34" viewBox="0 0 34 34" fill="none">
+      <defs>
+        <linearGradient id={`lg-${id}`} x1="0" y1="0" x2="34" y2="0" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#e05520" stopOpacity="0.3"/>
+          <stop offset="100%" stopColor="#e05520"/>
+        </linearGradient>
+        <filter id={`glow-${id}`}>
+          <feGaussianBlur stdDeviation="1.5" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      <polyline
+        points="3,27 10,19 16,22 22,12 31,8"
+        stroke={`url(#lg-${id})`} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
+        style={{ strokeDasharray: 80, strokeDashoffset: 80, animation: "drawStroke 1.2s ease forwards 0.1s" }}
+      />
+      <circle cx="31" cy="8" r="3" fill="#e05520" filter={`url(#glow-${id})`}
+        style={{ animation: "popIn 0.3s ease forwards 1.2s", transform: "scale(0)", transformOrigin: "31px 8px" }}
+      />
+      <polyline points="3,27 10,19 16,22 22,12 31,8"
+        stroke="#e05520" strokeWidth="0.4" strokeLinecap="round" strokeLinejoin="round" strokeOpacity="0.2"
+      />
+    </svg>
+  );
+  if (name === "barchart") return (
+    <svg width="34" height="34" viewBox="0 0 34 34" fill="none">
+      <defs>
+        <linearGradient id={`bar1-${id}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#e05520"/><stop offset="100%" stopColor="#e05520" stopOpacity="0.3"/>
+        </linearGradient>
+        <linearGradient id={`bar2-${id}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#e05520" stopOpacity="0.8"/><stop offset="100%" stopColor="#e05520" stopOpacity="0.2"/>
+        </linearGradient>
+        <linearGradient id={`bar3-${id}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#e05520" stopOpacity="0.6"/><stop offset="100%" stopColor="#e05520" stopOpacity="0.1"/>
+        </linearGradient>
+      </defs>
+      <rect x="4" y="30" width="6" height="0" rx="1.5" fill={`url(#bar1-${id})`}
+        style={{ animation: "growBar 0.6s ease forwards 0.1s", transformOrigin: "7px 30px" }}
+      />
+      <rect x="14" y="30" width="6" height="0" rx="1.5" fill={`url(#bar2-${id})`}
+        style={{ animation: "growBar2 0.6s ease forwards 0.3s", transformOrigin: "17px 30px" }}
+      />
+      <rect x="24" y="30" width="6" height="0" rx="1.5" fill={`url(#bar3-${id})`}
+        style={{ animation: "growBar3 0.6s ease forwards 0.5s", transformOrigin: "27px 30px" }}
+      />
+      <line x1="2" y1="30" x2="32" y2="30" stroke="#333" strokeWidth="1" strokeLinecap="round"/>
+    </svg>
+  );
+  if (name === "search") return (
+    <svg width="34" height="34" viewBox="0 0 34 34" fill="none">
+      <defs>
+        <filter id={`sglow-${id}`}>
+          <feGaussianBlur stdDeviation="2" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      <circle cx="14" cy="14" r="9" stroke="#e05520" strokeWidth="2.2" strokeOpacity="0.25"/>
+      <circle cx="14" cy="14" r="9" stroke="#e05520" strokeWidth="2.2"
+        style={{ strokeDasharray: 56, strokeDashoffset: 56, animation: "drawStroke 0.9s ease forwards 0.1s" }}
+        filter={`url(#sglow-${id})`}
+      />
+      <line x1="20.5" y1="20.5" x2="30" y2="30" stroke="#e05520" strokeWidth="2.2" strokeLinecap="round"
+        style={{ strokeDasharray: 14, strokeDashoffset: 14, animation: "drawStroke 0.4s ease forwards 0.9s" }}
+      />
+      <circle cx="14" cy="14" r="4" fill="#e05520" fillOpacity="0.12"
+        style={{ animation: "scanPulse 2s ease-in-out infinite 1.3s" }}
+      />
+    </svg>
+  );
+  // analyst
+  return (
+    <svg width="34" height="34" viewBox="0 0 34 34" fill="none">
+      <defs>
+        <filter id={`aglow-${id}`}>
+          <feGaussianBlur stdDeviation="1.5" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      <circle cx="17" cy="11" r="5.5" stroke="#e05520" strokeWidth="2"
+        style={{ strokeDasharray: 35, strokeDashoffset: 35, animation: "drawStroke 0.7s ease forwards 0.1s" }}
+        filter={`url(#aglow-${id})`}
+      />
+      <path d="M5 30 C5 22 10 18 17 18 C24 18 29 22 29 30"
+        stroke="#e05520" strokeWidth="2" strokeLinecap="round"
+        style={{ strokeDasharray: 50, strokeDashoffset: 50, animation: "drawStroke 0.8s ease forwards 0.7s" }}
+      />
+      <line x1="22" y1="19" x2="30" y2="11" stroke="#e05520" strokeWidth="1.5" strokeLinecap="round" strokeOpacity="0.5"
+        style={{ strokeDasharray: 12, strokeDashoffset: 12, animation: "drawStroke 0.3s ease forwards 1.4s" }}
+      />
+      <polyline points="25,14 30,11 27,7" stroke="#e05520" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+        style={{ strokeDasharray: 14, strokeDashoffset: 14, animation: "drawStroke 0.4s ease forwards 1.6s" }}
+      />
+    </svg>
   );
 }
 
@@ -457,7 +556,7 @@ export default function Home() {
                 onMouseEnter={e => { e.currentTarget.style.borderColor = "#e05520"; e.currentTarget.style.backgroundColor = "#1a1a1a"; }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.backgroundColor = "#111"; }}
                 >
-                  <div style={{ marginBottom: 6 }}><Icon icon={s.icon} width={28} height={28} /></div>
+                  <div style={{ marginBottom: 6 }}><SuggestionIcon name={s.icon} /></div>
                   <div style={{ fontSize: 12, fontWeight: 500, color: "#f5f5f5", lineHeight: 1.4 }}>{s.text}</div>
                   <div style={{ fontSize: 11, color: "#555", marginTop: 3 }}>{s.sub}</div>
                 </button>
@@ -596,6 +695,25 @@ export default function Home() {
       </div>
 
       <style>{`
+        @keyframes drawStroke {
+          to { stroke-dashoffset: 0; }
+        }
+        @keyframes popIn {
+          to { transform: scale(1); }
+        }
+        @keyframes growBar {
+          to { y: 8px; height: 22px; }
+        }
+        @keyframes growBar2 {
+          to { y: 15px; height: 15px; }
+        }
+        @keyframes growBar3 {
+          to { y: 20px; height: 10px; }
+        }
+        @keyframes scanPulse {
+          0%, 100% { r: 4; opacity: 0.12; }
+          50% { r: 7; opacity: 0.25; }
+        }
         @keyframes pulse {
           0%, 80%, 100% { opacity: 0.2; transform: scale(0.75); }
           40% { opacity: 1; transform: scale(1); }
