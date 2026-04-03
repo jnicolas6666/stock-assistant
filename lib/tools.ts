@@ -226,10 +226,10 @@ async function getNews(symbol: string) {
     const from = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const news = await finnhubGet(`/company-news?symbol=${sym}&from=${from}&to=${to}`);
     if (!Array.isArray(news) || news.length === 0) return { error: "No recent news found." };
-    return news.slice(0, 5).map((n: any) => ({
+    return news.slice(0, 7).map((n: any) => ({
       headline: n.headline,
       source: n.source,
-      summary: n.summary ? n.summary.slice(0, 250) : null,
+      summary: n.summary || null,
       date: new Date(n.datetime * 1000).toISOString().slice(0, 10),
     }));
   } catch (e: any) {
