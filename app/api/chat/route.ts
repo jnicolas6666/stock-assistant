@@ -129,7 +129,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(getMockResponse(userText));
   }
 
-  let loopMessages = [...messages];
+  // Strip frontend-only fields (e.g. charts) — Claude only accepts role + content
+  let loopMessages = messages.map((m: any) => ({ role: m.role, content: m.content }));
   let iterations = 0;
   const MAX_ITERATIONS = 10;
   const charts: ChartSpec[] = [];
