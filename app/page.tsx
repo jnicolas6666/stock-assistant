@@ -19,12 +19,18 @@ import {
 // ── Inline animated icons for AI responses ──────────────────────────────────
 
 const EMOJI_TO_ICON: Record<string, string> = {
+  // ZWJ sequences MUST come before their component emoji
+  "🧑\u200D💼": "analyst",  // person+ZWJ+briefcase
+  "👨\u200D💼": "analyst",
+  "👩\u200D💼": "analyst",
+  // Single emoji
   "🏦": "bank",   "🏛️": "bank",
   "📊": "barchart",
   "📈": "trendup",
   "📉": "trenddown",
   "🔍": "search",  "🔎": "search",
   "💼": "briefcase",
+  "📰": "news",   "🗞️": "news",
   "✅": "check",
   "⚠️": "warning", "⚠": "warning",
   "💰": "money",   "💵": "money",
@@ -105,6 +111,18 @@ function InlineIcon({ type }: { type: string }) {
       <circle cx="10" cy="10" r="8" stroke={c} strokeWidth="1.5" style={a(50,0)}/>
       <circle cx="10" cy="10" r="4.5" stroke={c} strokeWidth="1.5" style={a(28,0.3)}/>
       <circle cx="10" cy="10" r="1.5" fill={c} style={{opacity:0, animation:"popIn 0.2s ease forwards 0.65s"}}/>
+    </>);
+    case "news": return wrap(<>
+      <rect x="2" y="2" width="16" height="16" rx="2" stroke={c} strokeWidth="1.8" style={a(60,0)}/>
+      <line x1="5" y1="7" x2="15" y2="7" stroke={c} strokeWidth="1.6" strokeLinecap="round" style={a(10,0.4)}/>
+      <line x1="5" y1="10.5" x2="15" y2="10.5" stroke={c} strokeWidth="1.4" strokeLinecap="round" strokeOpacity="0.7" style={a(10,0.55)}/>
+      <line x1="5" y1="14" x2="11" y2="14" stroke={c} strokeWidth="1.4" strokeLinecap="round" strokeOpacity="0.45" style={a(6,0.7)}/>
+    </>);
+    case "analyst": return wrap(<>
+      <circle cx="10" cy="6.5" r="3.5" stroke={c} strokeWidth="1.8" style={a(22,0)}/>
+      <path d="M3 18 C3 13 6 11 10 11 C14 11 17 13 17 18" stroke={c} strokeWidth="1.8" strokeLinecap="round" style={a(24,0.4)}/>
+      <polyline points="14,5 17,2 17,5" stroke={c} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={a(9,0.75)}/>
+      <line x1="13" y1="6" x2="17" y2="2" stroke={c} strokeWidth="1.5" strokeLinecap="round" style={a(6,0.7)}/>
     </>);
     default: return null;
   }
