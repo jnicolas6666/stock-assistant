@@ -221,7 +221,7 @@ async function getAnalystData(symbol: string) {
 
 async function getNews(symbol: string) {
   try {
-    const sym = finnhubSymbol(symbol);
+    const sym = encodeURIComponent(symbol);
     const to = new Date().toISOString().slice(0, 10);
     const from = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const news = await finnhubGet(`/company-news?symbol=${sym}&from=${from}&to=${to}`);
@@ -239,7 +239,7 @@ async function getNews(symbol: string) {
 
 async function getFundamentals(symbol: string) {
   try {
-    const sym = finnhubSymbol(symbol);
+    const sym = encodeURIComponent(symbol);
     const [profile, metrics] = await Promise.all([
       finnhubGet(`/stock/profile2?symbol=${sym}`),
       finnhubGet(`/stock/metric?symbol=${sym}&metric=all`),
@@ -324,7 +324,7 @@ async function getHistoricalPrices(symbol: string, period: string) {
 
 async function getEarnings(symbol: string) {
   try {
-    const sym = finnhubSymbol(symbol);
+    const sym = encodeURIComponent(symbol);
     const data = await finnhubGet(`/stock/earnings?symbol=${sym}`);
     if (!Array.isArray(data) || data.length === 0) return { error: "No earnings data available." };
     return data.slice(0, 8).map((e: any) => ({
