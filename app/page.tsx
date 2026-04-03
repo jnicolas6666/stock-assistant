@@ -41,6 +41,79 @@ const ICON_MAP: Record<string, React.ReactNode> = {
   Brain: <Brain size={16} color="#e05520" />,
 };
 
+function PixelWizard() {
+  return (
+    <div style={{ animation: "wizardFloat 3s ease-in-out infinite", display: "inline-block" }}>
+      <svg
+        width="72"
+        height="104"
+        viewBox="0 0 18 26"
+        style={{ imageRendering: "pixelated" as const }}
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        {/* Hat */}
+        <rect x="8" y="0" width="2" height="1" fill="#7c3aed"/>
+        <rect x="7" y="1" width="4" height="1" fill="#7c3aed"/>
+        <rect x="6" y="2" width="6" height="1" fill="#7c3aed"/>
+        <rect x="5" y="3" width="8" height="1" fill="#7c3aed"/>
+        <rect x="4" y="4" width="10" height="1" fill="#e05520"/>
+
+        {/* Face */}
+        <rect x="5" y="5" width="8" height="4" fill="#fcd34d"/>
+        {/* Eyebrows */}
+        <rect x="6" y="5" width="2" height="1" fill="#92400e"/>
+        <rect x="10" y="5" width="2" height="1" fill="#92400e"/>
+        {/* Eyes */}
+        <rect x="7" y="6" width="1" height="1" fill="#1e1b4b"/>
+        <rect x="11" y="6" width="1" height="1" fill="#1e1b4b"/>
+        {/* Mouth */}
+        <rect x="7" y="8" width="4" height="1" fill="#dc2626"/>
+
+        {/* Beard */}
+        <rect x="5" y="9" width="8" height="1" fill="#f1f5f9"/>
+        <rect x="6" y="10" width="6" height="1" fill="#f1f5f9"/>
+
+        {/* Robe body */}
+        <rect x="5" y="11" width="8" height="8" fill="#4c1d95"/>
+        {/* Left sleeve */}
+        <rect x="3" y="12" width="2" height="3" fill="#4c1d95"/>
+        {/* Right sleeve */}
+        <rect x="13" y="12" width="2" height="3" fill="#4c1d95"/>
+        {/* Robe bottom flare */}
+        <rect x="4" y="17" width="10" height="2" fill="#4c1d95"/>
+
+        {/* Boots */}
+        <rect x="5" y="19" width="3" height="2" fill="#1c1917"/>
+        <rect x="10" y="19" width="3" height="2" fill="#1c1917"/>
+
+        {/* Wand */}
+        <rect x="2" y="11" width="1" height="6" fill="#92400e"/>
+        {/* Wand tip with glow */}
+        <g style={{ animation: "wandGlow 2s ease-in-out infinite" }}>
+          <rect x="2" y="10" width="1" height="1" fill="#fde047"/>
+        </g>
+
+        {/* Stars with staggered twinkle */}
+        <g style={{ animation: "starTwinkle 1.5s ease-in-out infinite", animationDelay: "0s" }}>
+          <rect x="15" y="2" width="1" height="1" fill="#fde047"/>
+        </g>
+        <g style={{ animation: "starTwinkle 1.5s ease-in-out infinite", animationDelay: "0.3s" }}>
+          <rect x="1" y="5" width="1" height="1" fill="#fde047"/>
+        </g>
+        <g style={{ animation: "starTwinkle 1.5s ease-in-out infinite", animationDelay: "0.6s" }}>
+          <rect x="16" y="9" width="1" height="1" fill="#fde047"/>
+        </g>
+        <g style={{ animation: "starTwinkle 1.5s ease-in-out infinite", animationDelay: "0.9s" }}>
+          <rect x="0" y="13" width="1" height="1" fill="#fde047"/>
+        </g>
+        <g style={{ animation: "starTwinkle 1.5s ease-in-out infinite", animationDelay: "1.2s" }}>
+          <rect x="16" y="15" width="1" height="1" fill="#fde047"/>
+        </g>
+      </svg>
+    </div>
+  );
+}
+
 function formatYAxis(value: number) {
   return `$${value}`;
 }
@@ -231,13 +304,8 @@ export default function Home() {
       <div style={{ flex: 1, overflowY: "auto", padding: "24px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
         {messages.length === 0 && (
           <div style={{ margin: "auto", textAlign: "center", maxWidth: 520, width: "100%", padding: "0 16px" }}>
-            <div style={{
-              width: 48, height: 48, background: "#111",
-              border: "1px solid rgba(255,255,255,0.08)",
-              borderRadius: 12, margin: "0 auto 16px",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              <TrendingUp size={22} color="#e05520" />
+            <div style={{ margin: "0 auto 20px", display: "flex", justifyContent: "center" }}>
+              <PixelWizard />
             </div>
             <div style={{ fontSize: 20, fontWeight: 600, marginBottom: 6, color: "#f5f5f5", letterSpacing: "-0.02em" }}>
               Market Assistant
@@ -397,6 +465,18 @@ export default function Home() {
         @keyframes pulse {
           0%, 80%, 100% { opacity: 0.2; transform: scale(0.75); }
           40% { opacity: 1; transform: scale(1); }
+        }
+        @keyframes wizardFloat {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-6px); }
+        }
+        @keyframes wandGlow {
+          0%, 100% { filter: drop-shadow(0 0 2px #fde047); opacity: 1; }
+          50% { filter: drop-shadow(0 0 6px #e05520) drop-shadow(0 0 12px #e05520); opacity: 0.9; }
+        }
+        @keyframes starTwinkle {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.2; transform: scale(0.5); }
         }
         * { box-sizing: border-box; }
         ::-webkit-scrollbar { width: 4px; }
