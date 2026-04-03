@@ -45,6 +45,82 @@ type Message = {
   analystRatings?: AnalystRatingsSpec[];
 };
 
+const TICKER_ROW_1 = [
+  { symbol: "RY",    name: "Royal Bank",       color: "#0066cc", bg: "#001f4d" },
+  { symbol: "TD",    name: "TD Bank",           color: "#34c759", bg: "#0a2e0a" },
+  { symbol: "BNS",   name: "Scotiabank",        color: "#ec1c24", bg: "#2e0a0a" },
+  { symbol: "BMO",   name: "BMO",               color: "#0079c1", bg: "#001e36" },
+  { symbol: "CM",    name: "CIBC",              color: "#c41230", bg: "#2e0008" },
+  { symbol: "NA",    name: "National Bank",     color: "#da291c", bg: "#2e0a08" },
+  { symbol: "ENB",   name: "Enbridge",          color: "#e07530", bg: "#2e1800" },
+  { symbol: "BCE",   name: "BCE",               color: "#00a0df", bg: "#00202e" },
+  { symbol: "CNR",   name: "CN Rail",           color: "#cc3300", bg: "#2a0a00" },
+  { symbol: "CP",    name: "CP Rail",           color: "#c8102e", bg: "#2a0008" },
+];
+
+const TICKER_ROW_2 = [
+  { symbol: "SU",    name: "Suncor",            color: "#ffb300", bg: "#2a1e00" },
+  { symbol: "CNQ",   name: "Can. Natural",      color: "#4a90d9", bg: "#0a1e2e" },
+  { symbol: "TRI",   name: "Thomson Reuters",   color: "#ff6200", bg: "#2a1200" },
+  { symbol: "MFC",   name: "Manulife",          color: "#00a758", bg: "#002a18" },
+  { symbol: "SLF",   name: "Sun Life",          color: "#f0a500", bg: "#2a1e00" },
+  { symbol: "T",     name: "Telus",             color: "#7b2d8b", bg: "#1a0a2a" },
+  { symbol: "RCI.B", name: "Rogers",            color: "#e31837", bg: "#2a0008" },
+  { symbol: "WCN",   name: "Waste Connections", color: "#00875a", bg: "#002018" },
+  { symbol: "ATD",   name: "Alimentation",      color: "#e63946", bg: "#2a0808" },
+  { symbol: "TRP",   name: "TC Energy",         color: "#d4a017", bg: "#2a1e00" },
+];
+
+function TickerBubble({ symbol, name, color, bg }: { symbol: string; name: string; color: string; bg: string }) {
+  const initials = symbol.replace(".B", "").slice(0, 3);
+  return (
+    <div style={{
+      display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+      flexShrink: 0,
+      margin: "0 14px",
+    }}>
+      <div style={{
+        width: 54, height: 54,
+        borderRadius: "50%",
+        backgroundColor: bg,
+        border: `1.5px solid ${color}44`,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        boxShadow: `0 0 12px ${color}22, inset 0 1px 0 ${color}33`,
+        position: "relative",
+      }}>
+        <span style={{
+          fontSize: 11, fontWeight: 800, color, letterSpacing: "0.03em",
+          fontFamily: "monospace",
+        }}>
+          {initials}
+        </span>
+        <div style={{
+          position: "absolute", inset: 0, borderRadius: "50%",
+          background: `radial-gradient(circle at 35% 30%, ${color}18, transparent 70%)`,
+        }}/>
+      </div>
+      <div style={{ fontSize: 10, color: "#444", letterSpacing: "0.04em", fontWeight: 500 }}>{name.slice(0, 11)}</div>
+    </div>
+  );
+}
+
+function TickerMarquee({ items, reverse }: { items: typeof TICKER_ROW_1; reverse?: boolean }) {
+  const doubled = [...items, ...items];
+  return (
+    <div style={{ overflow: "hidden", width: "100%", maskImage: "linear-gradient(to right, transparent, black 12%, black 88%, transparent)" }}>
+      <div style={{
+        display: "flex",
+        animation: `marquee${reverse ? "Rev" : ""} ${items.length * 3.5}s linear infinite`,
+        width: "max-content",
+      }}>
+        {doubled.map((t, i) => (
+          <TickerBubble key={i} {...t} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 const SUGGESTIONS = [
   { text: "Show TD Bank's price chart (3 months)", sub: "Price history · TD.TO", icon: "linechart" },
   { text: "Compare Canadian banks P/E ratios", sub: "Peer comparison · Big 6", icon: "barchart" },
@@ -539,8 +615,12 @@ export default function Home() {
             <div style={{ fontSize: 20, fontWeight: 600, marginBottom: 6, color: "#f5f5f5", letterSpacing: "-0.02em" }}>
               Market Assistant
             </div>
-            <div style={{ color: "#555", marginBottom: 28, fontSize: 13 }}>
+            <div style={{ color: "#555", marginBottom: 24, fontSize: 13 }}>
               Ask about stocks, earnings, analyst views, or market trends.
+            </div>
+            <div style={{ width: "100vw", position: "relative", left: "50%", transform: "translateX(-50%)", marginBottom: 28, display: "flex", flexDirection: "column", gap: 16 }}>
+              <TickerMarquee items={TICKER_ROW_1} />
+              <TickerMarquee items={TICKER_ROW_2} reverse />
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, maxWidth: 480, margin: "0 auto" }}>
               {SUGGESTIONS.map((s) => (
@@ -698,6 +778,14 @@ export default function Home() {
       </div>
 
       <style>{`
+        @keyframes marquee {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+        @keyframes marqueeRev {
+          0% { transform: translateX(-50%); }
+          100% { transform: translateX(0); }
+        }
         @keyframes drawStroke {
           to { stroke-dashoffset: 0; }
         }
