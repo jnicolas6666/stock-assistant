@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { TrendingUp, Send } from "lucide-react";
+import { Icon } from "@iconify/react";
 import {
   TrendUp, TrendDown, Minus, ArrowUp, ArrowDown,
 } from "@phosphor-icons/react";
@@ -45,10 +46,10 @@ type Message = {
 };
 
 const SUGGESTIONS = [
-  { text: "Show TD Bank's price chart (3 months)", sub: "Price history · TD.TO", icon: "📊" },
-  { text: "Compare Canadian banks P/E ratios", sub: "Peer comparison · Big 6", icon: "📊" },
-  { text: "TD Bank earnings vs estimates", sub: "8 quarters · EPS history", icon: "🔍" },
-  { text: "What do analysts think of TD?", sub: "Analyst consensus · Ratings", icon: "🧑‍💼" },
+  { text: "Show TD Bank's price chart (3 months)", sub: "Price history · TD.TO", icon: "fluent-emoji:chart-increasing" },
+  { text: "Compare Canadian banks P/E ratios", sub: "Peer comparison · Big 6", icon: "fluent-emoji:bar-chart" },
+  { text: "TD Bank earnings vs estimates", sub: "8 quarters · EPS history", icon: "fluent-emoji:magnifying-glass-tilted-left" },
+  { text: "What do analysts think of TD?", sub: "Analyst consensus · Ratings", icon: "fluent-emoji:briefcase" },
 ];
 
 const CONSENSUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
@@ -456,7 +457,7 @@ export default function Home() {
                 onMouseEnter={e => { e.currentTarget.style.borderColor = "#e05520"; e.currentTarget.style.backgroundColor = "#1a1a1a"; }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.backgroundColor = "#111"; }}
                 >
-                  <div style={{ marginBottom: 6, fontSize: 20 }}>{s.icon}</div>
+                  <div style={{ marginBottom: 6 }}><Icon icon={s.icon} width={28} height={28} /></div>
                   <div style={{ fontSize: 12, fontWeight: 500, color: "#f5f5f5", lineHeight: 1.4 }}>{s.text}</div>
                   <div style={{ fontSize: 11, color: "#555", marginTop: 3 }}>{s.sub}</div>
                 </button>
