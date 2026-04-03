@@ -45,77 +45,64 @@ type Message = {
   analystRatings?: AnalystRatingsSpec[];
 };
 
-const TICKER_ROW_1 = [
-  { symbol: "RY",    name: "Royal Bank",       color: "#0066cc", bg: "#001f4d" },
-  { symbol: "TD",    name: "TD Bank",           color: "#34c759", bg: "#0a2e0a" },
-  { symbol: "BNS",   name: "Scotiabank",        color: "#ec1c24", bg: "#2e0a0a" },
-  { symbol: "BMO",   name: "BMO",               color: "#0079c1", bg: "#001e36" },
-  { symbol: "CM",    name: "CIBC",              color: "#c41230", bg: "#2e0008" },
-  { symbol: "NA",    name: "National Bank",     color: "#da291c", bg: "#2e0a08" },
-  { symbol: "ENB",   name: "Enbridge",          color: "#e07530", bg: "#2e1800" },
-  { symbol: "BCE",   name: "BCE",               color: "#00a0df", bg: "#00202e" },
-  { symbol: "CNR",   name: "CN Rail",           color: "#cc3300", bg: "#2a0a00" },
-  { symbol: "CP",    name: "CP Rail",           color: "#c8102e", bg: "#2a0008" },
+const FLOATING_BUBBLES = [
+  { symbol: "RY",  name: "Royal Bank",     color: "#0066cc", left: "4%",  top: "10%", size: 60, dx: 18,  dy: 14,  dur: 16, delay: 0   },
+  { symbol: "TD",  name: "TD Bank",        color: "#34a853", left: "87%", top: "14%", size: 54, dx: -16, dy: 22,  dur: 20, delay: 1   },
+  { symbol: "BNS", name: "Scotiabank",     color: "#ec1c24", left: "10%", top: "62%", size: 52, dx: 14,  dy: -20, dur: 18, delay: 2   },
+  { symbol: "BMO", name: "BMO",            color: "#0079c1", left: "74%", top: "58%", size: 58, dx: -22, dy: -14, dur: 22, delay: 0.5 },
+  { symbol: "CM",  name: "CIBC",           color: "#c41230", left: "48%", top: "4%",  size: 48, dx: 10,  dy: 24,  dur: 15, delay: 3   },
+  { symbol: "NA",  name: "Nat. Bank",      color: "#da291c", left: "91%", top: "44%", size: 50, dx: -20, dy: 10,  dur: 19, delay: 1.5 },
+  { symbol: "ENB", name: "Enbridge",       color: "#e07530", left: "2%",  top: "38%", size: 46, dx: 22,  dy: -12, dur: 23, delay: 2.5 },
+  { symbol: "BCE", name: "BCE",            color: "#00a0df", left: "58%", top: "78%", size: 52, dx: -12, dy: -22, dur: 16, delay: 4   },
+  { symbol: "CNR", name: "CN Rail",        color: "#cc3300", left: "28%", top: "83%", size: 48, dx: 16,  dy: -16, dur: 21, delay: 1   },
+  { symbol: "SU",  name: "Suncor",         color: "#ffb300", left: "77%", top: "24%", size: 54, dx: -14, dy: 20,  dur: 17, delay: 3.5 },
+  { symbol: "TRI", name: "Thomson Reuters",color: "#ff6200", left: "20%", top: "18%", size: 46, dx: 12,  dy: 22,  dur: 24, delay: 0   },
+  { symbol: "MFC", name: "Manulife",       color: "#00a758", left: "43%", top: "73%", size: 50, dx: -10, dy: -24, dur: 19, delay: 2   },
+  { symbol: "T",   name: "Telus",          color: "#7b2d8b", left: "66%", top: "87%", size: 44, dx: -16, dy: -12, dur: 25, delay: 4.5 },
+  { symbol: "CP",  name: "CP Rail",        color: "#c8102e", left: "7%",  top: "86%", size: 46, dx: 20,  dy: -10, dur: 14, delay: 1   },
+  { symbol: "CNQ", name: "Can. Natural",   color: "#4a90d9", left: "36%", top: "2%",  size: 48, dx: -10, dy: 20,  dur: 21, delay: 3   },
 ];
 
-const TICKER_ROW_2 = [
-  { symbol: "SU",    name: "Suncor",            color: "#ffb300", bg: "#2a1e00" },
-  { symbol: "CNQ",   name: "Can. Natural",      color: "#4a90d9", bg: "#0a1e2e" },
-  { symbol: "TRI",   name: "Thomson Reuters",   color: "#ff6200", bg: "#2a1200" },
-  { symbol: "MFC",   name: "Manulife",          color: "#00a758", bg: "#002a18" },
-  { symbol: "SLF",   name: "Sun Life",          color: "#f0a500", bg: "#2a1e00" },
-  { symbol: "T",     name: "Telus",             color: "#7b2d8b", bg: "#1a0a2a" },
-  { symbol: "RCI.B", name: "Rogers",            color: "#e31837", bg: "#2a0008" },
-  { symbol: "WCN",   name: "Waste Connections", color: "#00875a", bg: "#002018" },
-  { symbol: "ATD",   name: "Alimentation",      color: "#e63946", bg: "#2a0808" },
-  { symbol: "TRP",   name: "TC Energy",         color: "#d4a017", bg: "#2a1e00" },
-];
-
-function TickerBubble({ symbol, name, color, bg }: { symbol: string; name: string; color: string; bg: string }) {
-  const initials = symbol.replace(".B", "").slice(0, 3);
+function FloatingBubble({ symbol, name, color, left, top, size, dx, dy, dur, delay }: typeof FLOATING_BUBBLES[0]) {
+  const [imgError, setImgError] = useState(false);
   return (
     <div style={{
-      display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
-      flexShrink: 0,
-      margin: "0 14px",
+      position: "absolute", left, top,
+      animation: `bubbleFloat ${dur}s ease-in-out infinite`,
+      animationDelay: `${delay}s`,
+      ["--dx" as any]: `${dx}px`,
+      ["--dy" as any]: `${dy}px`,
+      pointerEvents: "none",
+      zIndex: 0,
     }}>
       <div style={{
-        width: 54, height: 54,
-        borderRadius: "50%",
-        backgroundColor: bg,
-        border: `1.5px solid ${color}44`,
+        width: size, height: size, borderRadius: "50%",
+        backgroundColor: "#080808",
+        border: `1.5px solid ${color}40`,
         display: "flex", alignItems: "center", justifyContent: "center",
-        boxShadow: `0 0 12px ${color}22, inset 0 1px 0 ${color}33`,
+        boxShadow: `0 0 18px ${color}1a, 0 4px 12px rgba(0,0,0,0.4)`,
+        overflow: "hidden",
         position: "relative",
       }}>
-        <span style={{
-          fontSize: 11, fontWeight: 800, color, letterSpacing: "0.03em",
-          fontFamily: "monospace",
-        }}>
-          {initials}
-        </span>
+        {!imgError ? (
+          <img
+            src={`https://assets.parqet.com/logos/symbol/${symbol}`}
+            alt={symbol}
+            width={size * 0.62}
+            height={size * 0.62}
+            onError={() => setImgError(true)}
+            style={{ objectFit: "contain", borderRadius: "50%" }}
+          />
+        ) : (
+          <span style={{ fontSize: size * 0.22, fontWeight: 800, color, fontFamily: "monospace", letterSpacing: "0.02em" }}>
+            {symbol.slice(0, 3)}
+          </span>
+        )}
         <div style={{
           position: "absolute", inset: 0, borderRadius: "50%",
-          background: `radial-gradient(circle at 35% 30%, ${color}18, transparent 70%)`,
+          background: `radial-gradient(circle at 35% 28%, ${color}14, transparent 65%)`,
+          pointerEvents: "none",
         }}/>
-      </div>
-      <div style={{ fontSize: 10, color: "#444", letterSpacing: "0.04em", fontWeight: 500 }}>{name.slice(0, 11)}</div>
-    </div>
-  );
-}
-
-function TickerMarquee({ items, reverse }: { items: typeof TICKER_ROW_1; reverse?: boolean }) {
-  const doubled = [...items, ...items];
-  return (
-    <div style={{ overflow: "hidden", width: "100%", maskImage: "linear-gradient(to right, transparent, black 12%, black 88%, transparent)" }}>
-      <div style={{
-        display: "flex",
-        animation: `marquee${reverse ? "Rev" : ""} ${items.length * 3.5}s linear infinite`,
-        width: "max-content",
-      }}>
-        {doubled.map((t, i) => (
-          <TickerBubble key={i} {...t} />
-        ))}
       </div>
     </div>
   );
@@ -605,34 +592,32 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Messages */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "24px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
-        {messages.length === 0 && (
-          <div style={{ margin: "auto", textAlign: "center", maxWidth: 520, width: "100%", padding: "0 16px" }}>
-            <div style={{ margin: "0 auto 20px", display: "flex", justifyContent: "center" }}>
-              <PixelWizard />
-            </div>
+      {/* Empty home screen */}
+      {messages.length === 0 && (
+        <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
+          {/* Floating bubbles background */}
+          {FLOATING_BUBBLES.map((b) => <FloatingBubble key={b.symbol} {...b} />)}
+
+          {/* Center content */}
+          <div style={{
+            position: "relative", zIndex: 1,
+            height: "100%", display: "flex", flexDirection: "column",
+            alignItems: "center", justifyContent: "center",
+            padding: "0 20px",
+          }}>
+            <div style={{ marginBottom: 16 }}><PixelWizard /></div>
             <div style={{ fontSize: 20, fontWeight: 600, marginBottom: 6, color: "#f5f5f5", letterSpacing: "-0.02em" }}>
               Market Assistant
             </div>
             <div style={{ color: "#555", marginBottom: 24, fontSize: 13 }}>
               Ask about stocks, earnings, analyst views, or market trends.
             </div>
-            <div style={{ width: "100vw", position: "relative", left: "50%", transform: "translateX(-50%)", marginBottom: 28, display: "flex", flexDirection: "column", gap: 16 }}>
-              <TickerMarquee items={TICKER_ROW_1} />
-              <TickerMarquee items={TICKER_ROW_2} reverse />
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, maxWidth: 480, margin: "0 auto" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, width: "100%", maxWidth: 480, marginBottom: 16 }}>
               {SUGGESTIONS.map((s) => (
                 <button key={s.text} onClick={() => sendMessage(s.text)} style={{
-                  padding: "12px 14px",
-                  textAlign: "left",
-                  borderRadius: 8,
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  backgroundColor: "#111",
-                  cursor: "pointer",
-                  width: "100%",
-                  transition: "border-color 0.15s, background 0.15s",
+                  padding: "12px 14px", textAlign: "left", borderRadius: 8,
+                  border: "1px solid rgba(255,255,255,0.08)", backgroundColor: "#111",
+                  cursor: "pointer", width: "100%", transition: "border-color 0.15s, background 0.15s",
                 }}
                 onMouseEnter={e => { e.currentTarget.style.borderColor = "#e05520"; e.currentTarget.style.backgroundColor = "#1a1a1a"; }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.backgroundColor = "#111"; }}
@@ -643,9 +628,42 @@ export default function Home() {
                 </button>
               ))}
             </div>
+            {/* Centered input bar */}
+            <div style={{ display: "flex", gap: 8, alignItems: "center", width: "100%", maxWidth: 480 }}>
+              <input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Ask about a stock, ETF, or market concept..."
+                autoFocus
+                style={{
+                  flex: 1, padding: "10px 14px", borderRadius: 8,
+                  border: "1px solid rgba(255,255,255,0.12)", backgroundColor: "#111",
+                  color: "#f5f5f5", fontSize: 13, outline: "none",
+                }}
+              />
+              <button
+                onClick={() => sendMessage(input)}
+                disabled={!input.trim()}
+                style={{
+                  width: 36, height: 36, borderRadius: 8, border: "none", flexShrink: 0,
+                  backgroundColor: input.trim() ? "#e05520" : "#1a1a1a",
+                  color: input.trim() ? "#fff" : "#444",
+                  cursor: input.trim() ? "pointer" : "not-allowed",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  transition: "background 0.15s",
+                }}
+              >
+                <Send size={14} strokeWidth={2} />
+              </button>
+            </div>
           </div>
-        )}
+        </div>
+      )}
 
+      {/* Messages area — only when chatting */}
+      {messages.length > 0 && (
+      <div style={{ flex: 1, overflowY: "auto", padding: "24px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
         {messages.map((msg, i) => (
           <div key={i} style={{
             display: "flex",
@@ -731,8 +749,10 @@ export default function Home() {
 
         <div ref={bottomRef} />
       </div>
+      )}
 
-      {/* Input */}
+      {/* Bottom input — only while chatting */}
+      {messages.length > 0 && (
       <div style={{
         padding: "10px 14px",
         borderTop: "1px solid rgba(255,255,255,0.08)",
@@ -776,15 +796,13 @@ export default function Home() {
           <Send size={14} strokeWidth={2} />
         </button>
       </div>
+      )}
 
       <style>{`
-        @keyframes marquee {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(-50%); }
-        }
-        @keyframes marqueeRev {
-          0% { transform: translateX(-50%); }
-          100% { transform: translateX(0); }
+        @keyframes bubbleFloat {
+          0%, 100% { transform: translate(0, 0); }
+          33%  { transform: translate(var(--dx), var(--dy)); }
+          66%  { transform: translate(calc(var(--dx) * -0.4), calc(var(--dy) * 0.6)); }
         }
         @keyframes drawStroke {
           to { stroke-dashoffset: 0; }
