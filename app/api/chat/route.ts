@@ -134,6 +134,7 @@ export async function POST(req: NextRequest) {
   const MAX_ITERATIONS = 10;
   const charts: ChartSpec[] = [];
 
+  try {
   while (iterations < MAX_ITERATIONS) {
     iterations++;
 
@@ -194,4 +195,11 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({ content: "I'm sorry, I couldn't process your request.", charts });
+  } catch (e: any) {
+    console.error("Chat route error:", e);
+    return NextResponse.json(
+      { content: `Something went wrong: ${e?.message ?? "unknown error"}. Please try again.`, charts: [] },
+      { status: 200 } // return 200 so the frontend renders the message instead of throwing
+    );
+  }
 }
