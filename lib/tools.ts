@@ -12,6 +12,11 @@ const FETCH_OPTS = {
   },
 };
 
+const YF_HEADERS = {
+  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+  "Accept": "application/json",
+};
+
 // Tool definitions for Anthropic API
 export const toolDefinitions = [
   {
@@ -170,19 +175,23 @@ async function getQuote(symbol: string) {
 
 async function getAnalystData(symbol: string) {
   try {
-    const summary = await yahooFinance.quoteSummary(symbol, {
-      modules: ["financialData"],
-    }, FETCH_OPTS);
-    const fd = summary.financialData;
-    if (!fd) return { error: "No analyst data available for this symbol." };
+    const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=financialData`;
+    const res = await fetch(url, {
+      headers: YF_HEADERS,
+      cache: "no-store",
+    });
+    if (!res.ok) return { error: `Yahoo Finance returned ${res.status}` };
+    const json = await res.json();
+    const fd = json?.quoteSummary?.result?.[0]?.financialData;
+    if (!fd) return { error: "No analyst data available." };
     return {
       recommendationKey: fd.recommendationKey,
-      recommendationMean: fd.recommendationMean,
-      numberOfAnalystOpinions: fd.numberOfAnalystOpinions,
-      targetMeanPrice: fd.targetMeanPrice,
-      targetHighPrice: fd.targetHighPrice,
-      targetLowPrice: fd.targetLowPrice,
-      targetMedianPrice: fd.targetMedianPrice,
+      recommendationMean: fd.recommendationMean?.raw,
+      numberOfAnalystOpinions: fd.numberOfAnalystOpinions?.raw,
+      targetMeanPrice: fd.targetMeanPrice?.raw,
+      targetHighPrice: fd.targetHighPrice?.raw,
+      targetLowPrice: fd.targetLowPrice?.raw,
+      targetMedianPrice: fd.targetMedianPrice?.raw,
     };
   } catch (e: any) {
     return { error: e.message };
@@ -205,35 +214,37 @@ async function getNews(symbol: string) {
 
 async function getFundamentals(symbol: string) {
   try {
-    const summary = await yahooFinance.quoteSummary(symbol, {
-      modules: ["defaultKeyStatistics", "financialData", "summaryProfile"],
-    }, FETCH_OPTS);
-    const ks = summary.defaultKeyStatistics as any;
-    const fd = summary.financialData as any;
-    const sp = summary.summaryProfile as any;
-
+    const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=defaultKeyStatistics%2CfinancialData%2CsummaryProfile`;
+    const res = await fetch(url, {
+      headers: YF_HEADERS,
+      cache: "no-store",
+    });
+    if (!res.ok) return { error: `Yahoo Finance returned ${res.status}` };
+    const json = await res.json();
+    const r = json?.quoteSummary?.result?.[0];
+    if (!r) return { error: "No data returned." };
+    const ks = r.defaultKeyStatistics;
+    const fd = r.financialData;
+    const sp = r.summaryProfile;
     return {
-      // defaultKeyStatistics
-      trailingEPS: ks?.trailingEps,
-      forwardEPS: ks?.forwardEps,
-      priceToBook: ks?.priceToBook,
-      beta: ks?.beta,
-      shortRatio: ks?.shortRatio,
-      earningsGrowth: ks?.earningsQuarterlyGrowth != null ? ks.earningsQuarterlyGrowth * 100 : null,
-      revenueGrowth: fd?.revenueGrowth != null ? fd.revenueGrowth * 100 : null,
-      fiftyTwoWeekChange: ks?.["52WeekChange"] != null ? ks["52WeekChange"] * 100 : null,
-      // financialData
-      totalRevenue: fd?.totalRevenue,
-      grossMargins: fd?.grossMargins,
-      operatingMargins: fd?.operatingMargins,
-      profitMargins: fd?.profitMargins,
-      returnOnEquity: fd?.returnOnEquity,
-      returnOnAssets: fd?.returnOnAssets,
-      debtToEquity: fd?.debtToEquity,
-      currentRatio: fd?.currentRatio,
-      freeCashflow: fd?.freeCashflow,
-      revenuePerShare: fd?.revenuePerShare,
-      // summaryProfile
+      trailingEPS: ks?.trailingEps?.raw,
+      forwardEPS: ks?.forwardEps?.raw,
+      priceToBook: ks?.priceToBook?.raw,
+      beta: ks?.beta?.raw,
+      shortRatio: ks?.shortRatio?.raw,
+      earningsGrowth: ks?.earningsQuarterlyGrowth?.raw != null ? Math.round(ks.earningsQuarterlyGrowth.raw * 10000) / 100 : null,
+      revenueGrowth: fd?.revenueGrowth?.raw != null ? Math.round(fd.revenueGrowth.raw * 10000) / 100 : null,
+      fiftyTwoWeekChange: ks?.["52WeekChange"]?.raw != null ? Math.round(ks["52WeekChange"].raw * 10000) / 100 : null,
+      totalRevenue: fd?.totalRevenue?.raw,
+      grossMargins: fd?.grossMargins?.raw != null ? Math.round(fd.grossMargins.raw * 10000) / 100 : null,
+      operatingMargins: fd?.operatingMargins?.raw != null ? Math.round(fd.operatingMargins.raw * 10000) / 100 : null,
+      profitMargins: fd?.profitMargins?.raw != null ? Math.round(fd.profitMargins.raw * 10000) / 100 : null,
+      returnOnEquity: fd?.returnOnEquity?.raw != null ? Math.round(fd.returnOnEquity.raw * 10000) / 100 : null,
+      returnOnAssets: fd?.returnOnAssets?.raw != null ? Math.round(fd.returnOnAssets.raw * 10000) / 100 : null,
+      debtToEquity: fd?.debtToEquity?.raw,
+      currentRatio: fd?.currentRatio?.raw,
+      freeCashflow: fd?.freeCashflow?.raw,
+      revenuePerShare: fd?.revenuePerShare?.raw,
       longBusinessSummary: sp?.longBusinessSummary,
       sector: sp?.sector,
       industry: sp?.industry,
@@ -245,63 +256,71 @@ async function getFundamentals(symbol: string) {
   }
 }
 
-const PERIOD_DAYS: Record<string, number> = {
-  "1mo": 30,
-  "3mo": 90,
-  "6mo": 180,
-  "1y": 365,
-  "2y": 730,
-};
-
 async function getHistoricalPrices(symbol: string, period: string) {
   try {
-    const days = PERIOD_DAYS[period] ?? 90;
-    const period1 = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const PERIOD_MAP: Record<string, string> = {
+      "1mo": "1mo", "3mo": "3mo", "6mo": "6mo", "1y": "1y", "2y": "2y",
+    };
+    const range = PERIOD_MAP[period] ?? "3mo";
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=1d&includePrePost=false`;
 
-    const rows = await yahooFinance.historical(symbol, { period1, interval: "1d" }, FETCH_OPTS);
+    const res = await fetch(url, {
+      headers: YF_HEADERS,
+      cache: "no-store",
+    });
 
-    // Limit to 100 points max
-    const step = rows.length > 100 ? Math.ceil(rows.length / 100) : 1;
-    const sampled = rows.filter((_, i) => i % step === 0).slice(0, 100);
+    if (!res.ok) return { error: `Yahoo Finance returned ${res.status}` };
 
-    return sampled.map((r: any) => ({
-      date: r.date instanceof Date
-        ? r.date.toISOString().slice(0, 10)
-        : String(r.date).slice(0, 10),
-      close: r.close != null ? Math.round(r.close * 100) / 100 : null,
-      volume: r.volume ?? null,
-    }));
+    const json = await res.json();
+    const result = json?.chart?.result?.[0];
+    if (!result) return { error: "No data returned from Yahoo Finance." };
+
+    const timestamps: number[] = result.timestamp ?? [];
+    const closes: number[] = result.indicators?.quote?.[0]?.close ?? [];
+
+    const formatDate = (iso: string) => {
+      const d = new Date(iso);
+      return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    };
+
+    const rows = timestamps.map((ts, i) => ({
+      date: formatDate(new Date(ts * 1000).toISOString().slice(0, 10)),
+      close: closes[i] != null ? Math.round(closes[i] * 100) / 100 : null,
+    })).filter(r => r.close != null);
+
+    // Sample down to max 60 points
+    const step = rows.length > 60 ? Math.ceil(rows.length / 60) : 1;
+    return rows.filter((_, i) => i % step === 0);
   } catch (e: any) {
     return { error: e.message };
   }
 }
 
-const QUARTER_NAMES = ["Q1", "Q2", "Q3", "Q4"];
-
 async function getEarnings(symbol: string) {
   try {
-    const summary = await yahooFinance.quoteSummary(symbol, {
-      modules: ["earningsHistory"],
-    }, FETCH_OPTS);
-    const history = (summary.earningsHistory as any)?.history;
-    if (!history || !Array.isArray(history)) return { error: "No earnings history available." };
-
-    const last8 = history.slice(-8);
-
-    return last8.map((e: any) => {
-      const date: Date | undefined = e.quarter instanceof Date ? e.quarter : undefined;
+    const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=earningsHistory`;
+    const res = await fetch(url, {
+      headers: YF_HEADERS,
+      cache: "no-store",
+    });
+    if (!res.ok) return { error: `Yahoo Finance returned ${res.status}` };
+    const json = await res.json();
+    const history = json?.quoteSummary?.result?.[0]?.earningsHistory?.history;
+    if (!history) return { error: "No earnings history available." };
+    const QUARTERS = ["Q1", "Q2", "Q3", "Q4"];
+    return history.slice(-8).map((e: any) => {
+      const ts = e.quarter?.raw;
       let quarter = "N/A";
-      if (date) {
-        const month = date.getMonth(); // 0-indexed
-        const qIndex = Math.floor(month / 3);
-        quarter = `${QUARTER_NAMES[qIndex]} ${date.getFullYear()}`;
+      if (ts) {
+        const d = new Date(ts * 1000);
+        quarter = `${QUARTERS[Math.floor(d.getMonth() / 3)]} ${d.getFullYear()}`;
       }
-      const actual = e.epsActual ?? null;
-      const estimate = e.epsEstimate ?? null;
-      const surprise = actual != null && estimate != null && estimate !== 0
-        ? Math.round(((actual - estimate) / Math.abs(estimate)) * 10000) / 100
-        : null;
-      return { quarter, actual, estimate, surprise };
+      return {
+        quarter,
+        actual: e.epsActual?.raw ?? null,
+        estimate: e.epsEstimate?.raw ?? null,
+        surprise: e.surprisePercent?.raw != null ? Math.round(e.surprisePercent.raw * 100) / 100 : null,
+      };
     });
   } catch (e: any) {
     return { error: e.message };
