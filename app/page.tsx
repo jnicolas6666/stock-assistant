@@ -9,6 +9,9 @@ import {
   Users, Clock,
 } from "lucide-react";
 import {
+  TrendUp, TrendDown, Minus, ArrowUp, ArrowDown,
+} from "@phosphor-icons/react";
+import {
   LineChart, Line,
   BarChart, Bar,
   AreaChart, Area,
@@ -25,7 +28,25 @@ type ChartSpec = {
   series: { key: string; name: string; color: string }[];
 };
 
-type Message = { role: "user" | "assistant"; content: string; charts?: ChartSpec[] };
+type AnalystRatingsSpec = {
+  symbol: string;
+  consensus: string;
+  period?: string;
+  strongBuy: number;
+  buy: number;
+  hold: number;
+  sell: number;
+  strongSell: number;
+  totalAnalysts: number;
+  buyChangeVsLastMonth?: number;
+};
+
+type Message = {
+  role: "user" | "assistant";
+  content: string;
+  charts?: ChartSpec[];
+  analystRatings?: AnalystRatingsSpec[];
+};
 
 const SUGGESTIONS = [
   { text: "Show TD Bank's price chart (3 months)", sub: "Price history · TD.TO", icon: "LineChart" },
@@ -40,6 +61,124 @@ const ICON_MAP: Record<string, React.ReactNode> = {
   Activity: <Activity size={16} color="#e05520" />,
   Brain: <Brain size={16} color="#e05520" />,
 };
+
+const CONSENSUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+  strongBuy:  { label: "Strong Buy",  color: "#22c55e", bg: "rgba(34,197,94,0.1)" },
+  buy:        { label: "Buy",         color: "#86efac", bg: "rgba(134,239,172,0.1)" },
+  hold:       { label: "Hold",        color: "#facc15", bg: "rgba(250,204,21,0.1)" },
+  sell:       { label: "Sell",        color: "#f97316", bg: "rgba(249,115,22,0.1)" },
+  strongSell: { label: "Strong Sell", color: "#ef4444", bg: "rgba(239,68,68,0.1)" },
+};
+
+function AnalystRatingsCard({ data }: { data: AnalystRatingsSpec }) {
+  const cfg = CONSENSUS_CONFIG[data.consensus] ?? CONSENSUS_CONFIG.hold;
+  const total = data.totalAnalysts || 1;
+
+  const bars = [
+    { label: "Strong Buy", count: data.strongBuy, color: "#22c55e" },
+    { label: "Buy",        count: data.buy,        color: "#86efac" },
+    { label: "Hold",       count: data.hold,       color: "#facc15" },
+    { label: "Sell",       count: data.sell,       color: "#f97316" },
+    { label: "Strong Sell",count: data.strongSell, color: "#ef4444" },
+  ];
+
+  const bullish = data.strongBuy + data.buy;
+  const bearish = data.sell + data.strongSell;
+
+  return (
+    <div style={{
+      backgroundColor: "#0a0a0a",
+      border: "1px solid rgba(255,255,255,0.08)",
+      borderRadius: 8,
+      padding: "14px 16px",
+      marginTop: 10,
+      width: "min(480px, 92vw)",
+    }}>
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 600, color: "#555", textTransform: "uppercase" as const, letterSpacing: "0.08em", marginBottom: 2 }}>
+            Analyst Consensus · {data.symbol}
+          </div>
+          {data.period && (
+            <div style={{ fontSize: 10, color: "#444" }}>{data.period}</div>
+          )}
+        </div>
+        <div style={{
+          display: "flex", alignItems: "center", gap: 6,
+          backgroundColor: cfg.bg,
+          border: `1px solid ${cfg.color}33`,
+          borderRadius: 6,
+          padding: "5px 10px",
+        }}>
+          {data.consensus === "strongBuy" || data.consensus === "buy"
+            ? <TrendUp size={14} color={cfg.color} weight="bold" />
+            : data.consensus === "strongSell" || data.consensus === "sell"
+            ? <TrendDown size={14} color={cfg.color} weight="bold" />
+            : <Minus size={14} color={cfg.color} weight="bold" />
+          }
+          <span style={{ fontSize: 12, fontWeight: 700, color: cfg.color }}>{cfg.label}</span>
+        </div>
+      </div>
+
+      {/* Rating bars */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 14 }}>
+        {bars.map((b) => (
+          <div key={b.label} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ width: 72, fontSize: 11, color: "#666", textAlign: "right" as const, flexShrink: 0 }}>{b.label}</div>
+            <div style={{ flex: 1, height: 6, backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 3, overflow: "hidden" }}>
+              <div style={{
+                height: "100%",
+                width: `${total > 0 ? (b.count / total) * 100 : 0}%`,
+                backgroundColor: b.color,
+                borderRadius: 3,
+                transition: "width 0.4s ease",
+              }} />
+            </div>
+            <div style={{ width: 20, fontSize: 11, color: "#555", textAlign: "right" as const, flexShrink: 0 }}>{b.count}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Footer stats */}
+      <div style={{ display: "flex", gap: 12, borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: 10 }}>
+        <div style={{ flex: 1, textAlign: "center" as const }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: "#22c55e" }}>{bullish}</div>
+          <div style={{ fontSize: 10, color: "#555", marginTop: 1 }}>Bullish</div>
+        </div>
+        <div style={{ flex: 1, textAlign: "center" as const }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: "#888" }}>{data.hold}</div>
+          <div style={{ fontSize: 10, color: "#555", marginTop: 1 }}>Hold</div>
+        </div>
+        <div style={{ flex: 1, textAlign: "center" as const }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: "#ef4444" }}>{bearish}</div>
+          <div style={{ fontSize: 10, color: "#555", marginTop: 1 }}>Bearish</div>
+        </div>
+        <div style={{ flex: 1, textAlign: "center" as const }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: "#888" }}>{data.totalAnalysts}</div>
+          <div style={{ fontSize: 10, color: "#555", marginTop: 1 }}>Total</div>
+        </div>
+        {data.buyChangeVsLastMonth != null && (
+          <div style={{ flex: 1, textAlign: "center" as const }}>
+            <div style={{
+              fontSize: 14, fontWeight: 700,
+              color: data.buyChangeVsLastMonth > 0 ? "#22c55e" : data.buyChangeVsLastMonth < 0 ? "#ef4444" : "#888",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 2,
+            }}>
+              {data.buyChangeVsLastMonth > 0
+                ? <ArrowUp size={12} weight="bold" />
+                : data.buyChangeVsLastMonth < 0
+                ? <ArrowDown size={12} weight="bold" />
+                : null}
+              {Math.abs(data.buyChangeVsLastMonth)}
+            </div>
+            <div style={{ fontSize: 10, color: "#555", marginTop: 1 }}>vs Last Mo.</div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function PixelWizard() {
   return (
@@ -242,7 +381,7 @@ export default function Home() {
         body: JSON.stringify({ messages: newMessages }),
       });
       const data = await res.json();
-      setMessages([...newMessages, { role: "assistant", content: data.content, charts: data.charts || [] }]);
+      setMessages([...newMessages, { role: "assistant", content: data.content, charts: data.charts || [], analystRatings: data.analystRatings || [] }]);
     } catch {
       setMessages([...newMessages, { role: "assistant", content: "Sorry, something went wrong. Please try again." }]);
     } finally {
@@ -387,6 +526,11 @@ export default function Home() {
             {msg.role === "assistant" && msg.charts && msg.charts.length > 0 && msg.charts.map((chart, ci) => (
               <div key={ci} style={{ width: "min(640px, 92vw)" }}>
                 <ChartMessage chart={chart} />
+              </div>
+            ))}
+            {msg.role === "assistant" && msg.analystRatings && msg.analystRatings.length > 0 && msg.analystRatings.map((rating, ri) => (
+              <div key={ri}>
+                <AnalystRatingsCard data={rating} />
               </div>
             ))}
           </div>

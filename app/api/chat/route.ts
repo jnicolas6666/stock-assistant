@@ -48,6 +48,19 @@ type ChartSpec = {
   series: { key: string; name: string; color: string }[];
 };
 
+type AnalystRatingsSpec = {
+  symbol: string;
+  consensus: string;
+  period?: string;
+  strongBuy: number;
+  buy: number;
+  hold: number;
+  sell: number;
+  strongSell: number;
+  totalAnalysts: number;
+  buyChangeVsLastMonth?: number;
+};
+
 function getMockResponse(userMessage: string): { content: string; charts: ChartSpec[] } {
   const msg = userMessage.toLowerCase();
 
@@ -146,6 +159,7 @@ export async function POST(req: NextRequest) {
   let iterations = 0;
   const MAX_ITERATIONS = 10;
   const charts: ChartSpec[] = [];
+  const analystRatings: AnalystRatingsSpec[] = [];
 
   try {
   while (iterations < MAX_ITERATIONS) {
@@ -162,7 +176,7 @@ export async function POST(req: NextRequest) {
     if (response.stop_reason === "end_turn") {
       const textBlock = response.content.find((b) => b.type === "text");
       const text = textBlock && textBlock.type === "text" ? textBlock.text : "";
-      return NextResponse.json({ content: text, charts });
+      return NextResponse.json({ content: text, charts, analystRatings });
     }
 
     if (response.stop_reason === "tool_use") {
@@ -177,8 +191,16 @@ export async function POST(req: NextRequest) {
           if (block.type !== "tool_use") return null;
 
           if (block.name === "generate_chart") {
-            // Capture chart spec and return ok so Claude continues
             charts.push(block.input as unknown as ChartSpec);
+            return {
+              type: "tool_result" as const,
+              tool_use_id: block.id,
+              content: JSON.stringify({ ok: true }),
+            };
+          }
+
+          if (block.name === "display_analyst_ratings") {
+            analystRatings.push(block.input as unknown as AnalystRatingsSpec);
             return {
               type: "tool_result" as const,
               tool_use_id: block.id,
@@ -207,7 +229,7 @@ export async function POST(req: NextRequest) {
     break;
   }
 
-  return NextResponse.json({ content: "I'm sorry, I couldn't process your request.", charts });
+  return NextResponse.json({ content: "I'm sorry, I couldn't process your request.", charts, analystRatings });
   } catch (e: any) {
     console.error("Chat route error:", e);
     return NextResponse.json(
