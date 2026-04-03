@@ -3,13 +3,10 @@
 import { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import {
-  TrendingUp, Send, BarChart2, LineChart as LineChartIcon, Newspaper,
-  Brain, Search, ChevronRight, Activity, DollarSign,
-  Users, Clock,
-} from "lucide-react";
+import { TrendingUp, Send } from "lucide-react";
 import {
   TrendUp, TrendDown, Minus, ArrowUp, ArrowDown,
+  ChartLine, ChartBar, Briefcase, MagnifyingGlass,
 } from "@phosphor-icons/react";
 import {
   LineChart, Line,
@@ -49,17 +46,17 @@ type Message = {
 };
 
 const SUGGESTIONS = [
-  { text: "Show TD Bank's price chart (3 months)", sub: "Price history · TD.TO", icon: "LineChart" },
-  { text: "Compare Canadian banks P/E ratios", sub: "Peer comparison · Big 6", icon: "BarChart2" },
-  { text: "TD Bank earnings vs estimates", sub: "8 quarters · EPS history", icon: "Activity" },
-  { text: "What do analysts think of TD?", sub: "Analyst consensus · Ratings", icon: "Brain" },
+  { text: "Show TD Bank's price chart (3 months)", sub: "Price history · TD.TO", icon: "ChartLine" },
+  { text: "Compare Canadian banks P/E ratios", sub: "Peer comparison · Big 6", icon: "ChartBar" },
+  { text: "TD Bank earnings vs estimates", sub: "8 quarters · EPS history", icon: "MagnifyingGlass" },
+  { text: "What do analysts think of TD?", sub: "Analyst consensus · Ratings", icon: "Briefcase" },
 ];
 
 const ICON_MAP: Record<string, React.ReactNode> = {
-  LineChart: <LineChartIcon size={16} color="#e05520" />,
-  BarChart2: <BarChart2 size={16} color="#e05520" />,
-  Activity: <Activity size={16} color="#e05520" />,
-  Brain: <Brain size={16} color="#e05520" />,
+  ChartLine:      <ChartLine size={18} color="#e05520" weight="duotone" />,
+  ChartBar:       <ChartBar size={18} color="#e05520" weight="duotone" />,
+  MagnifyingGlass:<MagnifyingGlass size={18} color="#e05520" weight="duotone" />,
+  Briefcase:      <Briefcase size={18} color="#e05520" weight="duotone" />,
 };
 
 const CONSENSUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
