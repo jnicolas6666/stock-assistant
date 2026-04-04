@@ -278,32 +278,76 @@ async function getQuote(symbol: string) {
 
 async function getAnalystData(symbol: string) {
   try {
-    const recs = await finnhubGet(`/stock/recommendation?symbol=${fh(symbol)}`);
-    if (!Array.isArray(recs) || recs.length === 0) return { error: "No analyst data available." };
+    // Primary: Yahoo Finance recommendationTrend — works for US and Canadian stocks
+    const summary = await yahooFinance.quoteSummary(symbol, {
+      modules: ["recommendationTrend", "financialData"] as any,
+      fetchOptions: FETCH_OPTS.fetchOptions,
+    } as any).catch(() => null);
 
-    const latest = recs[0];
-    const prev = recs[1] ?? null;
-    const total = (latest.strongBuy ?? 0) + (latest.buy ?? 0) + (latest.hold ?? 0) + (latest.sell ?? 0) + (latest.strongSell ?? 0);
-    const bullish = (latest.strongBuy ?? 0) + (latest.buy ?? 0);
-    const bearish = (latest.sell ?? 0) + (latest.strongSell ?? 0);
-    const buyChange = prev ? ((latest.buy + latest.strongBuy) - (prev.buy + prev.strongBuy)) : null;
+    const trend: any[] = (summary as any)?.recommendationTrend?.trend ?? [];
+    if (trend.length > 0) {
+      const latest = trend[0]; // period "0m" = current month
+      const prev = trend[1] ?? null;   // "-1m"
+      const total = (latest.strongBuy ?? 0) + (latest.buy ?? 0) + (latest.hold ?? 0) + (latest.sell ?? 0) + (latest.strongSell ?? 0);
+      const bullish = (latest.strongBuy ?? 0) + (latest.buy ?? 0);
+      const bearish = (latest.sell ?? 0) + (latest.strongSell ?? 0);
+      const buyChange = prev ? ((latest.buy + latest.strongBuy) - (prev.buy + prev.strongBuy)) : null;
+      const fd = (summary as any)?.financialData ?? {};
 
-    return {
-      period: latest.period,
-      strongBuy: latest.strongBuy,
-      buy: latest.buy,
-      hold: latest.hold,
-      sell: latest.sell,
-      strongSell: latest.strongSell,
-      totalAnalysts: total,
-      bullishCount: bullish,
-      bearishCount: bearish,
-      buyChangeVsLastMonth: buyChange,
-      trend: recs.slice(0, 3).map((r: any) => ({
-        period: r.period,
-        strongBuy: r.strongBuy, buy: r.buy, hold: r.hold, sell: r.sell, strongSell: r.strongSell,
-      })),
-    };
+      return {
+        period: "current",
+        strongBuy: latest.strongBuy,
+        buy: latest.buy,
+        hold: latest.hold,
+        sell: latest.sell,
+        strongSell: latest.strongSell,
+        totalAnalysts: total,
+        bullishCount: bullish,
+        bearishCount: bearish,
+        buyChangeVsLastMonth: buyChange,
+        // Price targets from Yahoo (same call)
+        targetMean: fmt(fd.targetMeanPrice ?? null),
+        targetHigh: fmt(fd.targetHighPrice ?? null),
+        targetLow: fmt(fd.targetLowPrice ?? null),
+        numberOfAnalystOpinions: fd.numberOfAnalystOpinions ?? null,
+        trend: trend.slice(0, 3).map((r: any) => ({
+          period: r.period,
+          strongBuy: r.strongBuy, buy: r.buy, hold: r.hold, sell: r.sell, strongSell: r.strongSell,
+        })),
+      };
+    }
+
+    // Fallback: Finnhub (US stocks only — strips .TO suffix which breaks Canadian lookups)
+    const isCanadian = /\.(TO|TSX|V|CN)$/i.test(symbol);
+    if (!isCanadian) {
+      const recs = await finnhubGet(`/stock/recommendation?symbol=${fh(symbol)}`);
+      if (Array.isArray(recs) && recs.length > 0) {
+        const latest = recs[0];
+        const prev = recs[1] ?? null;
+        const total = (latest.strongBuy ?? 0) + (latest.buy ?? 0) + (latest.hold ?? 0) + (latest.sell ?? 0) + (latest.strongSell ?? 0);
+        const bullish = (latest.strongBuy ?? 0) + (latest.buy ?? 0);
+        const bearish = (latest.sell ?? 0) + (latest.strongSell ?? 0);
+        const buyChange = prev ? ((latest.buy + latest.strongBuy) - (prev.buy + prev.strongBuy)) : null;
+        return {
+          period: latest.period,
+          strongBuy: latest.strongBuy,
+          buy: latest.buy,
+          hold: latest.hold,
+          sell: latest.sell,
+          strongSell: latest.strongSell,
+          totalAnalysts: total,
+          bullishCount: bullish,
+          bearishCount: bearish,
+          buyChangeVsLastMonth: buyChange,
+          trend: recs.slice(0, 3).map((r: any) => ({
+            period: r.period,
+            strongBuy: r.strongBuy, buy: r.buy, hold: r.hold, sell: r.sell, strongSell: r.strongSell,
+          })),
+        };
+      }
+    }
+
+    return { error: "No analyst ratings data available for this symbol." };
   } catch (e: any) {
     return { error: e.message };
   }
