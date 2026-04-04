@@ -35,6 +35,19 @@ const EMOJI_TO_ICON: Record<string, string> = {
   "💰": "money",   "💵": "money",
   "💡": "lightbulb",
   "🎯": "target",
+  // Extended set
+  "🏆": "trophy",
+  "⚡": "lightning",
+  "🔥": "fire",
+  "🌍": "globe", "🌎": "globe", "🌏": "globe",
+  "🛡️": "shield", "🛡": "shield",
+  "💎": "diamond",
+  "🚀": "rocket",
+  "🔴": "reddot", "🔶": "reddot",
+  "🟢": "greendot",
+  "🟡": "yellowdot", "🟠": "yellowdot",
+  "🔻": "downtri", "📌": "pin",
+  "⭐": "star", "🌟": "star",
 };
 
 function InlineIcon({ type }: { type: string }) {
@@ -123,8 +136,88 @@ function InlineIcon({ type }: { type: string }) {
       <polyline points="14,5 17,2 17,5" stroke={c} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={a(9,0.75)}/>
       <line x1="13" y1="6" x2="17" y2="2" stroke={c} strokeWidth="1.5" strokeLinecap="round" style={a(6,0.7)}/>
     </>);
+    // ── Extended icons ──────────────────────────────────────────────────────
+    case "trophy": return wrap(<>
+      <path d="M7,3 L13,3 L12.5,9.5 C12,12.5 10,13.5 10,13.5 C10,13.5 8,12.5 7.5,9.5 Z" stroke={c} strokeWidth="1.8" strokeLinejoin="round" style={a(32,0)}/>
+      <path d="M7,5 C4.5,5 3,6.5 4.5,9" stroke={c} strokeWidth="1.5" strokeLinecap="round" style={a(7,0.3)}/>
+      <path d="M13,5 C15.5,5 17,6.5 15.5,9" stroke={c} strokeWidth="1.5" strokeLinecap="round" style={a(7,0.3)}/>
+      <line x1="10" y1="13.5" x2="10" y2="16.5" stroke={c} strokeWidth="1.6" strokeLinecap="round" style={a(3,0.5)}/>
+      <line x1="7" y1="17.5" x2="13" y2="17.5" stroke={c} strokeWidth="1.9" strokeLinecap="round" style={a(6,0.65)}/>
+    </>);
+    case "lightning": return wrap(<>
+      <path d="M13,2 L7,11 L11.5,11 L7,18 L13,9 L8.5,9 Z" stroke={c} strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" style={a(44,0)}/>
+    </>);
+    case "fire": return wrap(<>
+      <path d="M10,2 C12,5 14,8.5 14,11.5 C14,14.8 12.2,17 10,17 C7.8,17 6,14.8 6,11.5 C6,9.5 7,8 8,7.5 C8,9 9,10.5 10,10.5 C10,10.5 10,5.5 10,2 Z" stroke={c} strokeWidth="1.7" strokeLinejoin="round" style={a(50,0)}/>
+    </>);
+    case "globe": return wrap(<>
+      <circle cx="10" cy="10" r="8" stroke={c} strokeWidth="1.7" style={a(50,0)}/>
+      <ellipse cx="10" cy="10" rx="3.5" ry="8" stroke={c} strokeWidth="1.3" strokeOpacity="0.6" style={a(24,0.35)}/>
+      <line x1="2" y1="10" x2="18" y2="10" stroke={c} strokeWidth="1.3" strokeOpacity="0.6" style={a(16,0.52)}/>
+    </>);
+    case "shield": return wrap(<>
+      <path d="M10,2 L18,5.5 L18,11 C18,15 14.5,17.5 10,19 C5.5,17.5 2,15 2,11 L2,5.5 Z" stroke={c} strokeWidth="1.8" strokeLinejoin="round" style={a(60,0)}/>
+    </>);
+    case "diamond": return wrap(<>
+      <polygon points="10,2 18,9 10,18 2,9" stroke={c} strokeWidth="1.8" strokeLinejoin="round" style={a(42,0)}/>
+      <line x1="2" y1="9" x2="18" y2="9" stroke={c} strokeWidth="1.3" strokeOpacity="0.45" style={a(16,0.5)}/>
+      <polyline points="5.5,9 10,2 14.5,9" stroke={c} strokeWidth="1.2" strokeLinejoin="round" strokeOpacity="0.35" style={a(15,0.6)}/>
+    </>);
+    case "rocket": return wrap(<>
+      <path d="M10,2 C13,4.5 15,8 15,11 L10,14 L5,11 C5,8 7,4.5 10,2 Z" stroke={c} strokeWidth="1.7" strokeLinejoin="round" style={a(34,0)}/>
+      <path d="M5,11 L3,15 L7,13.5" stroke={c} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={a(10,0.4)}/>
+      <path d="M15,11 L17,15 L13,13.5" stroke={c} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={a(10,0.4)}/>
+      <circle cx="10" cy="8.5" r="1.6" stroke={c} strokeWidth="1.4" style={a(10,0.55)}/>
+    </>);
+    case "star": return wrap(<>
+      <polygon points="10,2 12.5,7.8 18.8,8.2 14.2,12.5 15.6,18.8 10,15.3 4.4,18.8 5.8,12.5 1.2,8.2 7.5,7.8" stroke={c} strokeWidth="1.6" strokeLinejoin="round" style={a(60,0)}/>
+    </>);
+    case "pin": return wrap(<>
+      <circle cx="10" cy="7.5" r="4.5" stroke={c} strokeWidth="1.8" style={a(28,0)}/>
+      <line x1="10" y1="12" x2="10" y2="18" stroke={c} strokeWidth="1.8" strokeLinecap="round" style={a(6,0.45)}/>
+    </>);
+    // Status dot indicators — small colored circles with ring (use inline span, not SVG wrapper)
+    case "reddot": return (
+      <span style={{ display:"inline-flex", alignItems:"center", verticalAlign:"middle", margin:"0 2px" }}>
+        <svg width={11} height={11} viewBox="0 0 11 11" fill="none">
+          <circle cx="5.5" cy="5.5" r="3.5" fill="#cc1100" style={{opacity:0, animation:"popIn 0.25s ease forwards 0.05s"}}/>
+          <circle cx="5.5" cy="5.5" r="3.5" stroke="#cc1100" strokeWidth="1.2"/>
+        </svg>
+      </span>
+    );
+    case "greendot": return (
+      <span style={{ display:"inline-flex", alignItems:"center", verticalAlign:"middle", margin:"0 2px" }}>
+        <svg width={11} height={11} viewBox="0 0 11 11" fill="none">
+          <circle cx="5.5" cy="5.5" r="3.5" fill="#22c55e" style={{opacity:0, animation:"popIn 0.25s ease forwards 0.05s"}}/>
+          <circle cx="5.5" cy="5.5" r="3.5" stroke="#22c55e" strokeWidth="1.2"/>
+        </svg>
+      </span>
+    );
+    case "yellowdot": return (
+      <span style={{ display:"inline-flex", alignItems:"center", verticalAlign:"middle", margin:"0 2px" }}>
+        <svg width={11} height={11} viewBox="0 0 11 11" fill="none">
+          <circle cx="5.5" cy="5.5" r="3.5" fill="#f59e0b" style={{opacity:0, animation:"popIn 0.25s ease forwards 0.05s"}}/>
+          <circle cx="5.5" cy="5.5" r="3.5" stroke="#f59e0b" strokeWidth="1.2"/>
+        </svg>
+      </span>
+    );
+    case "downtri": return (
+      <span style={{ display:"inline-flex", alignItems:"center", verticalAlign:"middle", margin:"0 2px" }}>
+        <svg width={12} height={10} viewBox="0 0 12 10" fill="none">
+          <polygon points="6,9.5 0.5,1 11.5,1" fill={c} style={{opacity:0, animation:"popIn 0.25s ease forwards 0.05s"}}/>
+        </svg>
+      </span>
+    );
     default: return null;
   }
+}
+
+// Strip any emoji that wasn't converted to a custom icon
+// Matches emoji ranges without unicode flag (broad but safe for our use case)
+function stripResidualEmoji(s: string): string {
+  // Remove misc symbols/pictographs (U+1F300–U+1F9FF) and dingbats/misc (U+2600–U+27BF)
+  // Using surrogate pairs for astral plane: U+1F300 = \uD83C\uDF00, U+1FFFF = \uD83F\uDFFF
+  return s.replace(/[\uD83C-\uD83F][\uDC00-\uDFFF]|[\u2600-\u27BF]|[\uFE00-\uFE0F]/g, "").replace(/  +/g, " ");
 }
 
 function withIcons(children: React.ReactNode): React.ReactNode {
@@ -144,7 +237,9 @@ function withIcons(children: React.ReactNode): React.ReactNode {
       }
       parts = next;
     }
-    return parts as React.ReactNode[];
+    // Strip any remaining emoji not in our map
+    parts = parts.map(p => typeof p === "string" ? stripResidualEmoji(p) : p);
+    return parts.filter(p => p !== "") as React.ReactNode[];
   });
 }
 
@@ -1315,7 +1410,8 @@ function enrichChildren(children: React.ReactNode): React.ReactNode {
       }
       result.push(...(parts as React.ReactNode[]));
     });
-    return result;
+    // 3. Strip any residual emoji not handled above
+    return result.map(item => typeof item === "string" ? stripResidualEmoji(item) : item).filter(item => item !== "") as React.ReactNode[];
   }
 
   return React.Children.map(children, (child) => {
