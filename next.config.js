@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  turbopack: {},
   webpack: (config, { isServer }) => {
     // yahoo-finance2 includes test files that reference Deno/std packages
     // which don't exist in Node. Exclude them from the bundle.
