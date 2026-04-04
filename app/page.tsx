@@ -2237,18 +2237,19 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                         </div>
                       </CollapsibleSection>
                     )}
+                    {/* Charts rendered directly — never inside a collapsed container (ResponsiveContainer needs visible DOM) */}
                     {latestAiMsg.charts && latestAiMsg.charts.length > 0 && (
-                      <CollapsibleSection title={`Charts (${latestAiMsg.charts.length})`} delay={(sections.length + (latestAiMsg.analystRatings?.length ? 1 : 0)) * 0.04}>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingTop: 4 }}>
-                          {latestAiMsg.charts.map((chart, ci) => (
-                            <ChartMessage key={ci} chart={chart} />
-                          ))}
-                        </div>
-                      </CollapsibleSection>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 4 }}>
+                        {latestAiMsg.charts.map((chart, ci) => (
+                          <div key={ci} style={{ width: "100%", minWidth: 0, opacity: 0, animation: `fadeScaleIn 0.35s ease forwards ${((sections.length + (latestAiMsg.analystRatings?.length ? 1 : 0)) * 0.04) + ci * 0.08}s` }}>
+                            <ChartMessage chart={chart} />
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </>
                 ) : (
-                  // Flat content (no sections) — show full markdown in left panel too
+                  // Flat content (no sections) — show full markdown + visuals in left panel
                   <div style={{ fontSize: 13, lineHeight: 1.7, color: "#2c2a29" }}>
                     <ReactMarkdown remarkPlugins={[remarkGfm]} components={MD_COMPONENTS_SECTION}>
                       {latestAiMsg.content}
@@ -2261,9 +2262,11 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                       </div>
                     )}
                     {latestAiMsg.charts && latestAiMsg.charts.length > 0 && (
-                      <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+                      <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
                         {latestAiMsg.charts.map((chart, ci) => (
-                          <ChartMessage key={ci} chart={chart} />
+                          <div key={ci} style={{ width: "100%", minWidth: 0 }}>
+                            <ChartMessage chart={chart} />
+                          </div>
                         ))}
                       </div>
                     )}
