@@ -1461,7 +1461,7 @@ const MD_COMPONENTS_SECTION = {
   ),
   thead: ({ children }: any) => <thead style={{ backgroundColor: "#f5f2ee" }}>{children}</thead>,
   th: ({ children }: any) => <th style={{ padding: "7px 12px", borderBottom: "2px solid rgba(28,26,27,0.1)", textAlign: "left" as const, color: "#555", fontWeight: 700, fontSize: 10, textTransform: "uppercase" as const, letterSpacing: "0.07em" }}>{children}</th>,
-  td: ({ children }: any) => <td style={{ padding: "7px 12px", borderBottom: "1px solid rgba(28,26,27,0.05)", color: "#2c2a29", fontSize: 12 }}>{children}</td>,
+  td: ({ children }: any) => <td style={{ padding: "7px 12px", borderBottom: "1px solid rgba(28,26,27,0.05)", color: "#2c2a29", fontSize: 12 }}>{enrichChildren(children)}</td>,
   tr: ({ children }: any) => <tr style={{ transition: "background 0.1s" }} onMouseEnter={e => (e.currentTarget.style.backgroundColor = "#faf8f6")} onMouseLeave={e => (e.currentTarget.style.backgroundColor = "")}>{children}</tr>,
   p: ({ children }: any) => <p style={{ margin: "5px 0", lineHeight: 1.75 }}>{enrichChildren(children)}</p>,
   ul: ({ children }: any) => <ul style={{ margin: "6px 0", padding: 0, listStyle: "none", display: "flex", flexDirection: "column" as const, gap: 4 }}>{children}</ul>,
@@ -1483,7 +1483,31 @@ function CollapsibleSection({ title, content, delay = 0, defaultOpen = false, ch
   title: string; content?: string; delay?: number; defaultOpen?: boolean; children?: React.ReactNode;
 }) {
   const [phase, setPhase] = React.useState<"closed" | "loading" | "open">(defaultOpen ? "open" : "closed");
-  const color = SECTION_COLORS[title] ?? "#888";
+  // Strip non-ASCII (emoji) for SECTION_COLORS lookup, then build icon nodes for display
+  const cleanTitle = title.replace(/[^\x00-\x7F]/g, '').trim();
+  const color = SECTION_COLORS[cleanTitle] ?? SECTION_COLORS[title] ?? "#888";
+  const titleNodes = (() => {
+    const knownEmoji = Object.keys(EMOJI_TO_ICON);
+    let parts: Array<string | React.ReactNode> = [title];
+    for (const emoji of knownEmoji) {
+      const next: Array<string | React.ReactNode> = [];
+      for (const part of parts) {
+        if (typeof part !== "string" || !part.includes(emoji)) { next.push(part); continue; }
+        const segs = part.split(emoji);
+        segs.forEach((seg, i) => {
+          if (seg) next.push(seg);
+          if (i < segs.length - 1) next.push(<InlineIcon key={emoji + i} type={EMOJI_TO_ICON[emoji]} />);
+        });
+      }
+      parts = next;
+    }
+    // Strip any remaining unknown emoji from string segments
+    return parts.map((p, i) =>
+      typeof p === "string"
+        ? p.replace(/[^\x00-\x7F]/g, '').trim()
+        : p
+    );
+  })();
 
   const toggle = () => {
     if (phase === "loading") return;
@@ -1508,7 +1532,7 @@ function CollapsibleSection({ title, content, delay = 0, defaultOpen = false, ch
         textAlign: "left",
         borderLeft: `3px solid ${color}`,
       }}>
-        <span style={{ flex: 1, fontSize: 11, fontWeight: 700, color: "#1c1a1b", letterSpacing: "0.01em" }}>{title}</span>
+        <span style={{ flex: 1, fontSize: 11, fontWeight: 700, color: "#1c1a1b", letterSpacing: "0.01em" }}>{titleNodes}</span>
         {phase === "loading" && (
           <span style={{ fontSize: 9, color: "#bbb", marginRight: 6 }}>analyzing…</span>
         )}
