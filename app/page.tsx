@@ -2641,41 +2641,29 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                   <PixelWizard />
                 </WizardEntrance>
               </div>
-              {/* Tip speech bubble */}
+              {/* Tip speech bubble — above Fred, cartoon style */}
               {appPhase === "home" && contentVisible && (
                 <div style={{
-                  position: "absolute", left: "calc(100% + 16px)", top: "50%",
-                  transform: "translateY(-50%)",
+                  position: "absolute",
+                  bottom: "calc(100% + 14px)",
+                  left: "50%", transform: "translateX(-50%)",
                   backgroundColor: "#fff",
                   border: "1px solid rgba(204,17,0,0.25)",
-                  borderRadius: 12,
-                  padding: "9px 13px",
-                  maxWidth: 200, minWidth: 160,
+                  borderRadius: 14,
+                  padding: "10px 15px",
+                  maxWidth: 220, minWidth: 170,
                   boxShadow: "0 4px 18px rgba(0,0,0,0.08)",
                   opacity: tipVisible ? 1 : 0,
                   transition: "opacity 0.35s ease",
                   pointerEvents: "none",
                   zIndex: 10,
+                  textAlign: "center",
+                  whiteSpace: "normal",
                 }}>
-                  {/* Tail pointing left toward Fred */}
-                  <div style={{
-                    position: "absolute", left: -7, top: "50%", transform: "translateY(-50%)",
-                    width: 0, height: 0,
-                    borderTop: "6px solid transparent",
-                    borderBottom: "6px solid transparent",
-                    borderRight: "7px solid rgba(204,17,0,0.25)",
-                  }} />
-                  <div style={{
-                    position: "absolute", left: -5.5, top: "50%", transform: "translateY(-50%)",
-                    width: 0, height: 0,
-                    borderTop: "5.5px solid transparent",
-                    borderBottom: "5.5px solid transparent",
-                    borderRight: "6px solid #fff",
-                  }} />
-                  <div style={{ fontSize: 10.5, color: "#1d1a1b", lineHeight: 1.55, fontStyle: "italic" }}>
+                  <div style={{ fontSize: 10.5, color: "#1d1a1b", lineHeight: 1.6, fontStyle: "italic" }}>
                     {HOME_TIPS[tipIndex]}
                   </div>
-                  <div style={{ marginTop: 5, display: "flex", gap: 3 }}>
+                  <div style={{ marginTop: 6, display: "flex", gap: 3, justifyContent: "center" }}>
                     {HOME_TIPS.map((_, i) => (
                       <div key={i} style={{
                         width: i === tipIndex ? 10 : 4, height: 4, borderRadius: 2,
@@ -2684,6 +2672,19 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                       }} />
                     ))}
                   </div>
+                  {/* Tail pointing down toward Fred */}
+                  <div style={{
+                    position: "absolute", bottom: -7, left: "50%", transform: "translateX(-50%)",
+                    width: 0, height: 0,
+                    borderLeft: "7px solid transparent", borderRight: "7px solid transparent",
+                    borderTop: "7px solid rgba(204,17,0,0.25)",
+                  }} />
+                  <div style={{
+                    position: "absolute", bottom: -5.5, left: "50%", transform: "translateX(-50%)",
+                    width: 0, height: 0,
+                    borderLeft: "6px solid transparent", borderRight: "6px solid transparent",
+                    borderTop: "6px solid #fff",
+                  }} />
                 </div>
               )}
             </div>
@@ -2913,6 +2914,19 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
 
           {/* Chat messages */}
           <div style={{ flex: 1, overflowY: "auto", padding: "20px 16px", display: "flex", flexDirection: "column", gap: 16 }}>
+            {/* Fred greeting — always first */}
+            <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+              <div style={{ flexShrink: 0, width: 28, height: 28, borderRadius: "50%", border: "1px solid rgba(28,26,27,0.1)", backgroundColor: "#f5f2ee", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <PixelWizard width="18" height="25" />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 9, fontWeight: 700, color: "#cc1100", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 4 }}>FRED</div>
+                <div style={{ backgroundColor: "#f5f2ee", borderRadius: "4px 12px 12px 12px", padding: "9px 12px", fontSize: 12, color: "#1d1a1b", lineHeight: 1.65 }}>
+                  Hi! I'm <strong>Fred</strong>, your AI-powered market intelligence tool. I provide real-time stock data, earnings analysis, analyst views, and market insights — for <strong>educational purposes only</strong>. I don't give financial advice or tell you what to buy or sell. Ask me anything about stocks, ETFs, or market trends!
+                </div>
+              </div>
+            </div>
+
             {messages.map((msg, i) => {
               const hasSections = msg.role === "assistant" && parseMessageSections(msg.content) !== null;
 
