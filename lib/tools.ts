@@ -333,35 +333,25 @@ async function getAnalystUpgrades(symbol: string) {
 
 async function getNews(symbol: string) {
   try {
-    // Primary: Yahoo Finance direct symbol news endpoint — returns news specifically tagged to this ticker
-    const url = `https://query1.finance.yahoo.com/v2/finance/news?symbols=${encodeURIComponent(symbol)}&count=10`;
-    const res = await fetch(url, { headers: YF_HEADERS, cache: "no-store" });
-    if (res.ok) {
-      const json = await res.json();
-      const items: any[] = json?.items?.result ?? [];
-      if (items.length > 0) {
-        return items.slice(0, 8).map((n: any) => ({
-          headline: n.title,
-          source: n.publisher,
-          summary: null,
-          date: new Date(n.providerPublishTime * 1000).toISOString().slice(0, 10),
-        }));
-      }
+    // Primary: Yahoo Finance RSS feed — symbol-specific, works for US and Canadian stocks
+    const rssUrl = `https://feeds.finance.yahoo.com/rss/2.0/headline?s=${encodeURIComponent(symbol)}&region=CA&lang=en-CA`;
+    const rssRes = await fetch(rssUrl, { headers: YF_HEADERS, cache: "no-store" });
+    if (rssRes.ok) {
+      const xml = await rssRes.text();
+      const itemBlocks = xml.match(/<item>([\s\S]*?)<\/item>/g) ?? [];
+      const parsed = itemBlocks.slice(0, 8).map((block) => {
+        const title = block.match(/<title>([\s\S]*?)<\/title>/)?.[1]?.trim() ?? "";
+        const desc = block.match(/<description>([\s\S]*?)<\/description>/)?.[1]?.trim() ?? null;
+        const pubDate = block.match(/<pubDate>([\s\S]*?)<\/pubDate>/)?.[1]?.trim() ?? null;
+        const source = block.match(/<source[^>]*>([\s\S]*?)<\/source>/)?.[1]?.trim() ?? null;
+        const isoDate = pubDate ? new Date(pubDate).toISOString().slice(0, 10) : null;
+        return { headline: title, source, summary: desc, date: isoDate };
+      }).filter(n => n.headline);
+
+      if (parsed.length > 0) return parsed;
     }
 
-    // Secondary: Yahoo Finance search (broader, may include some unrelated)
-    const searchRes = await yahooFinance.search(symbol, { quotesCount: 0, newsCount: 10 }, FETCH_OPTS);
-    const yfNews: any[] = searchRes.news ?? [];
-    if (yfNews.length > 0) {
-      return yfNews.slice(0, 8).map((n: any) => ({
-        headline: n.title,
-        source: n.publisher,
-        summary: null,
-        date: new Date(n.providerPublishTime * 1000).toISOString().slice(0, 10),
-      }));
-    }
-
-    // Fallback: Finnhub — US stocks only (Canadian tickers like AC.TO would strip to "AC" = wrong company)
+    // Fallback: Finnhub — US stocks only (Canadian tickers would look up wrong company after suffix stripping)
     const isCanadian = /\.(TO|TSX|V|CN)$/i.test(symbol);
     if (!isCanadian) {
       const to = new Date().toISOString().slice(0, 10);
