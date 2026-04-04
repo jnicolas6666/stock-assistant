@@ -1940,7 +1940,174 @@ function LoadingAssistant() {
   );
 }
 
+// ── Auth ─────────────────────────────────────────────────────────────────────
+const CREDENTIALS = { username: "admin", password: "Mkt@9274" };
+
+function LoginScreen({ onLogin }: { onLogin: () => void }) {
+  const [user, setUser] = React.useState("");
+  const [pass, setPass] = React.useState("");
+  const [showPass, setShowPass] = React.useState(false);
+  const [error, setError] = React.useState("");
+  const [shake, setShake] = React.useState(false);
+  const [success, setSuccess] = React.useState(false);
+
+  function attempt() {
+    if (user.trim() === CREDENTIALS.username && pass === CREDENTIALS.password) {
+      setSuccess(true);
+      sessionStorage.setItem("fred_authed", "1");
+      setTimeout(onLogin, 900);
+    } else {
+      setError("Invalid username or password.");
+      setShake(true);
+      setTimeout(() => setShake(false), 600);
+    }
+  }
+
+  function onKey(e: React.KeyboardEvent) { if (e.key === "Enter") attempt(); }
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0, backgroundColor: "#f5f2ee",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      zIndex: 10000, flexDirection: "column",
+    }}>
+      {/* Background floating tickers (decorative) */}
+      <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none", opacity: 0.18 }}>
+        {["AAPL","NVDA","TSLA","MSFT","AMZN","SPY","QQQ","GOOG","META","TD.TO"].map((t, i) => (
+          <div key={t} style={{
+            position: "absolute",
+            left: `${(i * 11 + 5) % 95}%`, top: `${(i * 17 + 10) % 85}%`,
+            fontSize: 11, fontWeight: 700, color: "#cc1100", letterSpacing: "0.05em",
+            animation: `bubbleFloat ${6 + i * 0.7}s ease-in-out infinite`,
+            animationDelay: `${i * 0.8}s`,
+          }}>{t}</div>
+        ))}
+      </div>
+
+      {/* Login card */}
+      <div style={{
+        backgroundColor: "#fff",
+        border: "1px solid rgba(28,26,27,0.1)",
+        borderRadius: 20,
+        padding: "40px 44px 36px",
+        width: 340,
+        boxShadow: "0 20px 60px rgba(0,0,0,0.1)",
+        position: "relative", zIndex: 1,
+        display: "flex", flexDirection: "column", alignItems: "center",
+        animation: "fadeScaleIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards",
+      }}>
+        {/* Fred */}
+        <div style={{
+          marginBottom: 6,
+          transform: shake ? "translateX(0)" : "translateX(0)",
+          animation: shake ? "loginShake 0.5s ease" : success ? "loginSuccess 0.6s ease forwards" : "wizardFloat 3s ease-in-out infinite",
+          filter: success ? "drop-shadow(0 0 12px rgba(34,197,94,0.6))" : "none",
+          transition: "filter 0.3s ease",
+        }}>
+          <PixelWizard width="64" height="90" />
+        </div>
+
+        <div style={{ fontSize: 16, fontWeight: 700, color: "#1d1a1b", letterSpacing: "-0.02em", marginBottom: 2 }}>
+          Fred, The Market Wizard
+        </div>
+        <div style={{ fontSize: 11, color: "#888", marginBottom: 28 }}>
+          {success ? "Welcome back! Loading your workspace..." : "Sign in to access your market intelligence"}
+        </div>
+
+        {/* Username */}
+        <div style={{ width: "100%", marginBottom: 12 }}>
+          <label style={{ fontSize: 10, fontWeight: 600, color: "#555", letterSpacing: "0.06em", textTransform: "uppercase", display: "block", marginBottom: 5 }}>
+            Username
+          </label>
+          <input
+            value={user} onChange={e => { setUser(e.target.value); setError(""); }}
+            onKeyDown={onKey} placeholder="Enter username"
+            style={{
+              width: "100%", padding: "10px 13px", borderRadius: 8, fontSize: 13,
+              border: `1px solid ${error ? "rgba(204,17,0,0.5)" : "rgba(28,26,27,0.14)"}`,
+              backgroundColor: "#f9f7f5", color: "#1d1a1b", outline: "none",
+              boxSizing: "border-box",
+            }}
+          />
+        </div>
+
+        {/* Password */}
+        <div style={{ width: "100%", marginBottom: 8, position: "relative" }}>
+          <label style={{ fontSize: 10, fontWeight: 600, color: "#555", letterSpacing: "0.06em", textTransform: "uppercase", display: "block", marginBottom: 5 }}>
+            Password
+          </label>
+          <input
+            type={showPass ? "text" : "password"}
+            value={pass} onChange={e => { setPass(e.target.value); setError(""); }}
+            onKeyDown={onKey} placeholder="Enter password"
+            style={{
+              width: "100%", padding: "10px 38px 10px 13px", borderRadius: 8, fontSize: 13,
+              border: `1px solid ${error ? "rgba(204,17,0,0.5)" : "rgba(28,26,27,0.14)"}`,
+              backgroundColor: "#f9f7f5", color: "#1d1a1b", outline: "none",
+              boxSizing: "border-box",
+            }}
+          />
+          <button onClick={() => setShowPass(v => !v)} style={{
+            position: "absolute", right: 10, bottom: 10,
+            background: "none", border: "none", cursor: "pointer", padding: 2, color: "#aaa",
+          }}>
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+              {showPass ? <>
+                <path d="M1 10C1 10 4 4 10 4s9 6 9 6-3 6-9 6S1 10 1 10z" stroke="currentColor" strokeWidth="1.6"/>
+                <circle cx="10" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.6"/>
+                <line x1="2" y1="2" x2="18" y2="18" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+              </> : <>
+                <path d="M1 10C1 10 4 4 10 4s9 6 9 6-3 6-9 6S1 10 1 10z" stroke="currentColor" strokeWidth="1.6"/>
+                <circle cx="10" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.6"/>
+              </>}
+            </svg>
+          </button>
+        </div>
+
+        {/* Error */}
+        <div style={{ height: 18, marginBottom: 14 }}>
+          {error && <div style={{ fontSize: 11, color: "#cc1100", textAlign: "center", animation: "fadeIn 0.2s ease" }}>{error}</div>}
+        </div>
+
+        {/* Sign In */}
+        <button
+          onClick={attempt}
+          disabled={success}
+          style={{
+            width: "100%", padding: "11px", borderRadius: 9, fontSize: 13, fontWeight: 700,
+            backgroundColor: success ? "#22c55e" : "#cc1100",
+            color: "#fff", border: "none", cursor: success ? "default" : "pointer",
+            boxShadow: `0 4px 16px rgba(${success ? "34,197,94" : "204,17,0"},0.35)`,
+            transition: "background-color 0.4s ease, box-shadow 0.4s ease",
+            letterSpacing: "0.01em",
+          }}
+        >
+          {success ? "✓ Authenticated" : "Sign In"}
+        </button>
+
+        {/* Footer */}
+        <div style={{ marginTop: 20, fontSize: 9.5, color: "#bbb", textAlign: "center" }}>
+          Powered by Barrows Consulting · Educational Use Only
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes loginShake {
+          0%,100%{transform:translateX(0)} 18%{transform:translateX(-7px)} 36%{transform:translateX(7px)} 54%{transform:translateX(-5px)} 72%{transform:translateX(5px)} 88%{transform:translateX(-3px)}
+        }
+        @keyframes loginSuccess {
+          0%{transform:scale(1)} 40%{transform:scale(1.18) rotate(-5deg)} 70%{transform:scale(0.95) rotate(3deg)} 100%{transform:scale(1.05)}
+        }
+      `}</style>
+    </div>
+  );
+}
+
 export default function Home() {
+  const [authed, setAuthed] = useState(false);
+  useEffect(() => {
+    if (sessionStorage.getItem("fred_authed") === "1") setAuthed(true);
+  }, []);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -2280,6 +2447,8 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
       sendMessage(input);
     }
   }
+
+  if (!authed) return <LoginScreen onLogin={() => setAuthed(true)} />;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", backgroundColor: "#f5f2ee" }}>
