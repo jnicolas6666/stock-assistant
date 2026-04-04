@@ -145,7 +145,10 @@ function getMockResponse(userMessage: string): { content: string; charts: ChartS
 }
 
 export async function POST(req: NextRequest) {
-  const { messages } = await req.json();
+  const { messages, portfolioContext } = await req.json();
+  const activeSystem = portfolioContext
+    ? SYSTEM_PROMPT + "\n\n" + portfolioContext
+    : SYSTEM_PROMPT;
 
   if (isMockMode) {
     const lastUserMsg = [...messages].reverse().find((m: any) => m.role === "user");
@@ -160,6 +163,7 @@ export async function POST(req: NextRequest) {
   const MAX_ITERATIONS = 10;
   const charts: ChartSpec[] = [];
   const analystRatings: AnalystRatingsSpec[] = [];
+  const mentionedSymbols: string[] = []; // tickers the AI actually fetched data for
 
   try {
   while (iterations < MAX_ITERATIONS) {
@@ -168,7 +172,7 @@ export async function POST(req: NextRequest) {
     const response = await client!.messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: 2048,
-      system: SYSTEM_PROMPT,
+      system: activeSystem,
       tools: toolDefinitions as any,
       messages: loopMessages,
     });
@@ -176,7 +180,7 @@ export async function POST(req: NextRequest) {
     if (response.stop_reason === "end_turn") {
       const textBlock = response.content.find((b) => b.type === "text");
       const text = textBlock && textBlock.type === "text" ? textBlock.text : "";
-      return NextResponse.json({ content: text, charts, analystRatings });
+      return NextResponse.json({ content: text, charts, analystRatings, mentionedTickers: mentionedSymbols.slice(0, 6) });
     }
 
     if (response.stop_reason === "tool_use") {
@@ -208,6 +212,12 @@ export async function POST(req: NextRequest) {
             };
           }
 
+          // Track which symbols were actually looked up
+          const sym = (block.input as Record<string, any>).symbol as string | undefined;
+          if (sym && ["get_quote", "get_analyst_data", "get_news", "get_fundamentals"].includes(block.name)) {
+            if (!mentionedSymbols.includes(sym)) mentionedSymbols.push(sym);
+          }
+
           const result = await handleToolCall(block.name, block.input as Record<string, any>);
           return {
             type: "tool_result" as const,
@@ -229,7 +239,7 @@ export async function POST(req: NextRequest) {
     break;
   }
 
-  return NextResponse.json({ content: "I'm sorry, I couldn't process your request.", charts, analystRatings });
+  return NextResponse.json({ content: "I'm sorry, I couldn't process your request.", charts, analystRatings, mentionedTickers: mentionedSymbols.slice(0, 6) });
   } catch (e: any) {
     console.error("Chat route error:", e);
     return NextResponse.json(

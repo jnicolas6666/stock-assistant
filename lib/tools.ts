@@ -1,6 +1,6 @@
-import yahooFinance from "yahoo-finance2";
+import YahooFinance from "yahoo-finance2";
 
-yahooFinance.setGlobalConfig({ validation: { logErrors: false } });
+const yahooFinance = new YahooFinance({ validation: { logErrors: false } });
 
 // Spoof a browser User-Agent so Vercel's server IPs don't get blocked by Yahoo Finance
 const FETCH_OPTS = {
@@ -99,6 +99,26 @@ export const toolDefinitions = [
         symbol: { type: "string", description: "Stock ticker symbol" },
       },
       required: ["symbol"],
+    },
+  },
+  {
+    name: "display_analyst_ratings",
+    description: "Render a visual analyst ratings card in the UI. Call this whenever you have analyst consensus data to display — after calling get_analyst_data. Pass all the rating counts and the overall consensus.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        symbol: { type: "string", description: "Stock ticker symbol" },
+        consensus: { type: "string", description: "Overall consensus label: strongBuy, buy, hold, sell, strongSell" },
+        period: { type: "string", description: "Data period e.g. 2026-04-01" },
+        strongBuy: { type: "number" },
+        buy: { type: "number" },
+        hold: { type: "number" },
+        sell: { type: "number" },
+        strongSell: { type: "number" },
+        totalAnalysts: { type: "number" },
+        buyChangeVsLastMonth: { type: "number", description: "Change in bullish count vs last month (positive = more bullish)" },
+      },
+      required: ["symbol", "consensus", "strongBuy", "buy", "hold", "sell", "strongSell", "totalAnalysts"],
     },
   },
   {
