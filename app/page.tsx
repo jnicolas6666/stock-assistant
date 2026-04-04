@@ -299,6 +299,39 @@ const ALL_TICKERS: string[] = [
   "SJ","IFP","BAD","MDL","TBL","NFD","GDI","STLC","BFC","CJT",
   // ── Canadian TSX — Cannabis ───────────────────────────────────────────────
   "ACB","WEED","OGI","NEPT","VFF","CRON","HEXO","APHA","TLRY",
+  // ── US Tech / Software (additions) ───────────────────────────────────────
+  "TTWO","EA","U","PSTG","BOX","NTNX","MSTR","GENI","SLAB","LOGI",
+  "FFIV","JKHY","QLYS","QTWO","APPN","ASAN","RPD","PCOR","BRZE","DUOL",
+  "DOMO","JAMF","EGHT","LPSN","ALRM","SWKS","QRVO","WOLF","OLED","COHU",
+  "ACMR","UCTT","FORM","MKSI","AEIS","ONTO","HXL","KTOS","CRUS","DIOD",
+  // ── US Crypto / Blockchain ────────────────────────────────────────────────
+  "CLSK","RIOT","MARA","HUT","BITF","CORZ","IREN","WULF","CIFR","BTDR",
+  // ── US Regional Banks ─────────────────────────────────────────────────────
+  "FHN","ZION","BPOP","OFG","FULT","WSFS","BOH","CATY","EWBC","FFIN",
+  "IBTX","BANR","TOWN","RNST","SBCF","SPFI","NBTB","TRMK","SFNC","WSBC",
+  // ── US Healthcare — Biotech / Devices ────────────────────────────────────
+  "BNGO","PACB","NTRA","INSP","SWAV","RVNC","SAGE","PRAX","BHVN","KRTX",
+  "IMVT","IOVA","RGEN","NARI","CYRX","PGNY","GDRX","NKTR","TWST","FATE",
+  "BEAM","NTLA","EDIT","CRSP","BLUE","ARWR","DNLI","ARVN","ROIV","ACLX",
+  // ── US Consumer / Restaurants / Retail ───────────────────────────────────
+  "DNUT","CAKE","JACK","EAT","DIN","BLMN","BJRI","FAT","CHUY","YETI",
+  "LESL","PRTS","GMS","BURL","FIVE","OLLI","BOOT","CHWY","WOOF","BARK",
+  "LNW","RSG","WM","DKNG","PENN","CZR","RRR","ACMR","SG","FRSH",
+  // ── US Clean Energy / Solar ───────────────────────────────────────────────
+  "CHRD","NOG","VTLE","FLNC","STEM","FSLR","RUN","SEDG","NOVA","MAXN",
+  "SPWR","SHLS","BE","PLUG","BLDP","HYZN","EVGO","CHPT","BLNK",
+  // ── US Industrials / Construction ────────────────────────────────────────
+  "UFPI","CSWI","SITE","DOOR","IBP","MHK","AWI","TREX","AZEK","WMS","SSD",
+  // ── US REITs (additional) ─────────────────────────────────────────────────
+  "OHI","SBRA","NHI","MPW","DOC","LTC","CTRE","UE","ALEX","BRT",
+  "JBGS","PDM","GOOD","NXRT","AIV","CLPR","NLCP","GMRE",
+  // ── US Media / Entertainment / Live ──────────────────────────────────────
+  "LYV","TKO","MSGS","NYT","SIRI","WMG","EDR","NWSA","NWS",
+  // ── International ADRs (additions) ───────────────────────────────────────
+  "INFY","WIT","HDB","IBN","VWAGY","BMWYY","MBGAF","HSBC","UBS","DB",
+  "BEKE","YUMC","VIPS","CAN","DLO","CSAN","TIMB","BRFS","AZUL","GLOB",
+  // ── Space / Autonomous / Lidar ────────────────────────────────────────────
+  "SPCE","LUNR","LILM","LAZR","MVIS","RKLB","ACHR","JOBY","EVEX","VTOL",
 ];
 const ALL_TICKERS_SET = new Set(ALL_TICKERS);
 
@@ -1881,16 +1914,16 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, width: "100%", maxWidth: 480, marginBottom: 16 }}>
                 {suggestions.map((s) => (
                   <button key={s.text} onClick={() => sendMessage(s.text)} style={{
-                    padding: "8px 10px", textAlign: "left", borderRadius: 7,
+                    padding: "6px 8px", textAlign: "left", borderRadius: 6,
                     border: "1px solid rgba(28,26,27,0.1)", backgroundColor: "#ffffff",
                     cursor: "pointer", width: "100%", transition: "border-color 0.15s, background 0.15s",
                   }}
                   onMouseEnter={e => { e.currentTarget.style.borderColor = "#cc1100"; e.currentTarget.style.backgroundColor = "#ede8e4"; }}
                   onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(28,26,27,0.1)"; e.currentTarget.style.backgroundColor = "#ffffff"; }}
                   >
-                    <div style={{ marginBottom: 4 }}><SuggestionIcon name={s.icon} /></div>
-                    <div style={{ fontSize: 11, fontWeight: 500, color: "#1d1a1b", lineHeight: 1.35 }}>{s.text}</div>
-                    <div style={{ fontSize: 10, color: "#555", marginTop: 2 }}>{s.sub}</div>
+                    <div style={{ marginBottom: 3 }}><SuggestionIcon name={s.icon} /></div>
+                    <div style={{ fontSize: 10.5, fontWeight: 500, color: "#1d1a1b", lineHeight: 1.3 }}>{s.text}</div>
+                    <div style={{ fontSize: 9.5, color: "#666", marginTop: 2 }}>{s.sub}</div>
                   </button>
                 ))}
               </div>
