@@ -3,10 +3,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { TrendingUp, Send } from "lucide-react";
-import {
-  TrendUp, TrendDown, Minus, ArrowUp, ArrowDown,
-} from "@phosphor-icons/react";
+// Custom inline SVG icons — no external icon libraries
 import {
   LineChart, Line,
   BarChart, Bar,
@@ -669,10 +666,10 @@ function AnalystRatingsCard({ data }: { data: AnalystRatingsSpec }) {
           padding: "5px 10px",
         }}>
           {data.consensus === "strongBuy" || data.consensus === "buy"
-            ? <TrendUp size={14} color={cfg.color} weight="bold" />
+            ? <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><polyline points="1,16 6,11 11,14 19,4" stroke={cfg.color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/><polyline points="14,4 19,4 19,9" stroke={cfg.color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
             : data.consensus === "strongSell" || data.consensus === "sell"
-            ? <TrendDown size={14} color={cfg.color} weight="bold" />
-            : <Minus size={14} color={cfg.color} weight="bold" />
+            ? <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><polyline points="1,4 6,9 11,6 19,16" stroke={cfg.color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/><polyline points="14,16 19,16 19,11" stroke={cfg.color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            : <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><line x1="3" y1="10" x2="17" y2="10" stroke={cfg.color} strokeWidth="2.2" strokeLinecap="round"/></svg>
           }
           <span style={{ fontSize: 12, fontWeight: 700, color: cfg.color }}>{cfg.label}</span>
         </div>
@@ -723,9 +720,9 @@ function AnalystRatingsCard({ data }: { data: AnalystRatingsSpec }) {
               display: "flex", alignItems: "center", justifyContent: "center", gap: 2,
             }}>
               {data.buyChangeVsLastMonth > 0
-                ? <ArrowUp size={12} weight="bold" />
+                ? <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><polyline points="6,10 6,2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><polyline points="2,6 6,2 10,6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 : data.buyChangeVsLastMonth < 0
-                ? <ArrowDown size={12} weight="bold" />
+                ? <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><polyline points="6,2 6,10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><polyline points="2,6 6,10 10,6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 : null}
               {Math.abs(data.buyChangeVsLastMonth)}
             </div>
@@ -1279,19 +1276,109 @@ function parseMessageSections(text: string): ParsedSection[] | null {
   return sections.length >= 2 ? sections : null;
 }
 
+// ── enrichChildren — emoji → icons + number coloring for section content ────
+function enrichChildren(children: React.ReactNode): React.ReactNode {
+  const knownEmoji = Object.keys(EMOJI_TO_ICON);
+
+  function processStr(str: string): React.ReactNode[] {
+    // 1. Colorize $amounts and ±% patterns
+    const segments = str.split(/(\$[\d,]+(?:\.\d+)?[BMKTbmkt]?|[+-]\d+(?:\.\d+)?\s*%)/);
+    const colored: Array<string | React.ReactNode> = segments.map((seg, i) => {
+      if (!seg) return null;
+      if (/^\+\d/.test(seg) && seg.includes('%'))
+        return <span key={`c${i}`} style={{ color: "#22c55e", fontWeight: 700 }}>{seg}</span>;
+      if (/^-\d/.test(seg) && seg.includes('%'))
+        return <span key={`c${i}`} style={{ color: "#cc1100", fontWeight: 700 }}>{seg}</span>;
+      if (/^\$\d/.test(seg))
+        return <span key={`c${i}`} style={{ color: "#3b82f6", fontWeight: 600 }}>{seg}</span>;
+      return seg;
+    }).filter(Boolean) as Array<string | React.ReactNode>;
+
+    // 2. Apply emoji → icons to any remaining plain strings
+    const result: React.ReactNode[] = [];
+    colored.forEach((item, ri) => {
+      if (typeof item !== "string") { result.push(item); return; }
+      let parts: Array<string | React.ReactNode> = [item];
+      for (const emoji of knownEmoji) {
+        const next: Array<string | React.ReactNode> = [];
+        for (const p of parts) {
+          if (typeof p !== "string") { next.push(p); continue; }
+          const segs2 = p.split(emoji);
+          segs2.forEach((s, si) => {
+            if (s) next.push(s);
+            if (si < segs2.length - 1) next.push(<InlineIcon key={`e${ri}-${si}`} type={EMOJI_TO_ICON[emoji]} />);
+          });
+        }
+        parts = next;
+      }
+      result.push(...(parts as React.ReactNode[]));
+    });
+    return result;
+  }
+
+  return React.Children.map(children, (child) => {
+    if (typeof child !== "string") return child;
+    return processStr(child);
+  });
+}
+
+// ── extractStatPills — pull key numbers from content for the pill header ────
+type StatPill = { label: string; value: string; color: string };
+
+function extractStatPills(content: string): StatPill[] {
+  const text = content.slice(0, 900);
+  const pills: StatPill[] = [];
+
+  // Price: $12.50 or $1,234.56 (avoid matching market cap $ amounts immediately followed by B/T)
+  const priceM = text.match(/\$(\d[\d,]*\.?\d{0,2})(?!\s*[BMKTbmkt])\b/);
+  if (priceM) pills.push({ label: "Price", value: `$${priceM[1]}`, color: "#3b82f6" });
+
+  // Change: +2.3% or -1.5% (first occurrence)
+  const changeM = text.match(/([+-]\d+\.?\d*)\s*%/);
+  if (changeM) {
+    const v = parseFloat(changeM[1]);
+    pills.push({ label: "Change", value: `${changeM[1]}%`, color: v >= 0 ? "#22c55e" : "#cc1100" });
+  }
+
+  // P/E ratio
+  const peM = text.match(/P\/E\s*(?:ratio|of|:)?\s*([\d.]+)/i);
+  if (peM) pills.push({ label: "P/E", value: `${peM[1]}×`, color: "#f59e0b" });
+
+  // Yield
+  const yieldM = text.match(/yield\s*(?:of|:)?\s*([\d.]+)\s*%/i);
+  if (yieldM) pills.push({ label: "Yield", value: `${yieldM[1]}%`, color: "#8b5cf6" });
+
+  // Market cap: $45.2B or $1.2T
+  const capM = text.match(/\$([\d.]+)\s*([BT])\s*(?:market\s*cap|cap\b)/i);
+  if (capM) pills.push({ label: "Mkt Cap", value: `$${capM[1]}${capM[2]}`, color: "#6b7280" });
+
+  return pills.slice(0, 4);
+}
+
 const MD_COMPONENTS_SECTION = {
-  table: ({ children }: any) => <table style={{ borderCollapse: "collapse", width: "100%", marginTop: 8, fontSize: 12 }}>{children}</table>,
-  th: ({ children }: any) => <th style={{ padding: "6px 10px", borderBottom: "1px solid rgba(28,26,27,0.1)", textAlign: "left", color: "#666", fontWeight: 600, fontSize: 11, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>{children}</th>,
-  td: ({ children }: any) => <td style={{ padding: "6px 10px", borderBottom: "1px solid rgba(28,26,27,0.06)", color: "#3a3836" }}>{children}</td>,
-  p: ({ children }: any) => <p style={{ margin: "5px 0", lineHeight: 1.7 }}>{withIcons(children)}</p>,
-  ul: ({ children }: any) => <ul style={{ margin: "5px 0", paddingLeft: 16 }}>{children}</ul>,
-  ol: ({ children }: any) => <ol style={{ margin: "5px 0", paddingLeft: 16 }}>{children}</ol>,
-  li: ({ children }: any) => <li style={{ marginBottom: 3, lineHeight: 1.6 }}>{withIcons(children)}</li>,
+  table: ({ children }: any) => (
+    <div style={{ overflowX: "auto", margin: "10px 0" }}>
+      <table style={{ borderCollapse: "collapse", width: "100%", fontSize: 12 }}>{children}</table>
+    </div>
+  ),
+  thead: ({ children }: any) => <thead style={{ backgroundColor: "#f5f2ee" }}>{children}</thead>,
+  th: ({ children }: any) => <th style={{ padding: "7px 12px", borderBottom: "2px solid rgba(28,26,27,0.1)", textAlign: "left" as const, color: "#555", fontWeight: 700, fontSize: 10, textTransform: "uppercase" as const, letterSpacing: "0.07em" }}>{children}</th>,
+  td: ({ children }: any) => <td style={{ padding: "7px 12px", borderBottom: "1px solid rgba(28,26,27,0.05)", color: "#2c2a29", fontSize: 12 }}>{children}</td>,
+  tr: ({ children }: any) => <tr style={{ transition: "background 0.1s" }} onMouseEnter={e => (e.currentTarget.style.backgroundColor = "#faf8f6")} onMouseLeave={e => (e.currentTarget.style.backgroundColor = "")}>{children}</tr>,
+  p: ({ children }: any) => <p style={{ margin: "5px 0", lineHeight: 1.75 }}>{enrichChildren(children)}</p>,
+  ul: ({ children }: any) => <ul style={{ margin: "6px 0", padding: 0, listStyle: "none", display: "flex", flexDirection: "column" as const, gap: 4 }}>{children}</ul>,
+  ol: ({ children }: any) => <ol style={{ margin: "6px 0", paddingLeft: 18, display: "flex", flexDirection: "column" as const, gap: 4 }}>{children}</ol>,
+  li: ({ children }: any) => (
+    <li style={{ display: "flex", alignItems: "flex-start", gap: 8, lineHeight: 1.65 }}>
+      <span style={{ width: 5, height: 5, borderRadius: "50%", backgroundColor: "#cc1100", flexShrink: 0, marginTop: 7 }} />
+      <span>{enrichChildren(children)}</span>
+    </li>
+  ),
   strong: ({ children }: any) => <strong style={{ color: "#1d1a1b", fontWeight: 700 }}>{children}</strong>,
-  blockquote: ({ children }: any) => <blockquote style={{ margin: "8px 0 2px", padding: "6px 10px", borderLeft: "2px solid #cc1100", backgroundColor: "rgba(204,17,0,0.04)", borderRadius: "0 4px 4px 0", color: "#777", fontSize: 12 }}>{children}</blockquote>,
-  code: ({ children }: any) => <code style={{ backgroundColor: "#f0ece8", padding: "1px 5px", borderRadius: 3, fontSize: 12, color: "#cc1100", fontWeight: 600 }}>{children}</code>,
-  hr: () => <hr style={{ border: "none", borderTop: "1px solid rgba(28,26,27,0.08)", margin: "8px 0" }}/>,
-  a: ({ href, children }: any) => <span style={{ color: "#cc1100" }}>{children}</span>,
+  blockquote: ({ children }: any) => <blockquote style={{ margin: "10px 0 4px", padding: "8px 12px", borderLeft: "3px solid #cc1100", backgroundColor: "rgba(204,17,0,0.04)", borderRadius: "0 6px 6px 0", color: "#666", fontSize: 12 }}>{children}</blockquote>,
+  code: ({ children }: any) => <code style={{ backgroundColor: "#f0ece8", padding: "2px 6px", borderRadius: 3, fontSize: 12, color: "#cc1100", fontWeight: 600 }}>{children}</code>,
+  hr: () => <hr style={{ border: "none", borderTop: "1px solid rgba(28,26,27,0.08)", margin: "10px 0" }}/>,
+  a: ({ children }: any) => <span style={{ color: "#cc1100" }}>{children}</span>,
 };
 
 function CollapsibleSection({ title, content, delay = 0, defaultOpen = false, children }: {
@@ -2207,7 +2294,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                     transition: "background 0.15s",
                   }}
                 >
-                  <Send size={14} strokeWidth={2} />
+                  <svg width="15" height="15" viewBox="0 0 20 20" fill="none"><line x1="2" y1="10" x2="17" y2="10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><polyline points="11,4 17,10 11,16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 </button>
               </div>
             </div>
@@ -2279,6 +2366,27 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                 )}
                 {sections ? (
                   <>
+                    {/* Stat pills — auto-extracted key numbers */}
+                    {(() => {
+                      const pills = extractStatPills(latestAiMsg.content);
+                      if (pills.length < 2) return null;
+                      return (
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" as const, marginBottom: 4 }}>
+                          {pills.map((pill) => (
+                            <div key={pill.label} style={{
+                              display: "flex", alignItems: "center", gap: 5,
+                              padding: "5px 11px", borderRadius: 20,
+                              backgroundColor: "#fff",
+                              border: `1.5px solid ${pill.color}33`,
+                              opacity: 0, animation: "fadeScaleIn 0.3s ease forwards 0.05s",
+                            }}>
+                              <span style={{ fontSize: 10, color: "#888", fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>{pill.label}</span>
+                              <span style={{ fontSize: 13, fontWeight: 700, color: pill.color }}>{pill.value}</span>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
                     {sections.map((s, si) => (
                       <CollapsibleSection key={si} title={s.title} content={s.content} delay={si * 0.04} defaultOpen={si === 0} />
                     ))}
@@ -2431,6 +2539,42 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                               </svg>
                               {selectedAnalysisIndex === i ? "Viewing in left panel" : "View full analysis →"}
                             </button>
+                            {/* Follow-up suggestion chips */}
+                            {(() => {
+                              const t = msg.tickers?.[0] ?? "";
+                              const noChart = !msg.charts || msg.charts.length === 0;
+                              const noRatings = !msg.analystRatings || msg.analystRatings.length === 0;
+                              const chips = ([
+                                noChart && t && { icon: "trendup", label: "Price chart", prompt: `Show me ${t}'s price chart` },
+                                noRatings && t && { icon: "analyst", label: "Analyst view", prompt: `What do analysts say about ${t}?` },
+                                t && !noChart && { icon: "search", label: "Compare peers", prompt: `Compare ${t} with its main competitors` },
+                                t && { icon: "money", label: "Dividends", prompt: `Show ${t}'s dividend history` },
+                              ].filter(Boolean) as Array<{ icon: string; label: string; prompt: string }>).slice(0, 2);
+                              if (!chips.length) return null;
+                              return (
+                                <div style={{ display: "flex", gap: 5, marginTop: 8, flexWrap: "wrap" as const }}>
+                                  {chips.map((chip) => (
+                                    <button
+                                      key={chip.label}
+                                      onClick={() => sendMessage(chip.prompt)}
+                                      style={{
+                                        display: "flex", alignItems: "center", gap: 5,
+                                        padding: "5px 11px", borderRadius: 20,
+                                        border: "1px solid rgba(28,26,27,0.16)",
+                                        backgroundColor: "rgba(255,255,255,0.55)",
+                                        color: "#444", fontSize: 11, fontWeight: 500,
+                                        cursor: "pointer", transition: "all 0.12s",
+                                      }}
+                                      onMouseEnter={e => { e.currentTarget.style.backgroundColor = "rgba(204,17,0,0.08)"; e.currentTarget.style.borderColor = "#cc1100"; e.currentTarget.style.color = "#cc1100"; }}
+                                      onMouseLeave={e => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.55)"; e.currentTarget.style.borderColor = "rgba(28,26,27,0.16)"; e.currentTarget.style.color = "#444"; }}
+                                    >
+                                      <InlineIcon type={chip.icon} />
+                                      {chip.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              );
+                            })()}
                           </>
                         ) : (
                           <ReactMarkdown
@@ -2598,7 +2742,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
               }}
               aria-label="Send"
             >
-              <Send size={14} strokeWidth={2} />
+              <svg width="15" height="15" viewBox="0 0 20 20" fill="none"><line x1="2" y1="10" x2="17" y2="10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><polyline points="11,4 17,10 11,16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </button>
             </div>
           </div>
@@ -2977,7 +3121,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                   transition: "background 0.15s",
                 }}
               >
-                <Send size={14} strokeWidth={2} />
+                <svg width="15" height="15" viewBox="0 0 20 20" fill="none"><line x1="2" y1="10" x2="17" y2="10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><polyline points="11,4 17,10 11,16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
               </button>
             </div>
           </div>
