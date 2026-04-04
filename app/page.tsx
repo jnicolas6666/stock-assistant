@@ -2494,7 +2494,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
           {/* Demo button — always visible */}
           <button
             id="fred-demo-premium"
-            onClick={() => setDemoStep(0)}
+            onClick={() => { goHome(); setDemoStep(0); }}
             style={{
               fontSize: 11, fontWeight: 600, padding: "4px 11px", borderRadius: 6,
               border: "1px solid rgba(28,26,27,0.18)", backgroundColor: "transparent",
@@ -3886,8 +3886,8 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
           to   { opacity: 1; transform: translate(-50%, -50%) scale(1) translateY(0px); }
         }
         @keyframes highlightPulse {
-          0%, 100% { box-shadow: 0 0 0 3px rgba(204,17,0,0.5), 0 0 20px rgba(204,17,0,0.2); }
-          50% { box-shadow: 0 0 0 5px rgba(204,17,0,0.7), 0 0 30px rgba(204,17,0,0.35); }
+          0%, 100% { box-shadow: 0 0 0 9999px rgba(245,242,238,0.86), 0 0 0 2.5px rgba(204,17,0,0.7), 0 0 16px rgba(204,17,0,0.2); }
+          50%       { box-shadow: 0 0 0 9999px rgba(245,242,238,0.86), 0 0 0 4px   rgba(204,17,0,0.9), 0 0 28px rgba(204,17,0,0.4); }
         }
       `}</style>
 
@@ -3897,31 +3897,35 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
         const isLast = demoStep === DEMO_STEPS.length - 1;
         return (
           <div style={{ position: "fixed", inset: 0, zIndex: 9000, pointerEvents: "none" }}>
-            {/* Backdrop */}
+            {/* Backdrop — plain dim, NO blur so highlighted elements stay sharp */}
             <div
               style={{
                 position: "absolute", inset: 0,
-                backgroundColor: "rgba(245,242,238,0.72)",
-                backdropFilter: "blur(3px)",
+                backgroundColor: step.highlightId ? "transparent" : "rgba(245,242,238,0.82)",
                 pointerEvents: "auto",
               }}
               onClick={() => setDemoStep(null)}
             />
 
-            {/* Highlight ring on target element */}
+            {/* Spotlight — box-shadow punches a clear hole around the target, dims everything else */}
             {step.highlightId && (() => {
               const el = document.getElementById(step.highlightId);
               if (!el) return null;
               const r = el.getBoundingClientRect();
               return (
-                <div style={{
-                  position: "fixed",
-                  left: r.left - 6, top: r.top - 6,
-                  width: r.width + 12, height: r.height + 12,
-                  borderRadius: 10, pointerEvents: "none",
-                  animation: "highlightPulse 1.6s ease-in-out infinite",
-                  zIndex: 9001,
-                }} />
+                <div
+                  onClick={() => setDemoStep(null)}
+                  style={{
+                    position: "fixed",
+                    left: r.left - 10, top: r.top - 10,
+                    width: r.width + 20, height: r.height + 20,
+                    borderRadius: 12,
+                    boxShadow: "0 0 0 9999px rgba(245,242,238,0.86), 0 0 0 2.5px rgba(204,17,0,0.7), 0 0 20px rgba(204,17,0,0.25)",
+                    animation: "highlightPulse 1.8s ease-in-out infinite",
+                    zIndex: 9001,
+                    pointerEvents: "auto",
+                  }}
+                />
               );
             })()}
 
