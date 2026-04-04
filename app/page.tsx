@@ -896,6 +896,57 @@ function SuggestionIcon({ name }: { name: string }) {
   );
 }
 
+// ── Home screen Fred tips ────────────────────────────────────────────────────
+const HOME_TIPS = [
+  "Type any ticker or ask in plain English — try 'What is Apple doing?'",
+  "Works for Canadian stocks too — try 'TD.TO' or 'CNR.TO'",
+  "Ask for a chart: 'Show me Apple revenue growth as a bar chart'",
+  "Compare stocks head-to-head: 'Compare NVDA vs AMD'",
+  "I can fetch insider transactions, dividends & analyst upgrades",
+  "Try 'How is the market doing today?' for a macro snapshot",
+  "Ask about ETFs too — 'What's in QQQ?' or 'Analyze SPY'",
+  "Earnings history, price targets, short interest — just ask",
+  "Click any past analysis button in chat to switch the left panel view",
+];
+
+// ── Interactive demo steps ────────────────────────────────────────────────────
+interface DemoStep {
+  text: string;
+  fredLeft: string; fredTop: string;
+  flip?: boolean;    // mirror Fred horizontally (looking left)
+  tilt?: number;     // rotate degrees
+  highlightId?: string;
+}
+const DEMO_STEPS: DemoStep[] = [
+  {
+    text: "Hi! I'm Fred, your Market Wizard. I pull live stock data and synthesize it with AI. Let me show you around!",
+    fredLeft: "50%", fredTop: "38%",
+  },
+  {
+    text: "This is the search bar. Type any ticker like 'AAPL', a company name, or a full question — I understand plain English.",
+    fredLeft: "50%", fredTop: "74%",
+    tilt: 12, highlightId: "fred-demo-input",
+  },
+  {
+    text: "These suggestion cards give you a running start. Click one and I'll fetch live market data instantly.",
+    fredLeft: "28%", fredTop: "56%",
+    flip: true, highlightId: "fred-demo-cards",
+  },
+  {
+    text: "After I respond, a two-panel view opens. The left side shows deep analysis — expandable sections, live charts, insider data.",
+    fredLeft: "50%", fredTop: "38%",
+  },
+  {
+    text: "The Premium menu unlocks the Portfolio Simulator — build a hypothetical portfolio and I'll track it with live prices.",
+    fredLeft: "78%", fredTop: "12%",
+    flip: true, highlightId: "fred-demo-premium",
+  },
+  {
+    text: "That's the tour! I work with thousands of tickers including Canadian stocks. Go ahead — ask me anything!",
+    fredLeft: "50%", fredTop: "38%",
+  },
+];
+
 const WIZARD_PHRASES = [
   "Fred — real-time market intelligence.",
   "Your market assistant is ready.",
@@ -1921,6 +1972,9 @@ export default function Home() {
   const [showPremiumMenu, setShowPremiumMenu] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [isShockwave, setIsShockwave] = useState(false);
+  const [demoStep, setDemoStep] = useState<number | null>(null);
+  const [tipIndex, setTipIndex] = useState(0);
+  const [tipVisible, setTipVisible] = useState(true);
   const [addTicker, setAddTicker] = useState("");
   const [addShares, setAddShares] = useState("");
   const [addCost, setAddCost] = useState("");
@@ -1940,6 +1994,26 @@ export default function Home() {
       return () => clearTimeout(timer);
     }
   }, [isShockwave]);
+
+  // Tip cycling on home screen
+  useEffect(() => {
+    if (appPhase !== "home") return;
+    const cycle = setInterval(() => {
+      setTipVisible(false);
+      setTimeout(() => {
+        setTipIndex(i => (i + 1) % HOME_TIPS.length);
+        setTipVisible(true);
+      }, 400);
+    }, 5000);
+    return () => clearInterval(cycle);
+  }, [appPhase]);
+
+  // Escape key exits demo
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") setDemoStep(null); };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   function goHome() {
     setAppPhase("home");
@@ -2248,6 +2322,27 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
             </button>
           )}
 
+          {/* Demo button — always visible */}
+          <button
+            id="fred-demo-premium"
+            onClick={() => setDemoStep(0)}
+            style={{
+              fontSize: 11, fontWeight: 600, padding: "4px 11px", borderRadius: 6,
+              border: "1px solid rgba(28,26,27,0.18)", backgroundColor: "transparent",
+              color: "#1d1a1b", cursor: "pointer",
+              display: "flex", alignItems: "center", gap: 5,
+              transition: "all 0.15s",
+            }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = "#cc1100"; e.currentTarget.style.color = "#cc1100"; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(28,26,27,0.18)"; e.currentTarget.style.color = "#1d1a1b"; }}
+          >
+            <svg width="11" height="11" viewBox="0 0 20 20" fill="none">
+              <circle cx="10" cy="10" r="8.5" stroke="currentColor" strokeWidth="1.8"/>
+              <polygon points="8,6.5 15,10 8,13.5" fill="currentColor"/>
+            </svg>
+            Request Demo
+          </button>
+
           {/* Premium dropdown */}
           <div style={{ position: "relative" }} ref={premiumMenuRef}>
             <button
@@ -2367,15 +2462,61 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
             alignItems: "center", justifyContent: "center",
             padding: "0 20px",
           }}>
-            {/* Wizard stays visible during forming, scales up slightly */}
-            <div style={{
-              marginBottom: 16,
-              transform: appPhase === "forming" ? "scale(1.12)" : "scale(1)",
-              transition: "transform 0.5s ease",
-            }}>
-              <WizardEntrance onShockwave={() => setIsShockwave(true)}>
-                <PixelWizard />
-              </WizardEntrance>
+            {/* Wizard + tip bubble */}
+            <div style={{ position: "relative", marginBottom: 16, display: "inline-flex", alignItems: "center" }}>
+              <div style={{
+                transform: appPhase === "forming" ? "scale(1.12)" : "scale(1)",
+                transition: "transform 0.5s ease",
+              }}>
+                <WizardEntrance onShockwave={() => setIsShockwave(true)}>
+                  <PixelWizard />
+                </WizardEntrance>
+              </div>
+              {/* Tip speech bubble */}
+              {appPhase === "home" && contentVisible && (
+                <div style={{
+                  position: "absolute", left: "calc(100% + 16px)", top: "50%",
+                  transform: "translateY(-50%)",
+                  backgroundColor: "#fff",
+                  border: "1px solid rgba(204,17,0,0.25)",
+                  borderRadius: 12,
+                  padding: "9px 13px",
+                  maxWidth: 200, minWidth: 160,
+                  boxShadow: "0 4px 18px rgba(0,0,0,0.08)",
+                  opacity: tipVisible ? 1 : 0,
+                  transition: "opacity 0.35s ease",
+                  pointerEvents: "none",
+                  zIndex: 10,
+                }}>
+                  {/* Tail pointing left toward Fred */}
+                  <div style={{
+                    position: "absolute", left: -7, top: "50%", transform: "translateY(-50%)",
+                    width: 0, height: 0,
+                    borderTop: "6px solid transparent",
+                    borderBottom: "6px solid transparent",
+                    borderRight: "7px solid rgba(204,17,0,0.25)",
+                  }} />
+                  <div style={{
+                    position: "absolute", left: -5.5, top: "50%", transform: "translateY(-50%)",
+                    width: 0, height: 0,
+                    borderTop: "5.5px solid transparent",
+                    borderBottom: "5.5px solid transparent",
+                    borderRight: "6px solid #fff",
+                  }} />
+                  <div style={{ fontSize: 10.5, color: "#1d1a1b", lineHeight: 1.55, fontStyle: "italic" }}>
+                    {HOME_TIPS[tipIndex]}
+                  </div>
+                  <div style={{ marginTop: 5, display: "flex", gap: 3 }}>
+                    {HOME_TIPS.map((_, i) => (
+                      <div key={i} style={{
+                        width: i === tipIndex ? 10 : 4, height: 4, borderRadius: 2,
+                        backgroundColor: i === tipIndex ? "#cc1100" : "rgba(28,26,27,0.15)",
+                        transition: "all 0.3s ease",
+                      }} />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Title + cards + input — hidden until Fred lands, fade out during forming */}
@@ -2393,7 +2534,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
               <div style={{ color: "#555", marginBottom: 24, fontSize: 13, opacity: titleDone ? 1 : 0, transition: "opacity 0.5s ease" }}>
                 stocks, ETFs, earnings, analyst views, and market trends.
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, width: "100%", maxWidth: 480, marginBottom: 16 }}>
+              <div id="fred-demo-cards" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, width: "100%", maxWidth: 480, marginBottom: 16 }}>
                 {suggestions.map((s) => (
                   <button key={s.text} onClick={() => sendMessage(s.text)} style={{
                     padding: "5px 8px", textAlign: "left", borderRadius: 5,
@@ -2412,7 +2553,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                   </button>
                 ))}
               </div>
-              <div style={{ display: "flex", gap: 8, alignItems: "center", width: "100%", maxWidth: 480 }}>
+              <div id="fred-demo-input" style={{ display: "flex", gap: 8, alignItems: "center", width: "100%", maxWidth: 480 }}>
                 <input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
@@ -3553,7 +3694,143 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(28,26,27,0.1); border-radius: 2px; }
+        @keyframes demoBobble {
+          0%, 100% { transform: translate(-50%, -50%) translateY(0px); }
+          50% { transform: translate(-50%, -50%) translateY(-8px); }
+        }
+        @keyframes demoFadeIn {
+          from { opacity: 0; transform: translate(-50%, -50%) scale(0.88) translateY(10px); }
+          to   { opacity: 1; transform: translate(-50%, -50%) scale(1) translateY(0px); }
+        }
+        @keyframes highlightPulse {
+          0%, 100% { box-shadow: 0 0 0 3px rgba(204,17,0,0.5), 0 0 20px rgba(204,17,0,0.2); }
+          50% { box-shadow: 0 0 0 5px rgba(204,17,0,0.7), 0 0 30px rgba(204,17,0,0.35); }
+        }
       `}</style>
+
+      {/* ── Demo overlay ──────────────────────────────────────────────────── */}
+      {demoStep !== null && (() => {
+        const step = DEMO_STEPS[demoStep];
+        const isLast = demoStep === DEMO_STEPS.length - 1;
+        return (
+          <div style={{ position: "fixed", inset: 0, zIndex: 9000, pointerEvents: "none" }}>
+            {/* Backdrop */}
+            <div
+              style={{
+                position: "absolute", inset: 0,
+                backgroundColor: "rgba(245,242,238,0.72)",
+                backdropFilter: "blur(3px)",
+                pointerEvents: "auto",
+              }}
+              onClick={() => setDemoStep(null)}
+            />
+
+            {/* Highlight ring on target element */}
+            {step.highlightId && (() => {
+              const el = document.getElementById(step.highlightId);
+              if (!el) return null;
+              const r = el.getBoundingClientRect();
+              return (
+                <div style={{
+                  position: "fixed",
+                  left: r.left - 6, top: r.top - 6,
+                  width: r.width + 12, height: r.height + 12,
+                  borderRadius: 10, pointerEvents: "none",
+                  animation: "highlightPulse 1.6s ease-in-out infinite",
+                  zIndex: 9001,
+                }} />
+              );
+            })()}
+
+            {/* Floating Fred + speech bubble */}
+            <div style={{
+              position: "fixed",
+              left: step.fredLeft, top: step.fredTop,
+              transform: "translate(-50%, -50%)",
+              animation: "demoBobble 2.5s ease-in-out infinite",
+              pointerEvents: "none",
+              zIndex: 9002,
+              display: "flex", flexDirection: "column", alignItems: "center",
+            }}>
+              {/* Speech bubble above Fred */}
+              <div style={{
+                backgroundColor: "#fff",
+                border: "1.5px solid rgba(204,17,0,0.3)",
+                borderRadius: 16,
+                padding: "14px 18px",
+                maxWidth: 280,
+                boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
+                marginBottom: 12,
+                textAlign: "center",
+                animation: "demoFadeIn 0.35s ease forwards",
+                position: "relative",
+              }}>
+                <div style={{ fontSize: 12.5, color: "#1d1a1b", lineHeight: 1.65 }}>
+                  {step.text}
+                </div>
+                {/* Bubble tail */}
+                <div style={{
+                  position: "absolute", bottom: -7, left: "50%", transform: "translateX(-50%)",
+                  width: 0, height: 0,
+                  borderLeft: "7px solid transparent", borderRight: "7px solid transparent",
+                  borderTop: "7px solid rgba(204,17,0,0.3)",
+                }} />
+                <div style={{
+                  position: "absolute", bottom: -5.5, left: "50%", transform: "translateX(-50%)",
+                  width: 0, height: 0,
+                  borderLeft: "6px solid transparent", borderRight: "6px solid transparent",
+                  borderTop: "6px solid #fff",
+                }} />
+              </div>
+
+              {/* Fred */}
+              <div style={{ transform: step.flip ? "scaleX(-1)" : "none", filter: "drop-shadow(0 4px 16px rgba(0,0,0,0.18))" }}>
+                <PixelWizard width="64" height="90" />
+              </div>
+
+              {/* Step dots */}
+              <div style={{ display: "flex", gap: 5, marginTop: 10 }}>
+                {DEMO_STEPS.map((_, i) => (
+                  <div key={i} style={{
+                    width: i === demoStep ? 14 : 6, height: 6, borderRadius: 3,
+                    backgroundColor: i === demoStep ? "#cc1100" : "rgba(28,26,27,0.2)",
+                    transition: "all 0.3s ease",
+                  }} />
+                ))}
+              </div>
+            </div>
+
+            {/* Control buttons */}
+            <div style={{
+              position: "fixed", bottom: 36, left: "50%", transform: "translateX(-50%)",
+              display: "flex", gap: 10, pointerEvents: "auto", zIndex: 9003,
+            }}>
+              <button
+                onClick={() => setDemoStep(null)}
+                style={{
+                  padding: "9px 20px", borderRadius: 8, fontSize: 12,
+                  border: "1px solid rgba(28,26,27,0.15)", backgroundColor: "#fff",
+                  color: "#555", cursor: "pointer",
+                  boxShadow: "0 2px 10px rgba(0,0,0,0.08)",
+                }}
+              >
+                Skip
+              </button>
+              <button
+                onClick={() => isLast ? setDemoStep(null) : setDemoStep(demoStep + 1)}
+                style={{
+                  padding: "9px 24px", borderRadius: 8, fontSize: 12, fontWeight: 600,
+                  border: "none", backgroundColor: "#cc1100",
+                  color: "#fff", cursor: "pointer",
+                  boxShadow: "0 2px 12px rgba(204,17,0,0.35)",
+                }}
+              >
+                {isLast ? "Let's go!" : "Next →"}
+              </button>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
