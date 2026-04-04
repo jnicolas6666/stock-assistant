@@ -333,9 +333,25 @@ async function getAnalystUpgrades(symbol: string) {
 
 async function getNews(symbol: string) {
   try {
-    // Primary: Yahoo Finance search (works for Canadian stocks too)
-    const results = await yahooFinance.search(symbol, { quotesCount: 0, newsCount: 10 }, FETCH_OPTS);
-    const yfNews: any[] = results.news ?? [];
+    // Primary: Yahoo Finance direct symbol news endpoint — returns news specifically tagged to this ticker
+    const url = `https://query1.finance.yahoo.com/v2/finance/news?symbols=${encodeURIComponent(symbol)}&count=10`;
+    const res = await fetch(url, { headers: YF_HEADERS, cache: "no-store" });
+    if (res.ok) {
+      const json = await res.json();
+      const items: any[] = json?.items?.result ?? [];
+      if (items.length > 0) {
+        return items.slice(0, 8).map((n: any) => ({
+          headline: n.title,
+          source: n.publisher,
+          summary: null,
+          date: new Date(n.providerPublishTime * 1000).toISOString().slice(0, 10),
+        }));
+      }
+    }
+
+    // Secondary: Yahoo Finance search (broader, may include some unrelated)
+    const searchRes = await yahooFinance.search(symbol, { quotesCount: 0, newsCount: 10 }, FETCH_OPTS);
+    const yfNews: any[] = searchRes.news ?? [];
     if (yfNews.length > 0) {
       return yfNews.slice(0, 8).map((n: any) => ({
         headline: n.title,
@@ -345,18 +361,23 @@ async function getNews(symbol: string) {
       }));
     }
 
-    // Fallback: Finnhub (US only)
-    const sym = fh(symbol);
-    const to = new Date().toISOString().slice(0, 10);
-    const from = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-    const news = await finnhubGet(`/company-news?symbol=${sym}&from=${from}&to=${to}`);
-    if (!Array.isArray(news) || news.length === 0) return { error: "No recent news found." };
-    return news.slice(0, 8).map((n: any) => ({
-      headline: n.headline,
-      source: n.source,
-      summary: n.summary || null,
-      date: new Date(n.datetime * 1000).toISOString().slice(0, 10),
-    }));
+    // Fallback: Finnhub — US stocks only (Canadian tickers like AC.TO would strip to "AC" = wrong company)
+    const isCanadian = /\.(TO|TSX|V|CN)$/i.test(symbol);
+    if (!isCanadian) {
+      const to = new Date().toISOString().slice(0, 10);
+      const from = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const news = await finnhubGet(`/company-news?symbol=${fh(symbol)}&from=${from}&to=${to}`);
+      if (Array.isArray(news) && news.length > 0) {
+        return news.slice(0, 8).map((n: any) => ({
+          headline: n.headline,
+          source: n.source,
+          summary: n.summary || null,
+          date: new Date(n.datetime * 1000).toISOString().slice(0, 10),
+        }));
+      }
+    }
+
+    return { error: "No recent news found for this symbol." };
   } catch (e: any) {
     return { error: e.message };
   }
