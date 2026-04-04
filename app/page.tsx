@@ -1243,13 +1243,29 @@ const SECTION_COLORS: Record<string, string> = {
 };
 
 function parseMessageSections(text: string): ParsedSection[] | null {
-  const regex = /(?:^|\n)\*\*([A-Z][^*\n]{1,60})\*\*\s*:/g;
-  const matches: { index: number; title: string; contentStart: number }[] = [];
+  // Detect either ## Heading OR **Bold**: section markers (Claude uses both)
+  const mdHeaderRegex = /(?:^|\n)(#{1,3})\s+([^\n]+)/g;
+  const boldRegex = /(?:^|\n)\*\*([A-Z][^*\n]{1,60})\*\*\s*:/g;
+
+  let matches: { index: number; title: string; contentStart: number }[] = [];
   let m;
-  while ((m = regex.exec(text)) !== null) {
-    matches.push({ index: m.index, title: m[1].trim(), contentStart: m.index + m[0].length });
+
+  while ((m = mdHeaderRegex.exec(text)) !== null) {
+    // Strip trailing ** or emoji-like chars from h2/h3 titles
+    const title = m[2].replace(/\*+$/, "").trim();
+    matches.push({ index: m.index, title, contentStart: m.index + m[0].length });
   }
+
+  if (matches.length < 2) {
+    // Fallback to **Bold**: pattern
+    matches = [];
+    while ((m = boldRegex.exec(text)) !== null) {
+      matches.push({ index: m.index, title: m[1].trim(), contentStart: m.index + m[0].length });
+    }
+  }
+
   if (matches.length < 2) return null;
+
   const sections: ParsedSection[] = [];
   const preamble = text.slice(0, matches[0].index).trim();
   if (preamble.length > 30) sections.push({ title: "Overview", content: preamble });
