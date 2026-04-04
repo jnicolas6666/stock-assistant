@@ -1246,13 +1246,15 @@ function ChartMessage({ chart }: { chart: ChartSpec }) {
     return String(value);
   };
 
-  const labelFormatter = (value: number) => {
-    if (isPriceChart) return `$${value}`;
-    if (isPercentChart) return `${value}%`;
-    if (Math.abs(value) >= 1e9) return `${(value / 1e9).toFixed(1)}B`;
-    if (Math.abs(value) >= 1e6) return `${(value / 1e6).toFixed(1)}M`;
-    if (Math.abs(value) >= 1e3) return `${(value / 1e3).toFixed(1)}K`;
-    return String(value);
+  const labelFormatter = (value: any) => {
+    const n = typeof value === "number" ? value : parseFloat(String(value));
+    if (isNaN(n)) return String(value ?? "");
+    if (isPriceChart) return `$${n}`;
+    if (isPercentChart) return `${n}%`;
+    if (Math.abs(n) >= 1e9) return `${(n / 1e9).toFixed(1)}B`;
+    if (Math.abs(n) >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
+    if (Math.abs(n) >= 1e3) return `${(n / 1e3).toFixed(1)}K`;
+    return String(n);
   };
 
   const commonProps = {
