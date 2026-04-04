@@ -13,7 +13,7 @@ import {
   AreaChart, Area,
   XAxis, YAxis,
   CartesianGrid, Tooltip, Legend,
-  ResponsiveContainer,
+  ResponsiveContainer, LabelList, ReferenceLine,
 } from "recharts";
 
 // ── Inline animated icons for AI responses ──────────────────────────────────
@@ -1227,79 +1227,120 @@ function extractTicker(text: string): string {
 }
 
 
-function formatYAxis(value: number) {
-  return `$${value}`;
-}
-
 function ChartMessage({ chart }: { chart: ChartSpec }) {
-  const height = 240;
-  const commonProps = {
-    data: chart.data,
-    margin: { top: 10, right: 20, left: 10, bottom: 5 },
-  };
-  const axisStyle = { fill: "#444", fontSize: 10 };
-  const gridStyle = { stroke: "rgba(28,26,27,0.06)" };
-  const tooltipStyle = {
-    contentStyle: {
-      backgroundColor: "#ffffff",
-      border: "1px solid rgba(28,26,27,0.1)",
-      color: "#6b6460",
-      borderRadius: 6,
-      padding: "6px 10px",
-      fontSize: 12,
-    },
-    labelStyle: { color: "#888", marginBottom: 3 },
-  };
+  const height = 280;
 
   const isPriceChart = chart.series.some(s =>
     s.key === "close" || s.key === "price" || s.key.toLowerCase().includes("price")
   );
+  const isPercentChart = chart.series.some(s =>
+    s.key.toLowerCase().includes("pct") || s.key.toLowerCase().includes("percent") || s.name.toLowerCase().includes("%")
+  );
+
+  const yFormatter = (value: number) => {
+    if (isPriceChart) return `$${value}`;
+    if (isPercentChart) return `${value}%`;
+    if (Math.abs(value) >= 1e9) return `${(value / 1e9).toFixed(1)}B`;
+    if (Math.abs(value) >= 1e6) return `${(value / 1e6).toFixed(1)}M`;
+    if (Math.abs(value) >= 1e3) return `${(value / 1e3).toFixed(0)}K`;
+    return String(value);
+  };
+
+  const labelFormatter = (value: number) => {
+    if (isPriceChart) return `$${value}`;
+    if (isPercentChart) return `${value}%`;
+    if (Math.abs(value) >= 1e9) return `${(value / 1e9).toFixed(1)}B`;
+    if (Math.abs(value) >= 1e6) return `${(value / 1e6).toFixed(1)}M`;
+    if (Math.abs(value) >= 1e3) return `${(value / 1e3).toFixed(1)}K`;
+    return String(value);
+  };
+
+  const commonProps = {
+    data: chart.data,
+    margin: { top: 22, right: 16, left: 0, bottom: 5 },
+  };
+  const axisStyle = { fill: "#999", fontSize: 10 };
+  const gridStyle = { stroke: "rgba(0,0,0,0.05)" };
+  const tooltipStyle = {
+    contentStyle: {
+      backgroundColor: "#1c1a1b",
+      border: "none",
+      color: "#f0eeec",
+      borderRadius: 6,
+      padding: "8px 12px",
+      fontSize: 12,
+      boxShadow: "0 4px 16px rgba(0,0,0,0.25)",
+    },
+    labelStyle: { color: "#aaa", marginBottom: 4, fontSize: 11 },
+    itemStyle: { color: "#f0eeec" },
+  };
+
+  const hasNegative = chart.data.some(row =>
+    chart.series.some(s => { const v = row[s.key]; return typeof v === "number" && v < 0; })
+  );
 
   function renderChart() {
-    if (chart.type === "line") {
-      return (
-        <LineChart {...commonProps}>
-          <CartesianGrid strokeDasharray="3 3" {...gridStyle} />
-          <XAxis dataKey={chart.xKey} tick={axisStyle} />
-          <YAxis
-            tick={axisStyle}
-            tickFormatter={isPriceChart ? formatYAxis : undefined}
-          />
-          <Tooltip {...tooltipStyle} />
-          <Legend wrapperStyle={{ fontSize: 11, color: "#555" }} />
-          {chart.series.map((s) => (
-            <Line key={s.key} type="monotone" dataKey={s.key} name={s.name} stroke={s.color} dot={false} strokeWidth={2} />
-          ))}
-        </LineChart>
-      );
-    }
     if (chart.type === "area") {
       return (
         <AreaChart {...commonProps}>
-          <CartesianGrid strokeDasharray="3 3" {...gridStyle} />
-          <XAxis dataKey={chart.xKey} tick={axisStyle} />
-          <YAxis
-            tick={axisStyle}
-            tickFormatter={isPriceChart ? formatYAxis : undefined}
-          />
+          <defs>
+            {chart.series.map(s => (
+              <linearGradient key={s.key} id={`grad_${s.key}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={s.color} stopOpacity={0.22} />
+                <stop offset="95%" stopColor={s.color} stopOpacity={0.01} />
+              </linearGradient>
+            ))}
+          </defs>
+          <CartesianGrid vertical={false} {...gridStyle} />
+          <XAxis dataKey={chart.xKey} tick={axisStyle} axisLine={false} tickLine={false} />
+          <YAxis tick={axisStyle} axisLine={false} tickLine={false} tickFormatter={yFormatter} width={52} />
           <Tooltip {...tooltipStyle} />
-          <Legend wrapperStyle={{ fontSize: 11, color: "#555" }} />
-          {chart.series.map((s) => (
-            <Area key={s.key} type="monotone" dataKey={s.key} name={s.name} stroke={s.color} fill={s.color + "22"} strokeWidth={2} />
+          {chart.series.length > 1 && <Legend wrapperStyle={{ fontSize: 11, color: "#666", paddingTop: 8 }} />}
+          {chart.series.map(s => (
+            <Area key={s.key} type="monotone" dataKey={s.key} name={s.name}
+              stroke={s.color} strokeWidth={2}
+              fill={`url(#grad_${s.key})`}
+              dot={false} activeDot={{ r: 4, strokeWidth: 0 }}
+            />
           ))}
         </AreaChart>
+      );
+    }
+    if (chart.type === "line") {
+      return (
+        <LineChart {...commonProps}>
+          <CartesianGrid vertical={false} {...gridStyle} />
+          <XAxis dataKey={chart.xKey} tick={axisStyle} axisLine={false} tickLine={false} />
+          <YAxis tick={axisStyle} axisLine={false} tickLine={false} tickFormatter={yFormatter} width={52} />
+          <Tooltip {...tooltipStyle} />
+          {chart.series.length > 1 && <Legend wrapperStyle={{ fontSize: 11, color: "#666", paddingTop: 8 }} />}
+          {chart.series.map(s => (
+            <Line key={s.key} type="monotone" dataKey={s.key} name={s.name}
+              stroke={s.color} strokeWidth={2} dot={false}
+              activeDot={{ r: 4, strokeWidth: 0 }}
+            />
+          ))}
+        </LineChart>
       );
     }
     // bar
     return (
       <BarChart {...commonProps}>
-        <CartesianGrid strokeDasharray="3 3" {...gridStyle} />
-        <XAxis dataKey={chart.xKey} tick={axisStyle} />
-        <YAxis tick={axisStyle} />
+        <CartesianGrid vertical={false} {...gridStyle} />
+        <XAxis dataKey={chart.xKey} tick={axisStyle} axisLine={false} tickLine={false} />
+        <YAxis tick={axisStyle} axisLine={false} tickLine={false} tickFormatter={yFormatter} width={52} />
         <Tooltip {...tooltipStyle} />
-        <Legend wrapperStyle={{ fontSize: 11, color: "#555" }} />
-        {chart.series.map((s) => (
-          <Bar key={s.key} dataKey={s.key} name={s.name} fill={s.color} radius={[3, 3, 0, 0]} />
+        {chart.series.length > 1 && <Legend wrapperStyle={{ fontSize: 11, color: "#666", paddingTop: 8 }} />}
+        {hasNegative && <ReferenceLine y={0} stroke="rgba(0,0,0,0.18)" strokeWidth={1} />}
+        {chart.series.map(s => (
+          <Bar key={s.key} dataKey={s.key} name={s.name} fill={s.color}
+            radius={[3, 3, 0, 0]} maxBarSize={52}
+          >
+            <LabelList dataKey={s.key} position="top"
+              style={{ fontSize: 9, fill: "#555", fontWeight: 600 }}
+              formatter={labelFormatter}
+            />
+          </Bar>
         ))}
       </BarChart>
     );
@@ -1307,21 +1348,17 @@ function ChartMessage({ chart }: { chart: ChartSpec }) {
 
   return (
     <div style={{
-      backgroundColor: "#fafaf8",
-      border: "1px solid rgba(28,26,27,0.1)",
-      borderRadius: 8,
-      padding: "12px 14px",
+      backgroundColor: "#ffffff",
+      border: "1px solid rgba(28,26,27,0.09)",
+      borderRadius: 10,
+      padding: "14px 16px",
       marginTop: 10,
     }}>
-      <div style={{
-        fontSize: 10,
-        fontWeight: 600,
-        color: "#555",
-        textTransform: "uppercase" as const,
-        letterSpacing: "0.08em",
-        marginBottom: 12,
-      }}>
-        {chart.title}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+        <div style={{ width: 3, height: 16, backgroundColor: "#cc1100", borderRadius: 2, flexShrink: 0 }} />
+        <div style={{ fontSize: 11, fontWeight: 700, color: "#1c1a1b", letterSpacing: "0.01em" }}>
+          {chart.title}
+        </div>
       </div>
       <ResponsiveContainer width="100%" height={height}>
         {renderChart()}

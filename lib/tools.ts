@@ -419,13 +419,20 @@ async function getNews(symbol: string) {
 
 async function getFundamentals(symbol: string) {
   try {
+    const isCanadian = /\.(TO|TSX|V|CN)$/i.test(symbol);
     const sym = fh(symbol);
-    // Fetch Finnhub + Yahoo in parallel
+
+    // Finnhub only supports US-listed stocks — skip entirely for Canadian symbols
+    // For Canadian stocks, fetch assetProfile from Yahoo to get sector/industry/employees
+    const yahooModules = isCanadian
+      ? ["defaultKeyStatistics", "financialData", "assetProfile"] as any
+      : ["defaultKeyStatistics", "financialData"] as any;
+
     const [profileRes, metricsRes, summaryRes] = await Promise.allSettled([
-      finnhubGet(`/stock/profile2?symbol=${sym}`),
-      finnhubGet(`/stock/metric?symbol=${sym}&metric=all`),
+      isCanadian ? Promise.resolve({}) : finnhubGet(`/stock/profile2?symbol=${sym}`),
+      isCanadian ? Promise.resolve({}) : finnhubGet(`/stock/metric?symbol=${sym}&metric=all`),
       yahooFinance.quoteSummary(symbol, {
-        modules: ["defaultKeyStatistics", "financialData"] as any,
+        modules: yahooModules,
         fetchOptions: FETCH_OPTS.fetchOptions,
       } as any),
     ]);
@@ -434,12 +441,13 @@ async function getFundamentals(symbol: string) {
     const m = metricsRes.status === "fulfilled" ? (metricsRes.value?.metric ?? {}) : {};
     const ks = summaryRes.status === "fulfilled" ? ((summaryRes.value as any)?.defaultKeyStatistics ?? {}) : {};
     const fd = summaryRes.status === "fulfilled" ? ((summaryRes.value as any)?.financialData ?? {}) : {};
+    const ap = summaryRes.status === "fulfilled" ? ((summaryRes.value as any)?.assetProfile ?? {}) : {};
 
     return {
-      sector: profile?.finnhubIndustry,
-      industry: profile?.finnhubIndustry,
-      fullTimeEmployees: profile?.employeeTotal,
-      website: profile?.weburl,
+      sector: ap?.sector ?? profile?.finnhubIndustry,
+      industry: ap?.industry ?? profile?.finnhubIndustry,
+      fullTimeEmployees: ap?.fullTimeEmployees ?? profile?.employeeTotal,
+      website: ap?.website ?? profile?.weburl,
       // Valuation
       peRatioAnnual: fmt(m.peNormalizedAnnual ?? null),
       peTTM: fmt(m.peTTM ?? null),
@@ -569,16 +577,41 @@ async function getHistoricalPrices(symbol: string, period: string) {
 
 async function getEarnings(symbol: string) {
   try {
-    const sym = fh(symbol);
-    const data = await finnhubGet(`/stock/earnings?symbol=${sym}`);
-    if (!Array.isArray(data) || data.length === 0) return { error: "No earnings data available." };
-    return data.slice(0, 8).map((e: any) => ({
-      quarter: e.period,
-      actual: e.actual,
-      estimate: e.estimate,
-      surprise: e.surprise,
-      surprisePercent: e.surprisePercent != null ? fmt(e.surprisePercent) : null,
-    }));
+    // Primary: Yahoo Finance earningsHistory — works for US and Canadian stocks
+    const summary = await yahooFinance.quoteSummary(symbol, {
+      modules: ["earningsHistory"] as any,
+      fetchOptions: FETCH_OPTS.fetchOptions,
+    } as any).catch(() => null);
+
+    const history: any[] = (summary as any)?.earningsHistory?.history ?? [];
+    if (history.length > 0) {
+      // Yahoo returns most recent first; reverse for chronological display
+      return [...history].reverse().slice(-8).map((e: any) => ({
+        quarter: e.period ?? (e.quarter ? new Date(e.quarter).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : null),
+        actual: fmt(e.epsActual ?? null),
+        estimate: fmt(e.epsEstimate ?? null),
+        surprise: fmt(e.epsDifference ?? null),
+        surprisePercent: fmt(e.surprisePercent ?? null),
+      }));
+    }
+
+    // Fallback: Finnhub — US stocks only (strips .TO suffix → wrong company for Canadian)
+    const isCanadian = /\.(TO|TSX|V|CN)$/i.test(symbol);
+    if (!isCanadian) {
+      const sym = fh(symbol);
+      const data = await finnhubGet(`/stock/earnings?symbol=${sym}`);
+      if (Array.isArray(data) && data.length > 0) {
+        return data.slice(0, 8).map((e: any) => ({
+          quarter: e.period,
+          actual: e.actual,
+          estimate: e.estimate,
+          surprise: e.surprise,
+          surprisePercent: e.surprisePercent != null ? fmt(e.surprisePercent) : null,
+        }));
+      }
+    }
+
+    return { error: "No earnings data available for this symbol." };
   } catch (e: any) {
     return { error: e.message };
   }
