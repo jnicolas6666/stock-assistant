@@ -1227,6 +1227,132 @@ function extractTicker(text: string): string {
 }
 
 
+// ── Collapsible section helpers ──────────────────────────────────────────────
+
+interface ParsedSection { title: string; content: string; }
+
+const SECTION_COLORS: Record<string, string> = {
+  "Price Snapshot":         "#3b82f6",
+  "Analyst Consensus":      "#cc1100",
+  "Recent Analyst Actions": "#f59e0b",
+  "News & Context":         "#8b5cf6",
+  "Market Context":         "#6b7280",
+  "Putting It Together":    "#22c55e",
+  "Analyst Ratings":        "#cc1100",
+  "Overview":               "#888888",
+};
+
+function parseMessageSections(text: string): ParsedSection[] | null {
+  const regex = /(?:^|\n)\*\*([A-Z][^*\n]{1,60})\*\*\s*:/g;
+  const matches: { index: number; title: string; contentStart: number }[] = [];
+  let m;
+  while ((m = regex.exec(text)) !== null) {
+    matches.push({ index: m.index, title: m[1].trim(), contentStart: m.index + m[0].length });
+  }
+  if (matches.length < 2) return null;
+  const sections: ParsedSection[] = [];
+  const preamble = text.slice(0, matches[0].index).trim();
+  if (preamble.length > 30) sections.push({ title: "Overview", content: preamble });
+  matches.forEach((match, i) => {
+    const end = i + 1 < matches.length ? matches[i + 1].index : text.length;
+    const content = text.slice(match.contentStart, end).trim();
+    if (content) sections.push({ title: match.title, content });
+  });
+  return sections.length >= 2 ? sections : null;
+}
+
+const MD_COMPONENTS_SECTION = {
+  table: ({ children }: any) => <table style={{ borderCollapse: "collapse", width: "100%", marginTop: 8, fontSize: 12 }}>{children}</table>,
+  th: ({ children }: any) => <th style={{ padding: "6px 10px", borderBottom: "1px solid rgba(28,26,27,0.1)", textAlign: "left", color: "#666", fontWeight: 600, fontSize: 11, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>{children}</th>,
+  td: ({ children }: any) => <td style={{ padding: "6px 10px", borderBottom: "1px solid rgba(28,26,27,0.06)", color: "#3a3836" }}>{children}</td>,
+  p: ({ children }: any) => <p style={{ margin: "5px 0", lineHeight: 1.7 }}>{withIcons(children)}</p>,
+  ul: ({ children }: any) => <ul style={{ margin: "5px 0", paddingLeft: 16 }}>{children}</ul>,
+  ol: ({ children }: any) => <ol style={{ margin: "5px 0", paddingLeft: 16 }}>{children}</ol>,
+  li: ({ children }: any) => <li style={{ marginBottom: 3, lineHeight: 1.6 }}>{withIcons(children)}</li>,
+  strong: ({ children }: any) => <strong style={{ color: "#1d1a1b", fontWeight: 700 }}>{children}</strong>,
+  blockquote: ({ children }: any) => <blockquote style={{ margin: "8px 0 2px", padding: "6px 10px", borderLeft: "2px solid #cc1100", backgroundColor: "rgba(204,17,0,0.04)", borderRadius: "0 4px 4px 0", color: "#777", fontSize: 12 }}>{children}</blockquote>,
+  code: ({ children }: any) => <code style={{ backgroundColor: "#f0ece8", padding: "1px 5px", borderRadius: 3, fontSize: 12, color: "#cc1100", fontWeight: 600 }}>{children}</code>,
+  hr: () => <hr style={{ border: "none", borderTop: "1px solid rgba(28,26,27,0.08)", margin: "8px 0" }}/>,
+  a: ({ href, children }: any) => <span style={{ color: "#cc1100" }}>{children}</span>,
+};
+
+function CollapsibleSection({ title, content, delay = 0, children }: {
+  title: string; content?: string; delay?: number; children?: React.ReactNode;
+}) {
+  const [phase, setPhase] = React.useState<"closed" | "loading" | "open">("closed");
+  const color = SECTION_COLORS[title] ?? "#888";
+
+  const toggle = () => {
+    if (phase === "loading") return;
+    if (phase === "open") { setPhase("closed"); return; }
+    setPhase("loading");
+    setTimeout(() => setPhase("open"), 1300);
+  };
+
+  return (
+    <div style={{
+      opacity: 0,
+      animation: `fadeScaleIn 0.28s ease forwards ${delay}s`,
+      borderRadius: 7,
+      border: "1px solid rgba(28,26,27,0.08)",
+      backgroundColor: "#fff",
+      overflow: "hidden",
+    }}>
+      <button onClick={toggle} style={{
+        width: "100%", display: "flex", alignItems: "center", gap: 8,
+        padding: "9px 12px 9px 14px",
+        background: "none", border: "none", cursor: "pointer",
+        textAlign: "left",
+        borderLeft: `3px solid ${color}`,
+      }}>
+        <span style={{ flex: 1, fontSize: 11, fontWeight: 700, color: "#1c1a1b", letterSpacing: "0.01em" }}>{title}</span>
+        {phase === "loading" && (
+          <span style={{ fontSize: 9, color: "#bbb", marginRight: 6 }}>analyzing…</span>
+        )}
+        <svg width="10" height="6" viewBox="0 0 10 6" fill="none"
+          style={{ transform: phase === "open" ? "rotate(180deg)" : "none", transition: "transform 0.2s ease", color: "#bbb", flexShrink: 0 }}>
+          <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+
+      {phase === "loading" && (
+        <div style={{ padding: "10px 14px 14px 17px", borderTop: "1px solid rgba(28,26,27,0.06)" }}>
+          {[88, 100, 70, 92, 58].map((w, idx) => (
+            <div key={idx} style={{
+              height: 8, borderRadius: 4, width: `${w}%`,
+              backgroundColor: "rgba(0,0,0,0.05)",
+              marginBottom: idx < 4 ? 9 : 0,
+              position: "relative", overflow: "hidden",
+            }}>
+              <div style={{
+                position: "absolute", inset: 0,
+                background: `linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.08) 50%, transparent 100%)`,
+                animation: `shimmerSlide ${0.9 + idx * 0.07}s ease-in-out infinite`,
+              }} />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {phase === "open" && (
+        <div style={{
+          padding: "10px 14px 14px 17px",
+          borderTop: "1px solid rgba(28,26,27,0.06)",
+          animation: "expandDown 0.32s cubic-bezier(0.22,1,0.36,1)",
+          fontSize: 13, lineHeight: 1.7, color: "#2c2a29",
+        }}>
+          {content && (
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={MD_COMPONENTS_SECTION}>
+              {content}
+            </ReactMarkdown>
+          )}
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ChartMessage({ chart }: { chart: ChartSpec }) {
   const height = 280;
 
@@ -2078,47 +2204,68 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                       ))}
                     </div>
                   )}
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  components={{
-                    table: ({ children }) => (
-                      <table style={{ borderCollapse: "collapse", width: "100%", marginTop: 8, fontSize: 12 }}>{children}</table>
-                    ),
-                    th: ({ children }) => (
-                      <th style={{ padding: "6px 10px", borderBottom: "1px solid rgba(28,26,27,0.1)", textAlign: "left", color: "#666", fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em" }}>{withIcons(children)}</th>
-                    ),
-                    td: ({ children }) => (
-                      <td style={{ padding: "6px 10px", borderBottom: "1px solid rgba(28,26,27,0.06)", color: "#3a3836" }}>{withIcons(children)}</td>
-                    ),
-                    p: ({ children }) => <p style={{ margin: "6px 0", lineHeight: 1.7 }}>{withIcons(children)}</p>,
-                    ul: ({ children }) => <ul style={{ margin: "6px 0", paddingLeft: 16 }}>{children}</ul>,
-                    ol: ({ children }) => <ol style={{ margin: "6px 0", paddingLeft: 16 }}>{children}</ol>,
-                    li: ({ children }) => <li style={{ marginBottom: 4, lineHeight: 1.6 }}>{withIcons(children)}</li>,
-                    strong: ({ children }) => <strong style={{ color: "#1d1a1b", fontWeight: 700 }}>{children}</strong>,
-                    h2: ({ children }) => (
-                      <div style={{ margin: "14px 0 6px", display: "flex", alignItems: "center", gap: 8 }}>
-                        <span style={{ fontSize: 13, fontWeight: 700, color: "#1d1a1b", letterSpacing: "-0.01em" }}>{withIcons(children)}</span>
-                        <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, rgba(204,17,0,0.3), transparent)" }}/>
-                      </div>
-                    ),
-                    h3: ({ children }) => <h3 style={{ margin: "10px 0 4px", fontSize: 11, fontWeight: 700, color: "#cc1100", textTransform: "uppercase", letterSpacing: "0.07em" }}>{withIcons(children)}</h3>,
-                    a: ({ href, children }) => <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: "#cc1100", textDecoration: "underline" }}>{children}</a>,
-                    blockquote: ({ children }) => <blockquote style={{ margin: "10px 0 4px", padding: "8px 12px", borderLeft: "2px solid #cc1100", backgroundColor: "rgba(204,17,0,0.04)", borderRadius: "0 4px 4px 0", color: "#666", fontSize: 12 }}>{children}</blockquote>,
-                    code: ({ children }) => <code style={{ backgroundColor: "#f0ece8", padding: "1px 5px", borderRadius: 3, fontSize: 12, color: "#cc1100", fontWeight: 600 }}>{children}</code>,
-                    hr: () => <hr style={{ border: "none", borderTop: "1px solid rgba(28,26,27,0.08)", margin: "10px 0" }}/>,
-                  }}
-                >
-                  {msg.content}
-                </ReactMarkdown>
-                {msg.analystRatings && msg.analystRatings.length > 0 && (
-                  <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
-                    {msg.analystRatings.map((rating, ri) => (
-                      <div key={ri} style={{ opacity: 0, animation: `fadeScaleIn 0.4s ease forwards ${ri * 0.1}s` }}>
-                        <AnalystRatingsCard data={rating} />
-                      </div>
-                    ))}
-                  </div>
-                )}
+                  {(() => {
+                    const sections = parseMessageSections(msg.content);
+                    if (sections) {
+                      const totalSections = sections.length + (msg.analystRatings?.length ? 1 : 0);
+                      return (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                          {sections.map((s, si) => (
+                            <CollapsibleSection key={si} title={s.title} content={s.content} delay={si * 0.05} />
+                          ))}
+                          {msg.analystRatings && msg.analystRatings.length > 0 && (
+                            <CollapsibleSection title="Analyst Ratings" delay={sections.length * 0.05}>
+                              <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 4 }}>
+                                {msg.analystRatings.map((rating, ri) => (
+                                  <AnalystRatingsCard key={ri} data={rating} />
+                                ))}
+                              </div>
+                            </CollapsibleSection>
+                          )}
+                        </div>
+                      );
+                    }
+                    // Flat render — short/conversational responses
+                    return (
+                      <>
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            table: ({ children }) => <table style={{ borderCollapse: "collapse", width: "100%", marginTop: 8, fontSize: 12 }}>{children}</table>,
+                            th: ({ children }) => <th style={{ padding: "6px 10px", borderBottom: "1px solid rgba(28,26,27,0.1)", textAlign: "left", color: "#666", fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em" }}>{withIcons(children)}</th>,
+                            td: ({ children }) => <td style={{ padding: "6px 10px", borderBottom: "1px solid rgba(28,26,27,0.06)", color: "#3a3836" }}>{withIcons(children)}</td>,
+                            p: ({ children }) => <p style={{ margin: "6px 0", lineHeight: 1.7 }}>{withIcons(children)}</p>,
+                            ul: ({ children }) => <ul style={{ margin: "6px 0", paddingLeft: 16 }}>{children}</ul>,
+                            ol: ({ children }) => <ol style={{ margin: "6px 0", paddingLeft: 16 }}>{children}</ol>,
+                            li: ({ children }) => <li style={{ marginBottom: 4, lineHeight: 1.6 }}>{withIcons(children)}</li>,
+                            strong: ({ children }) => <strong style={{ color: "#1d1a1b", fontWeight: 700 }}>{children}</strong>,
+                            h2: ({ children }) => (
+                              <div style={{ margin: "14px 0 6px", display: "flex", alignItems: "center", gap: 8 }}>
+                                <span style={{ fontSize: 13, fontWeight: 700, color: "#1d1a1b", letterSpacing: "-0.01em" }}>{withIcons(children)}</span>
+                                <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, rgba(204,17,0,0.3), transparent)" }}/>
+                              </div>
+                            ),
+                            h3: ({ children }) => <h3 style={{ margin: "10px 0 4px", fontSize: 11, fontWeight: 700, color: "#cc1100", textTransform: "uppercase", letterSpacing: "0.07em" }}>{withIcons(children)}</h3>,
+                            a: ({ href, children }) => <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: "#cc1100", textDecoration: "underline" }}>{children}</a>,
+                            blockquote: ({ children }) => <blockquote style={{ margin: "10px 0 4px", padding: "8px 12px", borderLeft: "2px solid #cc1100", backgroundColor: "rgba(204,17,0,0.04)", borderRadius: "0 4px 4px 0", color: "#666", fontSize: 12 }}>{children}</blockquote>,
+                            code: ({ children }) => <code style={{ backgroundColor: "#f0ece8", padding: "1px 5px", borderRadius: 3, fontSize: 12, color: "#cc1100", fontWeight: 600 }}>{children}</code>,
+                            hr: () => <hr style={{ border: "none", borderTop: "1px solid rgba(28,26,27,0.08)", margin: "10px 0" }}/>,
+                          }}
+                        >
+                          {msg.content}
+                        </ReactMarkdown>
+                        {msg.analystRatings && msg.analystRatings.length > 0 && (
+                          <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+                            {msg.analystRatings.map((rating, ri) => (
+                              <div key={ri} style={{ opacity: 0, animation: `fadeScaleIn 0.4s ease forwards ${ri * 0.1}s` }}>
+                                <AnalystRatingsCard data={rating} />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </>
               )}
             </div>
@@ -2760,6 +2907,14 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
         }
         @keyframes fadeSlideUp {
           from { opacity: 0; transform: translateY(40px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes shimmerSlide {
+          0%   { transform: translateX(-160%); }
+          100% { transform: translateX(260%); }
+        }
+        @keyframes expandDown {
+          from { opacity: 0; transform: translateY(-6px); }
           to   { opacity: 1; transform: translateY(0); }
         }
         @keyframes wizardTeleportIn {
