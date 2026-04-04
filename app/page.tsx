@@ -564,6 +564,20 @@ const ALL_SUGGESTIONS = [
   { text: "What does market cap tell us?", sub: "Size · Risk · Sector context", icon: "analyst" },
   { text: "How do ETFs compare to individual stocks?", sub: "Diversification · Passive investing", icon: "search" },
   { text: "Show me a company's earnings history", sub: "Quarterly EPS trends · Growth", icon: "linechart" },
+  { text: "What is NVIDIA's current price?", sub: "Live quote · Any ticker", icon: "linechart" },
+  { text: "Is Apple overbought or oversold right now?", sub: "RSI · Technical sentiment", icon: "barchart" },
+  { text: "Compare Tesla vs Rivian on key metrics", sub: "Side-by-side · EV sector", icon: "barchart" },
+  { text: "What sectors are outperforming this year?", sub: "Sector rotation · Market trends", icon: "search" },
+  { text: "Explain short interest and what it signals", sub: "Short squeeze · Bearish bets", icon: "analyst" },
+  { text: "Show me the top holdings of QQQ", sub: "ETF breakdown · Nasdaq 100", icon: "linechart" },
+  { text: "What is a stock's beta and why does it matter?", sub: "Volatility · Risk vs market", icon: "analyst" },
+  { text: "How do I read a company's balance sheet?", sub: "Assets · Liabilities · Equity", icon: "search" },
+  { text: "What's the difference between growth and value stocks?", sub: "Investing styles · Valuation", icon: "barchart" },
+  { text: "Show me free cash flow for a company", sub: "FCF · Financial health", icon: "linechart" },
+  { text: "What does the yield curve tell us?", sub: "Macro · Recession signals", icon: "barchart" },
+  { text: "Explain options — calls and puts basics", sub: "Derivatives · Hedging · Speculation", icon: "analyst" },
+  { text: "Which TSX stocks pay the highest dividends?", sub: "Canadian market · Income plays", icon: "barchart" },
+  { text: "What is dollar-cost averaging?", sub: "Investing strategy · Risk reduction", icon: "search" },
 ];
 
 function getRandomSuggestions() {
@@ -1867,16 +1881,16 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, width: "100%", maxWidth: 480, marginBottom: 16 }}>
                 {suggestions.map((s) => (
                   <button key={s.text} onClick={() => sendMessage(s.text)} style={{
-                    padding: "12px 14px", textAlign: "left", borderRadius: 8,
+                    padding: "8px 10px", textAlign: "left", borderRadius: 7,
                     border: "1px solid rgba(28,26,27,0.1)", backgroundColor: "#ffffff",
                     cursor: "pointer", width: "100%", transition: "border-color 0.15s, background 0.15s",
                   }}
                   onMouseEnter={e => { e.currentTarget.style.borderColor = "#cc1100"; e.currentTarget.style.backgroundColor = "#ede8e4"; }}
                   onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(28,26,27,0.1)"; e.currentTarget.style.backgroundColor = "#ffffff"; }}
                   >
-                    <div style={{ marginBottom: 6 }}><SuggestionIcon name={s.icon} /></div>
-                    <div style={{ fontSize: 12, fontWeight: 500, color: "#1d1a1b", lineHeight: 1.4 }}>{s.text}</div>
-                    <div style={{ fontSize: 11, color: "#555", marginTop: 3 }}>{s.sub}</div>
+                    <div style={{ marginBottom: 4 }}><SuggestionIcon name={s.icon} /></div>
+                    <div style={{ fontSize: 11, fontWeight: 500, color: "#1d1a1b", lineHeight: 1.35 }}>{s.text}</div>
+                    <div style={{ fontSize: 10, color: "#555", marginTop: 2 }}>{s.sub}</div>
                   </button>
                 ))}
               </div>
