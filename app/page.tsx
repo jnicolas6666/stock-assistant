@@ -1466,6 +1466,8 @@ export default function Home() {
   const [activeBubbles, setActiveBubbles] = useState<BubbleData[]>(() => getRandomBubbles());
   const [formingOffsets, setFormingOffsets] = useState<Record<string, { x: number; y: number }>>({});
   const [responseTicker, setResponseTicker] = useState("");
+  const [pendingTickers, setPendingTickers] = useState<string[]>([]);
+  useEffect(() => { if (!loading) setPendingTickers([]); }, [loading]);
   const [suggestions, setSuggestions] = useState(() => getRandomSuggestions());
   const [expandedCharts, setExpandedCharts] = useState<Record<number, boolean>>({});
   const [showActionMenu, setShowActionMenu] = useState(false);
@@ -1649,6 +1651,21 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
       }
     }
     setResponseTicker(responseSym);
+
+    // Collect all mentioned tickers for the loading bubble
+    const allMatches = (text.match(/\b[A-Z]{2,5}(?:\.TO)?\b/g) || []).filter(t => !RESP_STOP.has(t));
+    const foundTickers: string[] = [];
+    // Company name matches first
+    for (const [name, ticker] of COMPANY_TO_TICKER) {
+      if (lowerText.includes(name) && !foundTickers.includes(ticker)) foundTickers.push(ticker);
+    }
+    // Then explicit ticker matches
+    for (const m of allMatches) {
+      if ((ALL_TICKERS_SET.has(m) || ALL_TICKERS_SET.has(m.replace(/\.TO$/i, ""))) && !foundTickers.includes(m)) {
+        foundTickers.push(m);
+      }
+    }
+    setPendingTickers(foundTickers.slice(0, 4));
 
     // Kick off the API fetch immediately (runs in parallel with forming animation)
     const portfolioCtx = isPortfolio ? buildPortfolioContext() : undefined;
@@ -2054,13 +2071,21 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                 >
                   {msg.content}
                 </ReactMarkdown>
+                {msg.analystRatings && msg.analystRatings.length > 0 && (
+                  <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+                    {msg.analystRatings.map((rating, ri) => (
+                      <div key={ri} style={{ opacity: 0, animation: `fadeScaleIn 0.4s ease forwards ${ri * 0.1}s` }}>
+                        <AnalystRatingsCard data={rating} />
+                      </div>
+                    ))}
+                  </div>
+                )}
                 </>
               )}
             </div>
             {msg.role === "assistant" && (() => {
               const chartCount = msg.charts?.length || 0;
-              const ratingCount = msg.analystRatings?.length || 0;
-              const totalVisuals = chartCount + ratingCount;
+              const totalVisuals = chartCount;
               if (totalVisuals === 0) return null;
               const isOpen = !!expandedCharts[i];
               return (
@@ -2083,7 +2108,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                       <rect x="6" y="5" width="3" height="10" rx="1" fill="currentColor" opacity="0.8"/>
                       <rect x="11" y="2" width="3" height="13" rx="1" fill="currentColor"/>
                     </svg>
-                    {totalVisuals} visual{totalVisuals > 1 ? "s" : ""}
+                    {totalVisuals} chart{totalVisuals > 1 ? "s" : ""}
                     <span style={{ fontSize: 9 }}>{isOpen ? "▲" : "▼"}</span>
                   </button>
                   {isOpen && (
@@ -2092,9 +2117,6 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                         <div key={ci} style={{ width: "min(640px, 92vw)" }}>
                           <ChartMessage chart={chart} />
                         </div>
-                      ))}
-                      {msg.analystRatings?.map((rating, ri) => (
-                        <div key={ri}><AnalystRatingsCard data={rating} /></div>
                       ))}
                     </div>
                   )}
@@ -2105,7 +2127,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
         ))}
 
         {loading && (
-          <div style={{ display: "flex", justifyContent: "flex-start" }}>
+          <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", gap: 8 }}>
             <div style={{
               padding: "10px 14px",
               borderRadius: "14px 14px 14px 3px",
@@ -2122,6 +2144,11 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                 }} />
               ))}
             </div>
+            {pendingTickers.map((ticker, i) => (
+              <div key={ticker} style={{ opacity: 0, animation: `fadeScaleIn 0.3s ease forwards ${i * 0.08}s` }}>
+                <BubbleInner symbol={ticker} color={symbolColor(ticker)} size={34} />
+              </div>
+            ))}
           </div>
         )}
 
