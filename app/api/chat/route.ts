@@ -26,6 +26,9 @@ AVAILABLE DATA (use proactively — don't wait for the user to ask):
 - get_historical_prices: daily closing prices (1mo / 3mo / 6mo / 1y / 2y)
 - get_earnings: quarterly EPS actual vs estimate (last 8 quarters)
 - get_market_context: S&P 500, Nasdaq, VIX level + interpretation, 10-year Treasury yield — use whenever discussing market environment or macro context
+- get_peer_comparison: side-by-side metrics for up to 6 tickers (P/E, marketCap, dividendYield, beta, 52-week range) — use for any "compare X vs Y" question
+- get_dividend_history: quarterly dividend payments over 5 years — use for income/dividend questions
+- get_insider_transactions: recent insider buys/sells — use to gauge insider confidence
 
 SENTIMENT / FULL OPINION QUESTIONS — whenever a user asks about outlook, "what do people think", "is it a good stock", "what's the market saying", sentiment, or anything correlated with recent events:
   1. Call IN PARALLEL: get_quote + get_analyst_data + get_news
@@ -52,12 +55,17 @@ ANALYST / PRICE TARGET QUESTIONS:
   - Clarify: targets are 12-month forward estimates, based on analyst models, not guarantees.
 
 CHART GENERATION RULES:
-  - Always generate charts for: price history, earnings trends, revenue/FCF growth, peer comparisons
-  - Revenue/FCF chart: use "bar" type, x-axis = year, series for revenue + FCF
+  - Always generate charts for: price history, earnings trends, revenue/FCF growth, peer comparisons, dividends
   - Price history: use "area" type
-  - Peer comparisons: use "bar" type with one metric per row
-  - Colors: #cc1100 (primary), #3b82f6 (blue), #22c55e (green), #ef4444 (red), #a855f7 (purple), #888888 (grey)
-  - Data format: flat objects — [{ year: "2023", revenue: "45.2B", fcf: "12.1B" }] — use string values for formatted large numbers
+  - Revenue + margin combo: use "combo" type — bars = revenue, line series key must contain "margin" or "pct" (e.g. grossMarginPct)
+  - Revenue/FCF bar: use "bar" type, x-axis = year, series for revenue + FCF
+  - Peer P/E vs growth scatter: use "scatter" type — xKey = first metric, series[0] = x-axis, series[1] = y-axis
+  - Peer metric comparison: use "bar" type with tickers as x-axis, one series per metric
+  - Dividend history: use "bar" type, x-axis = date, series = dividend amount
+  - EPS actual vs estimate: use "bar" type
+  - Colors: #cc1100 (primary red), #3b82f6 (blue), #22c55e (green), #ef4444 (red), #a855f7 (purple), #f59e0b (amber), #888888 (grey)
+  - Data format: flat objects with numeric values — [{ year: "2023", revenue: 45.2, grossMarginPct: 38.5 }]
+  - For combo charts: ALWAYS include both bar series AND line series (ending in "pct", "margin", or "rate")
 
 GENERAL RULES:
   - NEVER provide links to external websites. Use your tools only.
@@ -240,8 +248,13 @@ export async function POST(req: NextRequest) {
 
           // Track which symbols were actually looked up
           const sym = (block.input as Record<string, any>).symbol as string | undefined;
-          if (sym && ["get_quote", "get_analyst_data", "get_news", "get_fundamentals", "get_financial_statements", "get_earnings", "get_analyst_upgrades"].includes(block.name)) {
+          if (sym && ["get_quote", "get_analyst_data", "get_news", "get_fundamentals", "get_financial_statements", "get_earnings", "get_analyst_upgrades", "get_dividend_history", "get_insider_transactions"].includes(block.name)) {
             if (!mentionedSymbols.includes(sym)) mentionedSymbols.push(sym);
+          }
+          // get_peer_comparison passes symbols array
+          if (block.name === "get_peer_comparison") {
+            const syms = (block.input as Record<string, any>).symbols as string[] | undefined;
+            if (Array.isArray(syms)) syms.forEach(s => { if (!mentionedSymbols.includes(s)) mentionedSymbols.push(s); });
           }
 
           const result = await handleToolCall(block.name, block.input as Record<string, any>);

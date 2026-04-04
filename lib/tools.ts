@@ -160,22 +160,59 @@ export const toolDefinitions = [
       properties: {
         type: {
           type: "string",
-          enum: ["line", "bar", "area"],
-          description: "Chart type: line or area for time series, bar for comparisons",
+          enum: ["line", "bar", "area", "combo", "scatter"],
+          description: "Chart type: area for price history, bar for comparisons/rankings, combo for mixed bar+line (e.g. revenue bars + margin % line on dual axis), scatter for peer P/E vs growth plots",
         },
         title: { type: "string", description: "Chart title" },
         data: {
           type: "array",
-          description: "Array of data point objects. Each item must be a flat object. For price history: [{date: 'Jan 1', close: 150.5}, ...]. For comparisons: [{metric: 'P/E', AAPL: 28.5, MSFT: 32.1}, ...].",
+          description: "Flat objects per row. Price history: [{date,close}]. Bar: [{name,value}]. Combo: [{year,revenue,grossMarginPct}]. Scatter: [{name,pe,revenueGrowth}].",
         },
-        xKey: { type: "string", description: "Key name for x-axis labels (e.g. 'date', 'metric', 'year')" },
+        xKey: { type: "string", description: "Key for x-axis / category labels (e.g. 'date', 'year', 'name')" },
         series: {
           type: "array",
-          description: "Array of {key, name, color} objects defining which data keys to plot",
+          description: "Array of {key, name, color} objects. For combo: bar series first (revenue), then line series (margin %). For scatter: first = x-axis key, second = y-axis key.",
           items: { type: "object" },
         },
       },
       required: ["type", "title", "data", "xKey", "series"],
+    },
+  },
+  {
+    name: "get_peer_comparison",
+    description: "Fetch key metrics for multiple stocks at once to enable side-by-side peer comparison. Returns price, P/E, forward P/E, market cap, dividend yield, 52-week return, and beta for each symbol.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        symbols: {
+          type: "array",
+          items: { type: "string" },
+          description: "Array of ticker symbols to compare (max 6), e.g. ['AAPL','MSFT','GOOGL']",
+        },
+      },
+      required: ["symbols"],
+    },
+  },
+  {
+    name: "get_dividend_history",
+    description: "Get historical dividend payments per share over the last 5 years for an income-paying stock or ETF. Use this when discussing dividend growth, payout consistency, or income investing.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        symbol: { type: "string", description: "Stock or ETF ticker symbol" },
+      },
+      required: ["symbol"],
+    },
+  },
+  {
+    name: "get_insider_transactions",
+    description: "Get recent insider buy/sell transactions for a stock — which executives or directors bought or sold shares and when. Useful for gauging insider confidence.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        symbol: { type: "string", description: "Stock ticker symbol" },
+      },
+      required: ["symbol"],
     },
   },
 ];
@@ -669,6 +706,81 @@ async function getMarketContext() {
   }
 }
 
+async function getPeerComparison(symbols: string[]) {
+  try {
+    const results = await Promise.allSettled(
+      symbols.slice(0, 6).map(s => yahooFinance.quote(s, {}, FETCH_OPTS))
+    );
+    return results.map((r, i) => {
+      if (r.status === "rejected") return { symbol: symbols[i], error: "Not found" };
+      const q = r.value;
+      const fiftyTwoWeekReturn = q.fiftyTwoWeekHigh && q.fiftyTwoWeekLow && q.regularMarketPrice
+        ? fmt(((q.regularMarketPrice - q.fiftyTwoWeekLow) / (q.fiftyTwoWeekHigh - q.fiftyTwoWeekLow)) * 100)
+        : null;
+      return {
+        symbol: q.symbol,
+        name: q.shortName || q.longName || q.symbol,
+        price: fmt(q.regularMarketPrice ?? null),
+        currency: q.currency,
+        changePercent1d: fmt(q.regularMarketChangePercent ?? null),
+        marketCap: fmtLarge(q.marketCap ?? null),
+        peRatio: fmt(q.trailingPE ?? null),
+        forwardPE: fmt(q.forwardPE ?? null),
+        dividendYield: fmt((q.trailingAnnualDividendYield ?? 0) * 100, 2),
+        beta: fmt(q.beta ?? null),
+        fiftyTwoWeekHigh: fmt(q.fiftyTwoWeekHigh ?? null),
+        fiftyTwoWeekLow: fmt(q.fiftyTwoWeekLow ?? null),
+        positionIn52wRange: fiftyTwoWeekReturn,
+      };
+    });
+  } catch (e: any) {
+    return { error: e.message };
+  }
+}
+
+async function getDividendHistory(symbol: string) {
+  try {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=5y&interval=3mo&events=dividends`;
+    const res = await fetch(url, { headers: YF_HEADERS, cache: "no-store" });
+    if (!res.ok) return { error: `Yahoo Finance returned ${res.status}` };
+    const json = await res.json();
+    const dividends = json?.chart?.result?.[0]?.events?.dividends;
+    if (!dividends || Object.keys(dividends).length === 0) {
+      return { error: "No dividend history found. This security may not pay dividends." };
+    }
+    const rows = Object.values(dividends as Record<string, { amount: number; date: number }>)
+      .map((d) => ({
+        date: new Date(d.date * 1000).toLocaleDateString("en-US", { month: "short", year: "numeric" }),
+        amount: Math.round(d.amount * 1000) / 1000,
+      }))
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    return { symbol, dividends: rows };
+  } catch (e: any) {
+    return { error: e.message };
+  }
+}
+
+async function getInsiderTransactions(symbol: string) {
+  try {
+    const summary = await yahooFinance.quoteSummary(symbol, {
+      modules: ["insiderTransactions"] as any,
+      fetchOptions: FETCH_OPTS.fetchOptions,
+    } as any);
+    const transactions: any[] = (summary as any)?.insiderTransactions?.transactions ?? [];
+    if (transactions.length === 0) return { error: "No insider transaction data available." };
+    return transactions.slice(0, 15).map((t: any) => ({
+      date: t.startDate ? new Date(t.startDate).toISOString().slice(0, 10) : null,
+      insider: t.filerName,
+      role: t.filerRelation,
+      transactionType: t.transactionText,
+      shares: t.shares,
+      value: fmtLarge(t.value ?? null),
+    }));
+  } catch (e: any) {
+    return { error: e.message };
+  }
+}
+
 export async function handleToolCall(name: string, input: Record<string, any>) {
   switch (name) {
     case "search_ticker":       return searchTicker(input.query);
@@ -681,6 +793,9 @@ export async function handleToolCall(name: string, input: Record<string, any>) {
     case "get_historical_prices": return getHistoricalPrices(input.symbol, input.period);
     case "get_earnings":        return getEarnings(input.symbol);
     case "get_market_context":  return getMarketContext();
+    case "get_peer_comparison": return getPeerComparison(input.symbols);
+    case "get_dividend_history": return getDividendHistory(input.symbol);
+    case "get_insider_transactions": return getInsiderTransactions(input.symbol);
     default:                    return { error: `Unknown tool: ${name}` };
   }
 }

@@ -11,6 +11,8 @@ import {
   LineChart, Line,
   BarChart, Bar,
   AreaChart, Area,
+  ComposedChart,
+  ScatterChart, Scatter, ZAxis,
   XAxis, YAxis,
   CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, LabelList, ReferenceLine,
@@ -152,7 +154,7 @@ function withIcons(children: React.ReactNode): React.ReactNode {
 // ─────────────────────────────────────────────────────────────────────────────
 
 type ChartSpec = {
-  type: "line" | "bar" | "area";
+  type: "line" | "bar" | "area" | "combo" | "scatter";
   title: string;
   data: Record<string, any>[];
   xKey: string;
@@ -1467,7 +1469,48 @@ function ChartMessage({ chart }: { chart: ChartSpec }) {
         </LineChart>
       );
     }
-    // bar
+    if (chart.type === "combo") {
+      // Combo: first series = bars, remaining = lines (e.g. revenue bars + margin line)
+      const barSeries = chart.series.filter(s => !s.key.toLowerCase().includes("margin") && !s.key.toLowerCase().includes("pct") && !s.key.toLowerCase().includes("percent") && !s.key.toLowerCase().includes("rate"));
+      const lineSeries = chart.series.filter(s => s.key.toLowerCase().includes("margin") || s.key.toLowerCase().includes("pct") || s.key.toLowerCase().includes("percent") || s.key.toLowerCase().includes("rate") || (barSeries.length === 0));
+      // If no clear split, first series is bar, rest are lines
+      const finalBars = barSeries.length > 0 ? barSeries : chart.series.slice(0, 1);
+      const finalLines = lineSeries.length > 0 ? lineSeries : chart.series.slice(1);
+      return (
+        <ComposedChart {...commonProps}>
+          <CartesianGrid vertical={false} {...gridStyle} />
+          <XAxis dataKey={chart.xKey} tick={axisStyle} axisLine={false} tickLine={false} />
+          <YAxis yAxisId="left" tick={axisStyle} axisLine={false} tickLine={false} tickFormatter={yFormatter} width={52} />
+          {finalLines.length > 0 && <YAxis yAxisId="right" orientation="right" tick={axisStyle} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}%`} width={40} />}
+          <Tooltip {...tooltipStyle} />
+          <Legend wrapperStyle={{ fontSize: 11, color: "#666", paddingTop: 8 }} />
+          {finalBars.map(s => (
+            <Bar key={s.key} yAxisId="left" dataKey={s.key} name={s.name} fill={s.color} radius={[3, 3, 0, 0]} maxBarSize={52} />
+          ))}
+          {finalLines.map(s => (
+            <Line key={s.key} yAxisId="right" type="monotone" dataKey={s.key} name={s.name} stroke={s.color} strokeWidth={2.5} dot={{ r: 3, fill: s.color, strokeWidth: 0 }} />
+          ))}
+        </ComposedChart>
+      );
+    }
+
+    if (chart.type === "scatter") {
+      // Scatter: expects data with x, y, and optional z keys; series defines which key maps to which axis
+      const xSeries = chart.series[0];
+      const ySeries = chart.series[1] ?? chart.series[0];
+      return (
+        <ScatterChart {...commonProps}>
+          <CartesianGrid vertical={false} {...gridStyle} />
+          <XAxis dataKey={xSeries?.key} name={xSeries?.name} tick={axisStyle} axisLine={false} tickLine={false} label={{ value: xSeries?.name, position: "insideBottom", offset: -2, style: { fontSize: 10, fill: "#999" } }} />
+          <YAxis dataKey={ySeries?.key} name={ySeries?.name} tick={axisStyle} axisLine={false} tickLine={false} width={52} />
+          <ZAxis range={[40, 40]} />
+          <Tooltip {...tooltipStyle} cursor={{ strokeDasharray: "3 3" }} />
+          <Scatter data={chart.data} fill={xSeries?.color ?? "#cc1100"} opacity={0.85} />
+        </ScatterChart>
+      );
+    }
+
+    // bar (default)
     return (
       <BarChart {...commonProps}>
         <CartesianGrid vertical={false} {...gridStyle} />
@@ -1649,6 +1692,17 @@ export default function Home() {
   const [responseTicker, setResponseTicker] = useState("");
   const [pendingTickers, setPendingTickers] = useState<string[]>([]);
   useEffect(() => { if (!loading) setPendingTickers([]); }, [loading]);
+  const [selectedAnalysisIndex, setSelectedAnalysisIndex] = useState<number>(-1);
+  // Auto-select the newest analysis when a response arrives
+  useEffect(() => {
+    if (!loading && messages.length > 0) {
+      const lastIdx = messages.reduceRight((found: number, m: Message, idx: number) =>
+        found === -1 && m.role === "assistant" &&
+        (parseMessageSections(m.content) !== null || (m.charts && m.charts.length > 0) || (m.analystRatings && m.analystRatings.length > 0))
+          ? idx : found, -1);
+      if (lastIdx !== -1) setSelectedAnalysisIndex(lastIdx);
+    }
+  }, [messages, loading]);
   const [suggestions, setSuggestions] = useState(() => getRandomSuggestions());
   const [expandedCharts, setExpandedCharts] = useState<Record<number, boolean>>({});
   const [showActionMenu, setShowActionMenu] = useState(false);
@@ -2193,8 +2247,8 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
         {/* LEFT PANEL: Analysis content */}
         <div style={{ flex: 1, overflowY: "auto", padding: "28px 32px", backgroundColor: "#f9f7f5", borderRight: "1px solid rgba(28,26,27,0.1)" }}>
           {(() => {
-            // Find latest AI message with sections or charts
-            const latestAiMsg = [...messages].reverse().find(m => m.role === "assistant" && (parseMessageSections(m.content) !== null || (m.charts && m.charts.length > 0) || (m.analystRatings && m.analystRatings.length > 0)));
+            // Show the selected analysis (or latest if none selected yet)
+            const latestAiMsg = selectedAnalysisIndex >= 0 ? messages[selectedAnalysisIndex] : null;
             if (!latestAiMsg) {
               return (
                 <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, color: "#bbb" }}>
@@ -2315,9 +2369,35 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                           </div>
                         )}
                         {hasSections ? (
-                          <div style={{ fontSize: 12, color: "#888" }}>
-                            Analysis ready — see left panel
-                          </div>
+                          <>
+                            {(() => {
+                              const firstHeader = msg.content.search(/(?:^|\n)#{1,3}\s+/);
+                              const preamble = firstHeader > 0 ? msg.content.slice(0, firstHeader).trim() : "";
+                              return preamble ? (
+                                <p style={{ margin: "0 0 8px", fontSize: 12, lineHeight: 1.6, color: "#3a3836" }}>{preamble}</p>
+                              ) : null;
+                            })()}
+                            <button
+                              onClick={() => setSelectedAnalysisIndex(i)}
+                              style={{
+                                display: "flex", alignItems: "center", gap: 6,
+                                padding: "6px 10px", borderRadius: 7,
+                                border: `1px solid ${selectedAnalysisIndex === i ? "#cc1100" : "rgba(28,26,27,0.12)"}`,
+                                backgroundColor: selectedAnalysisIndex === i ? "rgba(204,17,0,0.08)" : "#f5f2ee",
+                                color: selectedAnalysisIndex === i ? "#cc1100" : "#666",
+                                fontSize: 11, fontWeight: 600, cursor: "pointer",
+                                width: "100%", textAlign: "left" as const,
+                                transition: "all 0.15s",
+                              }}
+                            >
+                              <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+                                <rect x="1" y="9" width="3" height="6" rx="1" fill="currentColor" opacity="0.6"/>
+                                <rect x="6" y="5" width="3" height="10" rx="1" fill="currentColor" opacity="0.8"/>
+                                <rect x="11" y="2" width="3" height="13" rx="1" fill="currentColor"/>
+                              </svg>
+                              {selectedAnalysisIndex === i ? "Viewing in left panel" : "View analysis →"}
+                            </button>
+                          </>
                         ) : (
                           <ReactMarkdown
                             remarkPlugins={[remarkGfm]}
