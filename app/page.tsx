@@ -1914,16 +1914,19 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, width: "100%", maxWidth: 480, marginBottom: 16 }}>
                 {suggestions.map((s) => (
                   <button key={s.text} onClick={() => sendMessage(s.text)} style={{
-                    padding: "6px 8px", textAlign: "left", borderRadius: 6,
+                    padding: "5px 8px", textAlign: "left", borderRadius: 5,
                     border: "1px solid rgba(28,26,27,0.1)", backgroundColor: "#ffffff",
                     cursor: "pointer", width: "100%", transition: "border-color 0.15s, background 0.15s",
+                    display: "flex", alignItems: "center", gap: 6,
                   }}
                   onMouseEnter={e => { e.currentTarget.style.borderColor = "#cc1100"; e.currentTarget.style.backgroundColor = "#ede8e4"; }}
                   onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(28,26,27,0.1)"; e.currentTarget.style.backgroundColor = "#ffffff"; }}
                   >
-                    <div style={{ marginBottom: 3 }}><SuggestionIcon name={s.icon} /></div>
-                    <div style={{ fontSize: 10.5, fontWeight: 500, color: "#1d1a1b", lineHeight: 1.3 }}>{s.text}</div>
-                    <div style={{ fontSize: 9.5, color: "#666", marginTop: 2 }}>{s.sub}</div>
+                    <div style={{ flexShrink: 0 }}><SuggestionIcon name={s.icon} /></div>
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 500, color: "#1d1a1b", lineHeight: 1.3 }}>{s.text}</div>
+                      <div style={{ fontSize: 9, color: "#777", marginTop: 1 }}>{s.sub}</div>
+                    </div>
                   </button>
                 ))}
               </div>
