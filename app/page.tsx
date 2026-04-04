@@ -1288,19 +1288,19 @@ function ChartMessage({ chart }: { chart: ChartSpec }) {
           <defs>
             {chart.series.map(s => (
               <linearGradient key={s.key} id={`grad_${s.key}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={s.color} stopOpacity={0.22} />
-                <stop offset="95%" stopColor={s.color} stopOpacity={0.01} />
+                <stop offset="0%" stopColor={s.color} stopOpacity={0.35} />
+                <stop offset="100%" stopColor={s.color} stopOpacity={0.02} />
               </linearGradient>
             ))}
           </defs>
           <CartesianGrid vertical={false} {...gridStyle} />
           <XAxis dataKey={chart.xKey} tick={axisStyle} axisLine={false} tickLine={false} />
-          <YAxis tick={axisStyle} axisLine={false} tickLine={false} tickFormatter={yFormatter} width={52} />
+          <YAxis tick={axisStyle} axisLine={false} tickLine={false} tickFormatter={yFormatter} width={52} domain={["auto", "auto"]} />
           <Tooltip {...tooltipStyle} />
           {chart.series.length > 1 && <Legend wrapperStyle={{ fontSize: 11, color: "#666", paddingTop: 8 }} />}
           {chart.series.map(s => (
             <Area key={s.key} type="monotone" dataKey={s.key} name={s.name}
-              stroke={s.color} strokeWidth={2}
+              stroke={s.color} strokeWidth={2.5}
               fill={`url(#grad_${s.key})`}
               dot={false} activeDot={{ r: 4, strokeWidth: 0 }}
             />
@@ -1313,12 +1313,12 @@ function ChartMessage({ chart }: { chart: ChartSpec }) {
         <LineChart {...commonProps}>
           <CartesianGrid vertical={false} {...gridStyle} />
           <XAxis dataKey={chart.xKey} tick={axisStyle} axisLine={false} tickLine={false} />
-          <YAxis tick={axisStyle} axisLine={false} tickLine={false} tickFormatter={yFormatter} width={52} />
+          <YAxis tick={axisStyle} axisLine={false} tickLine={false} tickFormatter={yFormatter} width={52} domain={["auto", "auto"]} />
           <Tooltip {...tooltipStyle} />
           {chart.series.length > 1 && <Legend wrapperStyle={{ fontSize: 11, color: "#666", paddingTop: 8 }} />}
           {chart.series.map(s => (
             <Line key={s.key} type="monotone" dataKey={s.key} name={s.name}
-              stroke={s.color} strokeWidth={2} dot={false}
+              stroke={s.color} strokeWidth={2.5} dot={false}
               activeDot={{ r: 4, strokeWidth: 0 }}
             />
           ))}
