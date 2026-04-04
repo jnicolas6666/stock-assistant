@@ -177,35 +177,207 @@ type Message = {
   content: string;
   charts?: ChartSpec[];
   analystRatings?: AnalystRatingsSpec[];
+  tickers?: string[];
 };
 
-const FLOATING_BUBBLES = [
-  { symbol: "RY",  name: "Royal Bank",     color: "#0066cc", left: "4%",  top: "10%", size: 60, dx: 18,  dy: 14,  dur: 16, delay: 0   },
-  { symbol: "TD",  name: "TD Bank",        color: "#34a853", left: "87%", top: "14%", size: 54, dx: -16, dy: 22,  dur: 20, delay: 1   },
-  { symbol: "BNS", name: "Scotiabank",     color: "#ec1c24", left: "10%", top: "62%", size: 52, dx: 14,  dy: -20, dur: 18, delay: 2   },
-  { symbol: "BMO", name: "BMO",            color: "#0079c1", left: "74%", top: "58%", size: 58, dx: -22, dy: -14, dur: 22, delay: 0.5 },
-  { symbol: "CM",  name: "CIBC",           color: "#c41230", left: "48%", top: "4%",  size: 48, dx: 10,  dy: 24,  dur: 15, delay: 3   },
-  { symbol: "NA",  name: "Nat. Bank",      color: "#da291c", left: "91%", top: "44%", size: 50, dx: -20, dy: 10,  dur: 19, delay: 1.5 },
-  { symbol: "ENB", name: "Enbridge",       color: "#e07530", left: "2%",  top: "38%", size: 46, dx: 22,  dy: -12, dur: 23, delay: 2.5 },
-  { symbol: "BCE", name: "BCE",            color: "#00a0df", left: "58%", top: "78%", size: 52, dx: -12, dy: -22, dur: 16, delay: 4   },
-  { symbol: "CNR", name: "CN Rail",        color: "#cc3300", left: "28%", top: "83%", size: 48, dx: 16,  dy: -16, dur: 21, delay: 1   },
-  { symbol: "SU",  name: "Suncor",         color: "#ffb300", left: "77%", top: "24%", size: 54, dx: -14, dy: 20,  dur: 17, delay: 3.5 },
-  { symbol: "TRI", name: "Thomson Reuters",color: "#ff6200", left: "20%", top: "18%", size: 46, dx: 12,  dy: 22,  dur: 24, delay: 0   },
-  { symbol: "MFC", name: "Manulife",       color: "#00a758", left: "43%", top: "73%", size: 50, dx: -10, dy: -24, dur: 19, delay: 2   },
-  { symbol: "T",   name: "Telus",          color: "#7b2d8b", left: "66%", top: "87%", size: 44, dx: -16, dy: -12, dur: 25, delay: 4.5 },
-  { symbol: "CP",  name: "CP Rail",        color: "#c8102e", left: "7%",  top: "86%", size: 46, dx: 20,  dy: -10, dur: 14, delay: 1   },
-  { symbol: "CNQ", name: "Can. Natural",   color: "#4a90d9", left: "36%", top: "2%",  size: 48, dx: -10, dy: 20,  dur: 21, delay: 3   },
+type Position = { id: string; ticker: string; shares: number; avgCost: number };
+type LivePrice = { price: number; currency: string; change: number; changePercent: number; name: string };
+
+// ~1000+ popular tickers (US S&P 500, ETFs, ADRs, TSX)
+const ALL_TICKERS: string[] = [
+  // US Tech
+  "AAPL","MSFT","NVDA","GOOGL","GOOG","META","TSLA","AVGO","ORCL","ADBE","CRM","NOW","INTU",
+  "QCOM","TXN","AMD","INTC","AMAT","MU","LRCX","KLAC","MCHP","ADI","SNPS","CDNS","FTNT",
+  "PANW","CRWD","ZS","NET","PLTR","SNOW","DDOG","WDAY","CTSH","VEEV","UBER","ABNB","COIN",
+  "SPOT","ZM","DOCU","TWLO","OKTA","BILL","HUBS","PCTY","PAYC","ADP","PAYX","CSCO","ANET",
+  "CDW","LDOS","SAIC","AKAM","VRSN","EPAM","JNPR","NTAP","HPQ","HPE","DELL","WDC","STX",
+  "KEYS","TER","ZBRA","SMCI","IPGP","TRMB","CIEN","LITE","ANSS","RBLX","HOOD",
+  // US Finance
+  "JPM","BAC","WFC","C","GS","MS","BLK","BX","KKR","APO","V","MA","AXP","PYPL","COF",
+  "SCHW","CME","ICE","SPGI","MCO","BK","STT","USB","PNC","TFC","FITB","RF","HBAN","KEY",
+  "ALLY","SYF","DFS","AFRM","MET","PRU","AFL","ALL","AIG","TRV","CB","MMC","AON",
+  "MKL","PGR","HIG","CINF","RNR","AXS","BRK-B","WTW","FNF","FAF","IBKR","MSCI","FDS",
+  "VRSK","NDAQ","SPXS",
+  // US Healthcare
+  "JNJ","PFE","UNH","ABBV","LLY","MRK","TMO","ABT","DHR","MDT","BMY","AMGN","GILD",
+  "REGN","VRTX","BIIB","ZTS","BDX","SYK","ISRG","EW","BSX","HUM","CI","CVS","MCK","MRNA",
+  "DXCM","IDXX","IQV","HOLX","RMD","ALGN","PODD","GEHC","MOH","CNC","ELV","INCY","EXAS",
+  "NBIX","SGEN","ALNY","SRPT","BNTX","NVAX","A","RVTY","BAX","PKI","XRAY","TECH","ENPH",
+  // US Consumer Discretionary
+  "AMZN","HD","TGT","NKE","MCD","SBUX","CMG","YUM","LOW","LULU","F","GM","TJX","ROST",
+  "DG","DLTR","EBAY","ETSY","BKNG","MAR","HLT","MGM","LVS","RCL","CCL","DPZ","QSR","DRI",
+  "TXRH","BBY","KSS","M","JWN","GPS","ANF","AEO","URBN","PTON","NIO","RIVN","LCID","CVNA",
+  "AN","KMX","LAD","ORLY","AZO","GPC","LKQ","APTV","BWA","LEA","MGA","VC","GT","MOD",
+  // US Consumer Staples
+  "WMT","PG","KO","PEP","COST","PM","MO","BTI","KR","GIS","K","HRL","SJM","CL","KMB",
+  "CHD","CLX","EL","ULTA","HSY","MKC","CPB","TSN","CAG","MNST","STZ","TAP","BUD","SAM",
+  "BYND","SMPL","FRPT","VITL","SFM","UNFI","GO",
+  // US Energy
+  "XOM","CVX","COP","EOG","PXD","OXY","SLB","HAL","MPC","VLO","PSX","HES","DVN","FANG",
+  "EQT","BKR","NOV","APA","CTRA","MRO","RRC","AR","WMB","KMI","ET","OKE","TRGP","LNG",
+  "MMP","EPD","PAA","MPLX","DKL","PARR","PBF",
+  // US Industrials
+  "GE","HON","CAT","DE","MMM","RTX","LMT","BA","NOC","GD","LHX","TDG","HWM","EMR","ETN",
+  "PH","ITW","ROK","FTV","CARR","OTIS","TT","JCI","GNRC","XYL","AME","ROP","GWW","FAST",
+  "MSC","GPC","UPS","FDX","CHRW","EXPD","XPO","JBHT","SAIA","DAL","UAL","AAL","LUV",
+  "JBLU","ALK","SAVE","WAB","CSGP","MTZ","PWR","STLD","RS","NUE","CMC",
+  // US Materials
+  "LIN","APD","ECL","SHW","FCX","NEM","VMC","MLM","ALB","CE","DD","PPG","RPM","IFF",
+  "EMN","WRK","IP","PKG","BALL","SEE","ATR","CC","HUN","AXTA","FMC","CF","MOS","NTR",
+  // US REIT / Utilities
+  "NEE","DUK","SO","AEP","EXC","XEL","WEC","ES","CMS","NI","EVRG","PNW","D","PCG",
+  "AMT","EQIX","PLD","CCI","DLR","O","PSA","EXR","AVB","EQR","SPG","VICI","GLPI","WY",
+  "NNN","BXP","VNO","SLG","ARE","KIM","REG","MAA","UDR","CPT","SBAC","AMH","INVH",
+  // US Telecom / Media
+  "T","VZ","TMUS","NFLX","DIS","CMCSA","PARA","WBD","CHTR","FOXA","FOX","MTCH","IAC",
+  "SNAP","PINS","RDDT","SPOT","ROKU","TTD","MGNI","IAS","DV","ZETA","PUBM",
+  // Canadian — TSX majors
+  "RY","TD","BNS","BMO","CM","NA","ENB","TRP","PPL","ALA","BCE","RCI","SU","CNQ","CVE",
+  "IMO","CNR","CP","WCN","TIH","BAM","BN","MFC","SLF","GWO","POW","ATD","L","DOL","EMP",
+  "MRU","GIL","CCL","ABX","AEM","WPM","FNV","AGI","SHOP","CGI","CSU","OTEX","BB","AQN",
+  "FTS","IFC","NWC","TRI","NFI","BIPC","QBR","EMA","H","SAP","K","TCL","VET","CTC","WN",
+  "MX","MG","CAE","STN","SNC","WSP","TFII","CPKC","ATZ","BYD","GFL","NPI","RNW","SPB",
+  "BEI","CHP","CRR","CUF","DIR","HOM","REI","SRU","CRT","HR","CAR","AAR","IIP","AP",
+  // ── US ETFs — index, sector, thematic, bond, commodity ──────────────────
+  "SPY","IVV","VOO","SPLG","QQQ","QQQM","IWM","IJR","MDY","VTI","ITOT","DIA","VIG",
+  "GLD","IAU","SLV","USO","UCO","UNG","PDBC","BCI",
+  "TLT","IEF","SHY","GOVT","BND","AGG","BNDX","LQD","HYG","JNK","VCIT","VCSH",
+  "EEM","EFA","VEA","IEMG","VWO","ACWI","VT","EWZ","EWJ","FXI","KWEB","EWY","EWG","EWU","EWC","EWA","INDA",
+  "ARKK","ARKG","ARKW","ARKF","ARKX","TQQQ","SQQQ","SPXL","UPRO",
+  "XLF","XLK","XLE","XLV","XLI","XLB","XLU","XLRE","XLY","XLP","XLC",
+  "VNQ","VNQI","SCHD","VYM","DVY","HDV","JEPI","JEPQ","XYLD","QYLD","RYLD",
+  "GDX","GDXJ","SIL","COPX","SOXX","SMH","IGV","CIBR","HACK","BOTZ","LIT","REMX",
+  "IBIT","GBTC","FBTC","BITB","BITO",
+  // ── International ADRs (NYSE/NASDAQ listed) ──────────────────────────────
+  "TSM","ASML","NVO","BABA","JD","PDD","BIDU","NTES","TM","HMC","SONY",
+  "SNY","AZN","GSK","NVS","RHHBY",
+  "RIO","BHP","BP","SHEL","TTE","ENI",
+  "MELI","NU","ITUB","BBD","VALE","PBR",
+  "SE","GRAB","RACE","ABB","SIEGY","BAYRY",
+  // ── More US Tech ─────────────────────────────────────────────────────────
+  "ARM","SQ","LYFT","XPEV","LI","RKLB","IONQ","SOUN","AI","UPST",
+  "DKNG","WYNN","CROX","DECK","SKX","SHAK","WING","CAVA","BROS","W",
+  "AXON","MDB","CFLT","ZI","GTLB","ESTC","APP","CELH","MNDY","DOCN",
+  "FOUR","ARRY","CHPT","BLNK","EVGO","RH","HIMS","KVYO","GH",
+  "MPWR","TYL","MANH","TDOC","SMAR","APPF","TMDX","RXRX","ACHR","JOBY",
+  "ELF","ONON","BIRK","GOOS","CPNG","RVLV","SFIX","STNE","PAGS","TOST",
+  // ── More US Finance ──────────────────────────────────────────────────────
+  "NLY","AGNC","TWO","CBOE","VIRT","LPLA","AMP","LMND","OPEN",
+  "OWL","ARES","HLI","SF","ASB","HOPE","CVBF","WEX","COOP",
+  // ── More US Healthcare ───────────────────────────────────────────────────
+  "HCA","THC","UHS","JAZZ","IONS","CRSP","NTLA","EDIT","BEAM","ARWR",
+  "BLUE","PRGO","ACAD","RARE","KYMR","DNLI","ARVN","ROIV","NVCR","ACLX",
+  "STE","ZBH","MMSI","OMCL","RCM","ONEM","SDGR","SEER","TARS",
+  // ── More US Industrials / Transport / RE ─────────────────────────────────
+  "ODFL","GXO","RXO","KNX","LSTR","TKR","NDSN","ALLE","COLD",
+  "STAG","TRNO","EGP","REXR","LXP","EPRT","NTST","IIPR",
+  "RIG","VAL","CHK","SM","MTDR","CIVI","OVV","BSM","TELL","TAN","FAN","ICLN",
+  // ── Canadian TSX — Energy additions ──────────────────────────────────────
+  "PEY","ARX","WCP","BTE","CPG","ERF","MEG","TPZ","FRU","TVE","NVA",
+  "PHX","OBE","BIR","GXE","KEL","PXT","SGY","RMP","LGO","SDE","PMT",
+  "TDE","PBE","NGL","BNE","TGL","SCR","SII","ARC","ATH","POU",
+  // ── Canadian TSX — Mining & Metals additions ──────────────────────────────
+  "FM","LUN","HBM","TCK","NXE","DML","CCO","ERO","OR","MAG","FR",
+  "TXG","ELD","OGC","EDV","PAAS","FVI","SVM","SEA","SSL","DPM","NGT",
+  "CS","HWD","MDI","DGC","GSY","MND","SWY","SRC","GCM","AAB",
+  // ── Canadian TSX — Tech & Software additions ──────────────────────────────
+  "KXS","DCBO","LSPD","NVEI","TCS","DND","TOI","DSG","ENGH","MDF",
+  "REAL","CLS","SECO","TSAT","PMC","PLUS","MTLO","GIB","SCI","PLC",
+  // ── Canadian TSX — Consumer & Retail additions ────────────────────────────
+  "SVI","PZA","MTY","JWEL","PBH","AC","TRZ","FSZ","GBT","ONEX",
+  "CARA","WFG","DOOO","RFP","GUD","BRP","HRX","LNF","ZZZ","MFI",
+  // ── Canadian TSX — Finance & Insurance additions ──────────────────────────
+  "FFH","X","EFN","CWB","LB","EQB","HCG","ECN","DGS","PRM",
+  "FAR","IGM","CIX","GWL","SFC","IAG","MIC",
+  // ── Canadian TSX — REIT additions ────────────────────────────────────────
+  "PLZ","PMZ","SIA","CSH","NWH","GRT","AX","FCR","BSR",
+  "SOT","TNT","NXR","MRG","MEQ","MI","KMP","ACR","SMU",
+  // ── Canadian TSX — Utilities & Clean Energy additions ─────────────────────
+  "TA","CPX","BEP","BEPC","BIP","INE","ACO","FTG","CU","ATO","HNL",
+  // ── Canadian TSX — Industrials & Diversified additions ────────────────────
+  "MDA","BDT","FSV","CIGI","RBA","TF","SOX","TCA","WJX","LNR",
+  "SJ","IFP","BAD","MDL","TBL","NFD","GDI","STLC","BFC","CJT",
+  // ── Canadian TSX — Cannabis ───────────────────────────────────────────────
+  "ACB","WEED","OGI","NEPT","VFF","CRON","HEXO","APHA","TLRY",
+];
+const ALL_TICKERS_SET = new Set(ALL_TICKERS);
+
+// Brand color overrides for the most recognizable companies
+const BRAND_COLORS: Record<string, string> = {
+  AAPL:"#555555", MSFT:"#00a4ef", NVDA:"#76b900", GOOGL:"#4285f4", GOOG:"#4285f4",
+  AMZN:"#ff9900", TSLA:"#cc1100", META:"#0082fb", NFLX:"#e50914", DIS:"#113ccf",
+  JPM:"#1b5ca8", V:"#1a1f71",  MA:"#eb001b",   PYPL:"#003087", ADBE:"#ff0000",
+  ORCL:"#c74634", IBM:"#054ada", INTC:"#0071c5", AMD:"#ed1c24", WMT:"#0071ce",
+  COST:"#005dab", BAC:"#e31837", GS:"#7b8ea0",  CRM:"#00a1e0", SBUX:"#00704a",
+  MCD:"#da291c",  NKE:"#f05a28", KO:"#ff0000",  PEP:"#006db0", XOM:"#dc143c",
+  CVX:"#0047ab",  SHOP:"#96bf48",
+  // Canadian
+  RY:"#0066cc", TD:"#34a853", BNS:"#ec1c24", BMO:"#0079c1",
+  CM:"#c41230", NA:"#da291c", ENB:"#e07530", BCE:"#00a0df",
+  CNR:"#cc3300", SU:"#ffb300", TRI:"#ff6200", MFC:"#00a758",
+  CP:"#c8102e",  CNQ:"#4a90d9",
+};
+
+// Auto-generate a pleasant, deterministic color from a symbol string
+function symbolColor(s: string): string {
+  const key = s.replace(/\.(TO|TSX|V)$/i, "");
+  if (BRAND_COLORS[key]) return BRAND_COLORS[key];
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = s.charCodeAt(i) + ((h << 5) - h);
+  const hue = ((h >>> 0) % 300) + 30;       // avoid near-0 red clash with accent
+  return `hsl(${hue}, 55%, 38%)`;
+}
+
+// 15 fixed layout slots (positions + motion)
+const BUBBLE_SLOTS = [
+  { left: "4%",  top: "10%", size: 60, dx: 18,  dy: 14,  dur: 16, delay: 0   },
+  { left: "87%", top: "14%", size: 54, dx: -16, dy: 22,  dur: 20, delay: 1   },
+  { left: "10%", top: "62%", size: 52, dx: 14,  dy: -20, dur: 18, delay: 2   },
+  { left: "74%", top: "58%", size: 58, dx: -22, dy: -14, dur: 22, delay: 0.5 },
+  { left: "48%", top: "4%",  size: 48, dx: 10,  dy: 24,  dur: 15, delay: 3   },
+  { left: "91%", top: "44%", size: 50, dx: -20, dy: 10,  dur: 19, delay: 1.5 },
+  { left: "2%",  top: "38%", size: 46, dx: 22,  dy: -12, dur: 23, delay: 2.5 },
+  { left: "58%", top: "78%", size: 52, dx: -12, dy: -22, dur: 16, delay: 4   },
+  { left: "28%", top: "83%", size: 48, dx: 16,  dy: -16, dur: 21, delay: 1   },
+  { left: "77%", top: "24%", size: 54, dx: -14, dy: 20,  dur: 17, delay: 3.5 },
+  { left: "20%", top: "18%", size: 46, dx: 12,  dy: 22,  dur: 24, delay: 0   },
+  { left: "43%", top: "73%", size: 50, dx: -10, dy: -24, dur: 19, delay: 2   },
+  { left: "66%", top: "87%", size: 44, dx: -16, dy: -12, dur: 25, delay: 4.5 },
+  { left: "7%",  top: "86%", size: 46, dx: 20,  dy: -10, dur: 14, delay: 1   },
+  { left: "36%", top: "2%",  size: 48, dx: -10, dy: 20,  dur: 21, delay: 3   },
 ];
 
-function FloatingBubble({ symbol, name, color, left, top, size, dx, dy, dur, delay }: typeof FLOATING_BUBBLES[0]) {
+type BubbleData = typeof BUBBLE_SLOTS[0] & { symbol: string; color: string };
+
+function getRandomBubbles(): BubbleData[] {
+  const shuffled = [...ALL_TICKERS].sort(() => Math.random() - 0.5).slice(0, 15);
+  return shuffled.map((sym, i) => ({ symbol: sym, color: symbolColor(sym), ...BUBBLE_SLOTS[i] }));
+}
+
+function FloatingBubble({ symbol, color, left, top, size, dx, dy, dur, delay, forming = false, toX = 0, toY = 0, isShockwave = false }: BubbleData & { forming?: boolean; toX?: number; toY?: number, isShockwave?: boolean }) {
   const [imgError, setImgError] = useState(false);
+  
+  // Calculate shock direction: away from center (50, 50)
+  const lNum = parseFloat(left);
+  const tNum = parseFloat(top);
+  const sX = (lNum - 50) * 1.5; // push toward borders
+  const sY = (tNum - 50) * 1.5;
+
   return (
     <div style={{
       position: "absolute", left, top,
-      animation: `bubbleFloat ${dur}s ease-in-out infinite`,
-      animationDelay: `${delay}s`,
+      animation: forming
+        ? "flyToCenter 0.65s ease-in forwards"
+        : isShockwave 
+          ? `bubbleShock 1.8s cubic-bezier(0.19, 1, 0.22, 1) forwards`
+          : `bubbleFloat ${dur}s ease-in-out infinite`,
+      animationDelay: forming ? "0s" : isShockwave ? "0s" : `${delay}s`,
       ["--dx" as any]: `${dx}px`,
       ["--dy" as any]: `${dy}px`,
+      ["--to-x" as any]: `${toX}px`,
+      ["--to-y" as any]: `${toY}px`,
+      ["--shock-x" as any]: `${sX}vw`,
+      ["--shock-y" as any]: `${sY}vh`,
       pointerEvents: "none",
       zIndex: 0,
     }}>
@@ -242,12 +414,161 @@ function FloatingBubble({ symbol, name, color, left, top, size, dx, dy, dur, del
   );
 }
 
-const SUGGESTIONS = [
-  { text: "Show TD Bank's price chart (3 months)", sub: "Price history · TD.TO", icon: "linechart" },
-  { text: "Compare Canadian banks P/E ratios", sub: "Peer comparison · Big 6", icon: "barchart" },
-  { text: "TD Bank earnings vs estimates", sub: "8 quarters · EPS history", icon: "search" },
-  { text: "What do analysts think of TD?", sub: "Analyst consensus · Ratings", icon: "analyst" },
+// ── Orbit scene ─────────────────────────────────────────────────────────────
+
+function BubbleInner({ symbol, color, size }: { symbol: string; color: string; size: number }) {
+  const [imgError, setImgError] = useState(false);
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: "50%",
+      backgroundColor: "#ffffff",
+      border: `1.5px solid ${color}40`,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      boxShadow: `0 0 16px ${color}18, 0 2px 8px rgba(0,0,0,0.1)`,
+      overflow: "hidden", position: "relative",
+    }}>
+      {!imgError ? (
+        <img
+          src={`https://assets.parqet.com/logos/symbol/${symbol}`}
+          alt={symbol}
+          width={size * 0.62} height={size * 0.62}
+          onError={() => setImgError(true)}
+          style={{ objectFit: "contain" }}
+        />
+      ) : (
+        <span style={{ fontSize: Math.max(7, size * 0.2), fontWeight: 800, color, fontFamily: "monospace", letterSpacing: "-0.02em", textAlign: "center", padding: "0 2px", lineHeight: 1 }}>
+          {symbol.replace(/\.TO$/i, "").slice(0, 4)}
+        </span>
+      )}
+      <div style={{
+        position: "absolute", inset: 0, borderRadius: "50%",
+        background: `radial-gradient(circle at 35% 28%, ${color}14, transparent 65%)`,
+        pointerEvents: "none",
+      }} />
+    </div>
+  );
+}
+
+function OrbitScene({ ticker, bubbles }: { ticker: string; bubbles: BubbleData[] }) {
+  const innerBubbles = bubbles.slice(0, 7);
+  const outerBubbles = bubbles.slice(7);
+  const innerR = 118;
+  const outerR = 186;
+
+  return (
+    <div style={{
+      flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
+      position: "relative", overflow: "hidden",
+    }}>
+      <div style={{ position: "relative", width: 420, height: 420, flexShrink: 0 }}>
+        {/* Dashed orbit rings */}
+        <div style={{
+          position: "absolute", left: "50%", top: "50%",
+          width: innerR * 2, height: innerR * 2, borderRadius: "50%",
+          border: "1px dashed rgba(204,17,0,0.13)",
+          transform: "translate(-50%, -50%)", pointerEvents: "none",
+        }} />
+        <div style={{
+          position: "absolute", left: "50%", top: "50%",
+          width: outerR * 2, height: outerR * 2, borderRadius: "50%",
+          border: "1px dashed rgba(204,17,0,0.06)",
+          transform: "translate(-50%, -50%)", pointerEvents: "none",
+        }} />
+
+        {/* Inner ring */}
+        {innerBubbles.map((b, i) => {
+          const sz = Math.round(b.size * 0.75);
+          const dur = 11 + i * 0.35;
+          const delay = -((i / innerBubbles.length) * dur);
+          return (
+            <div key={b.symbol} style={{
+              position: "absolute", left: "50%", top: "50%",
+              width: 0, height: 0,
+              animation: `orbitCW ${dur}s linear infinite`,
+              animationDelay: `${delay}s`,
+            }}>
+              <div style={{
+                position: "absolute",
+                left: innerR - sz / 2,
+                top: -(sz / 2),
+                animation: `orbitCCW ${dur}s linear infinite`,
+                animationDelay: `${delay}s`,
+              }}>
+                <BubbleInner symbol={b.symbol} color={b.color} size={sz} />
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Outer ring */}
+        {outerBubbles.map((b, i) => {
+          const sz = Math.round(b.size * 0.8);
+          const dur = 19 + i * 0.5;
+          const delay = -((i / outerBubbles.length) * dur);
+          return (
+            <div key={b.symbol} style={{
+              position: "absolute", left: "50%", top: "50%",
+              width: 0, height: 0,
+              animation: `orbitCW ${dur}s linear infinite`,
+              animationDelay: `${delay}s`,
+            }}>
+              <div style={{
+                position: "absolute",
+                left: outerR - sz / 2,
+                top: -(sz / 2),
+                animation: `orbitCCW ${dur}s linear infinite`,
+                animationDelay: `${delay}s`,
+              }}>
+                <BubbleInner symbol={b.symbol} color={b.color} size={sz} />
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Center: wizard */}
+        <div style={{
+          position: "absolute", left: "50%", top: "50%",
+          transform: "translate(-50%, -64%)", zIndex: 10,
+        }}>
+          <PixelWizard />
+        </div>
+
+        {/* Center: searched ticker bubble pops in — only when a real ticker is known */}
+        {ticker && (
+          <div style={{
+            position: "absolute", left: "50%", top: "50%",
+            transform: "translate(-50%, 10%)", zIndex: 11,
+          }}>
+            <div style={{ opacity: 0, animation: "fadeScaleIn 0.45s ease forwards 0.7s" }}>
+              <BubbleInner symbol={ticker} color="#cc1100" size={54} />
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+const ALL_SUGGESTIONS = [
+  { text: "Show me a stock's 6-month price chart", sub: "Price history · Any stock or ETF", icon: "linechart" },
+  { text: "Compare P/E ratios across a sector", sub: "Peer comparison · Valuations", icon: "barchart" },
+  { text: "Explain earnings per share surprises", sub: "EPS actual vs estimate", icon: "search" },
+  { text: "What do analyst ratings mean?", sub: "Buy · Hold · Sell · Consensus", icon: "analyst" },
+  { text: "What's the dividend yield on a stock?", sub: "Income · Dividend investing", icon: "barchart" },
+  { text: "How does a stock sit vs its 52-week range?", sub: "Momentum · High / Low context", icon: "linechart" },
+  { text: "Show me analyst price targets for a stock", sub: "Consensus target · Upside estimate", icon: "analyst" },
+  { text: "What's the latest news on a stock?", sub: "Headlines · Recent events", icon: "search" },
+  { text: "Explain what forward P/E means", sub: "Valuation · Growth expectations", icon: "barchart" },
+  { text: "What does market cap tell us?", sub: "Size · Risk · Sector context", icon: "analyst" },
+  { text: "How do ETFs compare to individual stocks?", sub: "Diversification · Passive investing", icon: "search" },
+  { text: "Show me a company's earnings history", sub: "Quarterly EPS trends · Growth", icon: "linechart" },
 ];
+
+function getRandomSuggestions() {
+  return [...ALL_SUGGESTIONS].sort(() => Math.random() - 0.5).slice(0, 4);
+}
 
 const CONSENSUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
   strongBuy:  { label: "Strong Buy",  color: "#22c55e", bg: "rgba(34,197,94,0.1)" },
@@ -368,111 +689,383 @@ function AnalystRatingsCard({ data }: { data: AnalystRatingsSpec }) {
 }
 
 function SuggestionIcon({ name }: { name: string }) {
-  const id = Math.random().toString(36).slice(2);
+  // All animations use CSS transforms (not SVG attribute animation) for crisp rendering
   if (name === "linechart") return (
-    <svg width="34" height="34" viewBox="0 0 34 34" fill="none">
-      <defs>
-        <linearGradient id={`lg-${id}`} x1="0" y1="0" x2="34" y2="0" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#cc1100" stopOpacity="0.3"/>
-          <stop offset="100%" stopColor="#cc1100"/>
-        </linearGradient>
-        <filter id={`glow-${id}`}>
-          <feGaussianBlur stdDeviation="1.5" result="blur"/>
-          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-        </filter>
-      </defs>
-      <polyline
-        points="3,27 10,19 16,22 22,12 31,8"
-        stroke={`url(#lg-${id})`} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
-        style={{ strokeDasharray: 80, strokeDashoffset: 80, animation: "drawStroke 1.2s ease forwards 0.1s" }}
+    <svg width="38" height="38" viewBox="0 0 38 38" fill="none" style={{ display: "block", overflow: "visible" }}>
+      <polyline points="3,30 11,21 18,25 26,13 35,8"
+        stroke="#cc1100" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" strokeOpacity="0.2"
       />
-      <circle cx="31" cy="8" r="3" fill="#cc1100" filter={`url(#glow-${id})`}
-        style={{ animation: "popIn 0.3s ease forwards 1.2s", transform: "scale(0)", transformOrigin: "31px 8px" }}
+      <polyline points="3,30 11,21 18,25 26,13 35,8"
+        stroke="#cc1100" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+        style={{ strokeDasharray: 95, strokeDashoffset: 95, animation: "drawStroke 1.1s ease forwards 0.1s" }}
       />
-      <polyline points="3,27 10,19 16,22 22,12 31,8"
-        stroke="#cc1100" strokeWidth="0.4" strokeLinecap="round" strokeLinejoin="round" strokeOpacity="0.2"
+      <polyline points="29,8 35,8 35,14"
+        stroke="#cc1100" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+        style={{ strokeDasharray: 20, strokeDashoffset: 20, animation: "drawStroke 0.35s ease forwards 1.1s" }}
+      />
+      <circle cx="35" cy="8" r="3" fill="#cc1100"
+        style={{ opacity: 0, animation: "popIn 0.25s ease forwards 1.4s" }}
       />
     </svg>
   );
   if (name === "barchart") return (
-    <svg width="34" height="34" viewBox="0 0 34 34" fill="none">
-      <defs>
-        <linearGradient id={`bar1-${id}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#cc1100"/><stop offset="100%" stopColor="#cc1100" stopOpacity="0.3"/>
-        </linearGradient>
-        <linearGradient id={`bar2-${id}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#cc1100" stopOpacity="0.8"/><stop offset="100%" stopColor="#cc1100" stopOpacity="0.2"/>
-        </linearGradient>
-        <linearGradient id={`bar3-${id}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#cc1100" stopOpacity="0.6"/><stop offset="100%" stopColor="#cc1100" stopOpacity="0.1"/>
-        </linearGradient>
-      </defs>
-      <rect x="4" y="30" width="6" height="0" rx="1.5" fill={`url(#bar1-${id})`}
-        style={{ animation: "growBar 0.6s ease forwards 0.1s", transformOrigin: "7px 30px" }}
+    <svg width="38" height="38" viewBox="0 0 38 38" fill="none" style={{ display: "block" }}>
+      {/* Bars use scaleY transform from bottom — CSS CAN animate transforms */}
+      <rect x="4"  y="16" width="8" height="18" rx="1.5" fill="#cc1100" fillOpacity="0.45"
+        style={{ transform: "scaleY(0)", transformOrigin: "8px 34px", animation: "scaleBarUp 0.45s ease forwards 0.1s" }}
       />
-      <rect x="14" y="30" width="6" height="0" rx="1.5" fill={`url(#bar2-${id})`}
-        style={{ animation: "growBar2 0.6s ease forwards 0.3s", transformOrigin: "17px 30px" }}
+      <rect x="16" y="10" width="8" height="24" rx="1.5" fill="#cc1100" fillOpacity="0.7"
+        style={{ transform: "scaleY(0)", transformOrigin: "20px 34px", animation: "scaleBarUp 0.45s ease forwards 0.28s" }}
       />
-      <rect x="24" y="30" width="6" height="0" rx="1.5" fill={`url(#bar3-${id})`}
-        style={{ animation: "growBar3 0.6s ease forwards 0.5s", transformOrigin: "27px 30px" }}
+      <rect x="28" y="5"  width="8" height="29" rx="1.5" fill="#cc1100"
+        style={{ transform: "scaleY(0)", transformOrigin: "32px 34px", animation: "scaleBarUp 0.45s ease forwards 0.46s" }}
       />
-      <line x1="2" y1="30" x2="32" y2="30" stroke="#333" strokeWidth="1" strokeLinecap="round"/>
     </svg>
   );
   if (name === "search") return (
-    <svg width="34" height="34" viewBox="0 0 34 34" fill="none">
-      <defs>
-        <filter id={`sglow-${id}`}>
-          <feGaussianBlur stdDeviation="2" result="blur"/>
-          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-        </filter>
-      </defs>
-      <circle cx="14" cy="14" r="9" stroke="#cc1100" strokeWidth="2.2" strokeOpacity="0.25"/>
-      <circle cx="14" cy="14" r="9" stroke="#cc1100" strokeWidth="2.2"
-        style={{ strokeDasharray: 56, strokeDashoffset: 56, animation: "drawStroke 0.9s ease forwards 0.1s" }}
-        filter={`url(#sglow-${id})`}
+    <svg width="38" height="38" viewBox="0 0 38 38" fill="none" style={{ display: "block" }}>
+      <circle cx="16" cy="16" r="11" stroke="#cc1100" strokeWidth="2.5" strokeOpacity="0.18" />
+      <circle cx="16" cy="16" r="11" stroke="#cc1100" strokeWidth="2.5" strokeLinecap="round"
+        style={{ strokeDasharray: 69, strokeDashoffset: 69, animation: "drawStroke 0.85s ease forwards 0.1s" }}
       />
-      <line x1="20.5" y1="20.5" x2="30" y2="30" stroke="#cc1100" strokeWidth="2.2" strokeLinecap="round"
-        style={{ strokeDasharray: 14, strokeDashoffset: 14, animation: "drawStroke 0.4s ease forwards 0.9s" }}
-      />
-      <circle cx="14" cy="14" r="4" fill="#cc1100" fillOpacity="0.12"
-        style={{ animation: "scanPulse 2s ease-in-out infinite 1.3s" }}
+      <line x1="24" y1="24" x2="34" y2="34" stroke="#cc1100" strokeWidth="2.5" strokeLinecap="round"
+        style={{ strokeDasharray: 15, strokeDashoffset: 15, animation: "drawStroke 0.35s ease forwards 0.9s" }}
       />
     </svg>
   );
   // analyst
   return (
-    <svg width="34" height="34" viewBox="0 0 34 34" fill="none">
-      <defs>
-        <filter id={`aglow-${id}`}>
-          <feGaussianBlur stdDeviation="1.5" result="blur"/>
-          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-        </filter>
-      </defs>
-      <circle cx="17" cy="11" r="5.5" stroke="#cc1100" strokeWidth="2"
-        style={{ strokeDasharray: 35, strokeDashoffset: 35, animation: "drawStroke 0.7s ease forwards 0.1s" }}
-        filter={`url(#aglow-${id})`}
+    <svg width="38" height="38" viewBox="0 0 38 38" fill="none" style={{ display: "block" }}>
+      <circle cx="19" cy="12" r="6.5" stroke="#cc1100" strokeWidth="2.5" strokeLinecap="round"
+        style={{ strokeDasharray: 41, strokeDashoffset: 41, animation: "drawStroke 0.65s ease forwards 0.1s" }}
       />
-      <path d="M5 30 C5 22 10 18 17 18 C24 18 29 22 29 30"
-        stroke="#cc1100" strokeWidth="2" strokeLinecap="round"
-        style={{ strokeDasharray: 50, strokeDashoffset: 50, animation: "drawStroke 0.8s ease forwards 0.7s" }}
+      <path d="M5 34 C5 26 11 21 19 21 C27 21 33 26 33 34"
+        stroke="#cc1100" strokeWidth="2.5" strokeLinecap="round"
+        style={{ strokeDasharray: 58, strokeDashoffset: 58, animation: "drawStroke 0.75s ease forwards 0.75s" }}
       />
-      <line x1="22" y1="19" x2="30" y2="11" stroke="#cc1100" strokeWidth="1.5" strokeLinecap="round" strokeOpacity="0.5"
-        style={{ strokeDasharray: 12, strokeDashoffset: 12, animation: "drawStroke 0.3s ease forwards 1.4s" }}
+      <line x1="25" y1="22" x2="33" y2="14" stroke="#cc1100" strokeWidth="2" strokeLinecap="round" strokeOpacity="0.5"
+        style={{ strokeDasharray: 12, strokeDashoffset: 12, animation: "drawStroke 0.28s ease forwards 1.45s" }}
       />
-      <polyline points="25,14 30,11 27,7" stroke="#cc1100" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
-        style={{ strokeDasharray: 14, strokeDashoffset: 14, animation: "drawStroke 0.4s ease forwards 1.6s" }}
+      <polyline points="28,17 33,14 30,9" stroke="#cc1100" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+        style={{ strokeDasharray: 15, strokeDashoffset: 15, animation: "drawStroke 0.35s ease forwards 1.65s" }}
       />
     </svg>
   );
 }
 
-function PixelWizard() {
+const WIZARD_PHRASES = [
+  "Fred — real-time market intelligence.",
+  "Your market assistant is ready.",
+  "Ask me anything about stocks, ETFs, or markets.",
+  "Live data. Analyst insights. On demand.",
+  "Fred — your self-directed investing companion.",
+  "Market intelligence, at your fingertips.",
+  "From price history to analyst consensus.",
+  "Stocks, ETFs, earnings — ask me anything.",
+  "Your financial information hub, powered by AI.",
+  "Real-time data, synthesized for you.",
+];
+
+const WIZARD_VARIANTS = [
+  // 0 — Teleport: portal rings + sparkles, scale bounce
+  {
+    animName: "wizardTeleportIn",
+    animDuration: "0.72s",
+    animEasing: "cubic-bezier(0.34, 1.56, 0.64, 1)",
+    ringColor: "#cc1100",
+    glowColor: "rgba(204,17,0,0.35)",
+    sparkColors: ["#cc1100","#ff6600","#ffaa00","#cc1100","#ff4400","#ffcc00","#cc1100","#ff6600"],
+    sparkChar: "✦",
+  },
+  // 1 — Lightning drop: drops from above with electric flash
+  {
+    animName: "wizardDropIn",
+    animDuration: "0.68s",
+    animEasing: "cubic-bezier(0.22, 1, 0.36, 1)",
+    ringColor: "#ffaa00",
+    glowColor: "rgba(255,180,0,0.3)",
+    sparkColors: ["#ffcc00","#ff8800","#ffee00","#ff6600","#ffbb00","#ffdd00","#ff9900","#ffcc00"],
+    sparkChar: "⚡",
+  },
+  // 2 — Vortex spin: rotates in with purple/gold
+  {
+    animName: "wizardSpinIn",
+    animDuration: "0.8s",
+    animEasing: "cubic-bezier(0.34, 1.4, 0.64, 1)",
+    ringColor: "#8844cc",
+    glowColor: "rgba(136,68,204,0.3)",
+    sparkColors: ["#aa55ff","#cc88ff","#ff66cc","#8844cc","#ff55aa","#bb44ff","#aa66ff","#dd88ff"],
+    sparkChar: "✦",
+  },
+  // 3 — Celestial Rise: ascends with silver/blue starlight
+  {
+    animName: "wizardCelestialRise",
+    animDuration: "1.2s",
+    animEasing: "cubic-bezier(0.22, 1, 0.36, 1)",
+    ringColor: "#00a0df",
+    glowColor: "rgba(0,160,223,0.25)",
+    sparkColors: ["#00a0df","#ffffff","#88ccee","#00a0df","#ffffff","#88ccee","#00a0df","#ffffff"],
+    sparkChar: "✨",
+  },
+  // 4 — Meteor Impact: fire streak slams in, then explosion
+  {
+    animName: "wizardImpactIn",
+    animDuration: "0.5s",
+    animEasing: "ease-out",
+    ringColor: "#ff4400",
+    glowColor: "rgba(255,68,0,0.4)",
+    sparkColors: ["#ff4400","#ff8800","#ffff00","#ff4400","#ff8800","#ffff00","#ff4400","#ff8800"],
+    sparkChar: "🔥",
+  },
+];
+
+function WizardMeteorEntrance({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ position: "relative", display: "inline-block" }}>
+      {/* The Meteor Streak */}
+      <div style={{
+        position: "absolute",
+        top: "42%", left: "50%",
+        width: 4, height: 160,
+        background: "linear-gradient(to top, #ffaa00, #ff4400, transparent)",
+        filter: "blur(1px) drop-shadow(0 0 10px #ff4400)",
+        borderRadius: "50% 50% 0 0",
+        transformOrigin: "bottom center",
+        animation: "meteorStreak 0.4s ease-in forwards",
+        zIndex: 10,
+        opacity: 0,
+      }} />
+      
+      {/* Impact Shockwave */}
+      <div style={{
+        position: "absolute",
+        left: "50%", top: "42%",
+        width: 10, height: 10,
+        marginLeft: -5, marginTop: -5,
+        borderRadius: "50%",
+        border: "2px solid #ffaa00",
+        animation: "meteorShockwave 0.5s ease-out forwards 0.35s",
+        opacity: 0, pointerEvents: "none",
+        zIndex: 5,
+      }} />
+
+      {/* Impact Flash */}
+      <div style={{
+        position: "absolute",
+        left: "50%", top: "42%",
+        width: 140, height: 140,
+        marginLeft: -70, marginTop: -70,
+        borderRadius: "50%",
+        background: "radial-gradient(circle, #fff 10%, #ffaa00 40%, transparent 70%)",
+        animation: "meteorFlash 0.45s ease-out forwards 0.35s",
+        opacity: 0, pointerEvents: "none",
+        zIndex: 15,
+      }} />
+
+      <div style={{ animation: "wizardImpactIn 0.6s cubic-bezier(0.17, 0.67, 0.83, 0.67) forwards 0.38s", opacity: 0 }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function WizardBounceEntrance({ children }: { children: React.ReactNode }) {
+  // Dust puff positions match the 3 "bubble landings" in wizardBounceIn keyframes
+  const landings = [
+    { x: 110,  y: 75,  delay: 0.50 },
+    { x: -75,  y: -80, delay: 1.02 },
+    { x: 0,    y: 12,  delay: 1.54 },
+  ];
+  return (
+    <div style={{ position: "relative", display: "inline-block" }}>
+      {landings.map((l, i) => (
+        <React.Fragment key={i}>
+          <div style={{
+            position: "absolute",
+            left: `calc(50% + ${l.x}px)`, top: `calc(50% + ${l.y}px)`,
+            width: 28, height: 28, borderRadius: "50%",
+            border: "2px solid rgba(204,17,0,0.55)",
+            transform: "translate(-50%, -50%)",
+            animation: `dustPuff 0.4s ease-out forwards ${l.delay}s`,
+            opacity: 0, pointerEvents: "none",
+          }} />
+          <div style={{
+            position: "absolute",
+            left: `calc(50% + ${l.x}px)`, top: `calc(50% + ${l.y}px)`,
+            width: 14, height: 14, borderRadius: "50%",
+            border: "1.5px solid rgba(204,17,0,0.3)",
+            transform: "translate(-50%, -50%)",
+            animation: `dustPuff 0.5s ease-out forwards ${l.delay + 0.05}s`,
+            opacity: 0, pointerEvents: "none",
+          }} />
+        </React.Fragment>
+      ))}
+      <div style={{ animation: "wizardBounceIn 1.85s cubic-bezier(0.4,0,0.2,1) forwards" }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function WizardScannerEntrance({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ position: "relative", display: "inline-block", padding: "0 10px" }}>
+      {/* Horizontal Laser Sweep Line */}
+      <div style={{
+        position: "absolute",
+        left: "-20%",
+        width: "140%",
+        height: 1,
+        backgroundColor: "#cc1100",
+        boxShadow: "0 0 10px #cc1100, 0 0 4px #ffaa00",
+        zIndex: 5,
+        animation: "scannerSweep 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards",
+        opacity: 0,
+      }} />
+      {/* Wizard Reveal following the laser line */}
+      <div style={{
+        animation: "wizardReveal 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards",
+        opacity: 0,
+        zIndex: 1,
+      }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function WizardShockwaveEntrance({ children, onCast }: { children: React.ReactNode, onCast: () => void }) {
+  const [phase, setPhase] = useState<"arrival" | "charging" | "casting" | "done">("arrival");
+  const onCastRef = useRef(onCast);
+  onCastRef.current = onCast;
+
+  useEffect(() => {
+    // Arrival: 0-0.8s → Charging: 0.8s-2.4s → Cast: 2.4s
+    const chargeTimer = setTimeout(() => setPhase("charging"), 800);
+    const castTimer = setTimeout(() => {
+      setPhase("casting");
+      onCastRef.current();
+      setTimeout(() => setPhase("done"), 1000);
+    }, 2400);
+    return () => { clearTimeout(chargeTimer); clearTimeout(castTimer); };
+  }, []); // run once — onCast accessed via ref to avoid restart loop
+
+  return (
+    <div style={{
+      position: "relative",
+      display: "inline-block",
+      animation: phase === "casting" ? "wizardCastAction 1s cubic-bezier(0.22, 1, 0.36, 1) forwards" : "none"
+    }}>
+      <div style={{ animation: "wizardTeleportIn 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards", opacity: 0 }}>
+        {children}
+
+        {/* Charging Glow — wand tip is at left ~11%, top ~38% of the wizard */}
+        {phase === "charging" && (
+          <div style={{
+            position: "absolute", left: "-8px", top: "34%",
+            width: 28, height: 28,
+            borderRadius: "50%",
+            background: "radial-gradient(circle, rgba(253,224,71,0.9) 0%, rgba(204,17,0,0.6) 50%, transparent 80%)",
+            animation: "wandCharge 0.35s ease-in-out infinite",
+            pointerEvents: "none", zIndex: 5,
+            transform: "translate(-50%, -50%)",
+          }} />
+        )}
+
+        {/* Cast burst — expands from the wand then fades */}
+        {phase === "casting" && (
+          <div style={{
+            position: "absolute", left: "-8px", top: "34%",
+            width: 80, height: 80,
+            transform: "translate(-50%, -50%)",
+            borderRadius: "50%",
+            background: "radial-gradient(circle, #fff 0%, #cc1100 35%, transparent 70%)",
+            animation: "castBurst 0.5s ease-out forwards",
+            zIndex: 10,
+            pointerEvents: "none",
+          }} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function WizardEntrance({ children, onShockwave }: { children: React.ReactNode, onShockwave?: () => void }) {
+  // 0-3: magic portal variants, 4: meteor impact, 5: bubble-bounce, 6: scanner, 7: shockwave
+  const [varIdx] = useState(() => Math.floor(Math.random() * 8));
+  const [v] = useState(() => WIZARD_VARIANTS[Math.min(varIdx, WIZARD_VARIANTS.length - 1)]);
+  
+  // Trigger onShockwave for non-shockwave variants after a delay if desired,
+  // but let's keep it specific to variant 7 for the "special" arrival.
+  useEffect(() => {
+    if (varIdx < 7 && onShockwave) {
+      // Small chance to shock even on normal entrance, or just skip.
+      // Let's just trigger it on a timer for variant 7.
+    }
+  }, [varIdx, onShockwave]);
+
+  if (varIdx === 7 && onShockwave) return <WizardShockwaveEntrance onCast={onShockwave}>{children}</WizardShockwaveEntrance>;
+  if (varIdx === 6) return <WizardScannerEntrance>{children}</WizardScannerEntrance>;
+  if (varIdx === 5) return <WizardBounceEntrance>{children}</WizardBounceEntrance>;
+  if (varIdx === 4) return <WizardMeteorEntrance>{children}</WizardMeteorEntrance>;
+  
+  const sparkles = [
+    { x: -40, y: -52 }, { x: 0, y: -64 }, { x: 40, y: -52 },
+    { x: 54, y: -12 }, { x: -54, y: -12 },
+    { x: -30, y: 14 },  { x: 30, y: 14 },
+    { x: 10, y: -68 },
+  ];
+  return (
+    <div style={{ position: "relative", display: "inline-block" }}>
+      {/* Portal rings */}
+      {[{ size: 96, delay: 0 }, { size: 64, delay: 0.1 }, { size: 42, delay: 0.18 }].map((r, i) => (
+        <div key={i} style={{
+          position: "absolute",
+          left: "50%", top: "42%",
+          width: r.size, height: r.size,
+          borderRadius: "50%",
+          border: `${i === 0 ? 2.5 : 1.5}px solid ${i === 0 ? v.ringColor : v.ringColor + "77"}`,
+          marginLeft: -r.size / 2, marginTop: -r.size / 2,
+          animation: `portalRing 0.75s cubic-bezier(0.2,0.8,0.4,1) forwards ${r.delay}s`,
+          opacity: 0, pointerEvents: "none", zIndex: 0,
+        }} />
+      ))}
+      {/* Glow burst */}
+      <div style={{
+        position: "absolute", left: "50%", top: "42%",
+        width: 80, height: 80, borderRadius: "50%",
+        background: `radial-gradient(circle, ${v.glowColor} 0%, transparent 70%)`,
+        marginLeft: -40, marginTop: -40,
+        animation: "glowBurst 0.5s ease-out forwards",
+        opacity: 0, pointerEvents: "none",
+      }} />
+      {/* Sparkle particles */}
+      {sparkles.map((s, i) => (
+        <div key={i} style={{
+          position: "absolute",
+          left: `calc(50% + ${s.x}px)`,
+          top: `calc(42% + ${s.y}px)`,
+          fontSize: i % 2 === 0 ? 11 : 8,
+          color: v.sparkColors[i],
+          animation: `sparkleFade 0.65s ease forwards ${0.04 + i * 0.055}s`,
+          opacity: 0, pointerEvents: "none", zIndex: 20, lineHeight: 1,
+          transform: "translate(-50%, -50%)",
+        }}>{v.sparkChar}</div>
+      ))}
+      {/* Fred himself */}
+      <div style={{ animation: `${v.animName} ${v.animDuration} ${v.animEasing} forwards`, opacity: 0 }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function PixelWizard({ width = 72, height = 104 }: { width?: number | string, height?: number | string }) {
   return (
     <div style={{ animation: "wizardFloat 3s ease-in-out infinite", display: "inline-block" }}>
       <svg
-        width="72"
-        height="104"
+        width={width}
+        height={height}
         viewBox="0 0 18 26"
         style={{ imageRendering: "pixelated" as const }}
         xmlns="http://www.w3.org/2000/svg"
@@ -539,6 +1132,53 @@ function PixelWizard() {
     </div>
   );
 }
+
+// Company name → ticker lookup (case-insensitive)
+const COMPANY_TO_TICKER: [string, string][] = [
+  // US mega-cap
+  ["apple", "AAPL"], ["microsoft", "MSFT"], ["google", "GOOGL"], ["alphabet", "GOOGL"],
+  ["amazon", "AMZN"], ["tesla", "TSLA"], ["nvidia", "NVDA"], ["meta", "META"],
+  ["netflix", "NFLX"], ["disney", "DIS"], ["berkshire", "BRK-B"], ["jpmorgan", "JPM"],
+  ["jp morgan", "JPM"], ["visa", "V"], ["mastercard", "MA"], ["paypal", "PYPL"],
+  ["salesforce", "CRM"], ["adobe", "ADBE"], ["intel", "INTC"], ["amd", "AMD"],
+  ["qualcomm", "QCOM"], ["broadcom", "AVGO"], ["oracle", "ORCL"], ["ibm", "IBM"],
+  ["exxon", "XOM"], ["chevron", "CVX"], ["pfizer", "PFE"], ["johnson", "JNJ"],
+  ["unitedhealth", "UNH"], ["walmart", "WMT"], ["costco", "COST"],
+  // Canadian
+  ["royal bank", "RY.TO"], ["rbc", "RY.TO"],
+  ["td bank", "TD.TO"], ["toronto dominion", "TD.TO"],
+  ["bmo", "BMO.TO"], ["bank of montreal", "BMO.TO"],
+  ["scotiabank", "BNS.TO"], ["bns", "BNS.TO"],
+  ["cibc", "CM.TO"],
+  ["national bank", "NA.TO"],
+  ["shopify", "SHOP.TO"],
+  ["enbridge", "ENB.TO"],
+  ["suncor", "SU.TO"],
+  ["manulife", "MFC.TO"],
+  ["telus", "T.TO"],
+  ["bce", "BCE.TO"],
+  ["cn rail", "CNR.TO"], ["canadian national", "CNR.TO"],
+  ["cp rail", "CP.TO"], ["canadian pacific", "CP.TO"],
+  ["thomson reuters", "TRI.TO"],
+  ["canadian natural", "CNQ.TO"],
+];
+
+function extractTicker(text: string): string {
+  const lower = text.toLowerCase();
+
+  // 1. Company name map (longest match first to avoid partial hits)
+  for (const [name, ticker] of COMPANY_TO_TICKER) {
+    if (lower.includes(name)) return ticker;
+  }
+
+  // 2. Explicit uppercase ticker in the text (e.g. "AAPL", "CNR.TO")
+  const STOP = new Set(["A", "I", "AT", "BE", "IS", "TO", "OF", "IN", "ON", "DO", "IF", "US", "THE", "FOR", "AND", "OR", "HOW", "WHY", "WHAT", "SHOW", "GET", "ITS", "ARE"]);
+  const upper = (text.match(/\b[A-Z]{2,5}(?:\.TO)?\b/g) || []).filter(t => !STOP.has(t));
+  if (upper.length > 0) return upper[0];
+
+  return "";
+}
+
 
 function formatYAxis(value: number) {
   return `$${value}`;
@@ -643,11 +1283,296 @@ function ChartMessage({ chart }: { chart: ChartSpec }) {
   );
 }
 
+const QUICK_ACTIONS = [
+  { label: "Show me visuals", msg: "Can you show me the price chart and key visuals for the stock we're discussing?" },
+  { label: "Compare with 3 peers", msg: "Compare this stock with exactly 3 of its closest peers — show P/E, revenue, market cap, and dividend yield side by side." },
+  { label: "Latest news", msg: "What's the latest news for the stock we're discussing?" },
+  { label: "Analyst ratings", msg: "Show me the analyst ratings breakdown and consensus for this stock." },
+  { label: "Earnings history", msg: "Show me the earnings per share history for this stock, actual vs estimate, as a chart." },
+  { label: "Key fundamentals", msg: "Give me a fundamentals snapshot for this stock: P/E, market cap, revenue, profit margin, and debt-to-equity." },
+  { label: "Dividend details", msg: "What are the dividend details for this stock? Yield, annual rate, and payout history." },
+  { label: "52-week range", msg: "Where does this stock currently sit relative to its 52-week high and low? Analyze the context." },
+  { label: "Analyst price target", msg: "What is the analyst consensus price target for this stock, and what does it imply?" },
+  { label: "Sector comparison", msg: "How does this stock compare to other companies in its sector? Focus on valuation and growth." },
+];
+
+function useTypewriter(text: string, speed = 38, startDelay = 600) {
+  const [displayed, setDisplayed] = useState("");
+  const [done, setDone] = useState(false);
+  useEffect(() => {
+    setDisplayed("");
+    setDone(false);
+    let i = 0;
+    const start = setTimeout(() => {
+      const iv = setInterval(() => {
+        i++;
+        setDisplayed(text.slice(0, i));
+        if (i >= text.length) { clearInterval(iv); setDone(true); }
+      }, speed);
+      return () => clearInterval(iv);
+    }, startDelay);
+    return () => clearTimeout(start);
+  }, [text]);
+  return { displayed, done };
+}
+
+const LOADING_PHRASES = [
+  "Gathering market intelligence...",
+  "Consulting the financial scrolls...",
+  "Alcheming the data points...",
+  "Analyzing ticker symbols...",
+  "Synthesizing analyst consensus...",
+  "Brewing a fresh response...",
+  "Polling the Big Six banks...",
+  "Extracting historical trends...",
+  "Mapping the volatility...",
+  "Polishing the crystal ball...",
+  "Crunching the quarterly numbers...",
+  "Scanning recent headlines...",
+  "Decoding the market sentiment...",
+  "Filtering out the noise...",
+  "Normalizing valuation metrics...",
+  "Preparing the visual charts...",
+  "Fact-checking the fundamentals...",
+  "Optimizing the insight engine...",
+  "Aligning the stars (and stocks)...",
+  "Finalizing the synthesis...",
+  "Reviewing the educational guardrails...",
+];
+
+function LoadingAssistant() {
+  const [phraseIdx, setPhraseIdx] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setPhraseIdx((prev) => (prev + 1) % LOADING_PHRASES.length);
+    }, 2800);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div style={{
+      position: "relative",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      animation: "floatingCloud 4s ease-in-out infinite",
+      zIndex: 100,
+    }}>
+      {/* Main sleek pill-shaped bubble */}
+      <div style={{
+        padding: "16px 28px",
+        backgroundColor: "rgba(255, 255, 255, 0.94)",
+        backdropFilter: "blur(12px)",
+        border: "1px solid #cc1100",
+        borderRadius: "32px",
+        boxShadow: "0 10px 30px rgba(0,0,0,0.08), 0 0 1px rgba(204,17,0,0.2)",
+        minWidth: 240,
+        textAlign: "center",
+        position: "relative",
+        zIndex: 2,
+      }}>
+        <div style={{
+          fontSize: 14,
+          fontWeight: 700,
+          color: "#cc1100",
+          fontStyle: "italic",
+          letterSpacing: "-0.01em",
+          lineHeight: 1.2,
+          opacity: 0,
+          animation: "fadeIn 0.4s ease forwards",
+        }} key={phraseIdx}>
+          {LOADING_PHRASES[phraseIdx]}
+        </div>
+      </div>
+
+      {/* Geometric Thinking Trail - Perfectly aligned circles */}
+      <div style={{ position: "relative", width: "100%", height: 50, marginTop: 4 }}>
+        <div style={{
+          position: "absolute", left: "42%", top: 0,
+          width: 14, height: 14, borderRadius: "50%",
+          backgroundColor: "#fff", border: "1px solid rgba(204,17,0,0.4)",
+          boxShadow: "0 4px 10px rgba(0,0,0,0.03)",
+        }} />
+        <div style={{
+          position: "absolute", left: "38%", top: 22,
+          width: 8, height: 8, borderRadius: "50%",
+          backgroundColor: "#fff", border: "1px solid rgba(204,17,0,0.3)",
+        }} />
+        <div style={{
+          position: "absolute", left: "35%", top: 36,
+          width: 5, height: 5, borderRadius: "50%",
+          backgroundColor: "#fff", border: "1px solid rgba(204,17,0,0.2)",
+        }} />
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [appPhase, setAppPhase] = useState<"home" | "forming" | "orbiting" | "chat" | "portfolio">("home");
+  const [orbitTicker, setOrbitTicker] = useState("");
+  const [orbitFading, setOrbitFading] = useState(false);
+  const [activeBubbles, setActiveBubbles] = useState<BubbleData[]>(() => getRandomBubbles());
+  const [formingOffsets, setFormingOffsets] = useState<Record<string, { x: number; y: number }>>({});
+  const [responseTicker, setResponseTicker] = useState("");
+  const [suggestions, setSuggestions] = useState(() => getRandomSuggestions());
+  const [expandedCharts, setExpandedCharts] = useState<Record<number, boolean>>({});
+  const [showActionMenu, setShowActionMenu] = useState(false);
+  // Portfolio state
+  const [portfolioPositions, setPortfolioPositions] = useState<Position[]>([]);
+  const [livePrices, setLivePrices] = useState<Record<string, LivePrice>>({});
+  const [showPremiumMenu, setShowPremiumMenu] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [isShockwave, setIsShockwave] = useState(false);
+  const [addTicker, setAddTicker] = useState("");
+  const [addShares, setAddShares] = useState("");
+  const [addCost, setAddCost] = useState("");
+  const [fetchingPrices, setFetchingPrices] = useState(false);
+  const [wizardPhrase] = useState(() => WIZARD_PHRASES[Math.floor(Math.random() * WIZARD_PHRASES.length)]);
+  const { displayed: titleTyped, done: titleDone } = useTypewriter(wizardPhrase);
+  const [contentVisible, setContentVisible] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setContentVisible(true), 820); return () => clearTimeout(t); }, []);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const premiumMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isShockwave) {
+      // bubbleShock runs 1.8s, let it fully complete + settle before clearing
+      const timer = setTimeout(() => setIsShockwave(false), 2200);
+      return () => clearTimeout(timer);
+    }
+  }, [isShockwave]);
+
+  function goHome() {
+    setAppPhase("home");
+    setMessages([]);
+    setInput("");
+    setOrbitTicker("");
+    setOrbitFading(false);
+    setFormingOffsets({});
+    setActiveBubbles(getRandomBubbles());
+    setSuggestions(getRandomSuggestions());
+    setExpandedCharts({});
+    setShowActionMenu(false);
+    setShowPremiumMenu(false);
+  }
+
+  // ── Portfolio helpers ───────────────────────────────────────────────────
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("fred_portfolio");
+      if (saved) setPortfolioPositions(JSON.parse(saved));
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("fred_portfolio", JSON.stringify(portfolioPositions));
+  }, [portfolioPositions]);
+
+  useEffect(() => {
+    if (appPhase === "portfolio" && portfolioPositions.length > 0) fetchLivePrices();
+  }, [appPhase]);
+
+  async function fetchLivePrices() {
+    if (portfolioPositions.length === 0) return;
+    setFetchingPrices(true);
+    const results: Record<string, LivePrice> = {};
+    await Promise.all(portfolioPositions.map(async (p) => {
+      try {
+        const res = await fetch(`/api/quote?symbol=${p.ticker}`);
+        const d = await res.json();
+        if (d.price != null) results[p.ticker] = {
+          price: d.price, currency: d.currency || "USD",
+          change: d.change || 0, changePercent: d.changePercent || 0,
+          name: d.longName || d.shortName || p.ticker,
+        };
+      } catch {}
+    }));
+    setLivePrices(prev => ({ ...prev, ...results }));
+    setFetchingPrices(false);
+  }
+
+  function addPosition() {
+    const ticker = addTicker.trim().toUpperCase();
+    const shares = parseFloat(addShares);
+    const avgCost = parseFloat(addCost);
+    if (!ticker || isNaN(shares) || shares <= 0 || isNaN(avgCost) || avgCost <= 0) return;
+    const newPos: Position = { id: Date.now().toString(), ticker, shares, avgCost };
+    const updated = [...portfolioPositions, newPos];
+    setPortfolioPositions(updated);
+    setAddTicker(""); setAddShares(""); setAddCost(""); setShowAddForm(false);
+    // fetch live price for new position
+    fetch(`/api/quote?symbol=${ticker}`).then(r => r.json()).then(d => {
+      if (d.price != null) setLivePrices(prev => ({ ...prev, [ticker]: {
+        price: d.price, currency: d.currency || "USD",
+        change: d.change || 0, changePercent: d.changePercent || 0,
+        name: d.longName || d.shortName || ticker,
+      }}));
+    }).catch(() => {});
+  }
+
+  function removePosition(id: string) {
+    setPortfolioPositions(prev => prev.filter(p => p.id !== id));
+  }
+
+  function buildPortfolioContext(): string {
+    if (portfolioPositions.length === 0) return "";
+    let totalCost = 0, totalValue = 0;
+    const lines = portfolioPositions.map(p => {
+      const lp = livePrices[p.ticker];
+      const cost = p.shares * p.avgCost;
+      totalCost += cost;
+      if (lp) {
+        const val = p.shares * lp.price;
+        totalValue += val;
+        const pnl = val - cost;
+        const pct = (pnl / cost) * 100;
+        return `- ${p.ticker}: ${p.shares} shares @ $${p.avgCost.toFixed(2)} avg cost → current $${lp.price.toFixed(2)} ${lp.currency} → ${pct >= 0 ? "+" : ""}${pct.toFixed(1)}% → $${val.toFixed(0)} value`;
+      }
+      return `- ${p.ticker}: ${p.shares} shares @ $${p.avgCost.toFixed(2)} avg cost (live price unavailable)`;
+    });
+    const pnl = totalValue - totalCost;
+    const pct = totalCost > 0 ? (pnl / totalCost) * 100 : 0;
+    return `SIMULATED PORTFOLIO CONTEXT (factual data — no investment advice):
+The user has the following simulated portfolio positions:
+${lines.join("\n")}
+
+Portfolio summary: Current value $${totalValue.toFixed(0)} vs cost basis $${totalCost.toFixed(0)} (${pnl >= 0 ? "+" : ""}$${pnl.toFixed(0)}, ${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%)
+
+When discussing this portfolio: present only factual metrics (allocation %, sector exposure, concentration, P&L attribution). Do NOT recommend buying, selling, or holding any position. Do NOT give investment advice.`;
+  }
+
+  function toggleChart(index: number) {
+    setExpandedCharts(prev => ({ ...prev, [index]: !prev[index] }));
+  }
+
+  useEffect(() => {
+    if (!showActionMenu) return;
+    function handleOutsideClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowActionMenu(false);
+      }
+    }
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, [showActionMenu]);
+
+  useEffect(() => {
+    if (!showPremiumMenu) return;
+    function handleOutsideClick(e: MouseEvent) {
+      if (premiumMenuRef.current && !premiumMenuRef.current.contains(e.target as Node)) {
+        setShowPremiumMenu(false);
+      }
+    }
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, [showPremiumMenu]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -655,24 +1580,94 @@ export default function Home() {
 
   async function sendMessage(text: string) {
     if (!text.trim() || loading) return;
+    const isPortfolio = appPhase === "portfolio";
+    const isFirst = messages.length === 0 && !isPortfolio;
     const userMsg: Message = { role: "user", content: text };
     const newMessages = [...messages, userMsg];
     setMessages(newMessages);
     setInput("");
     setLoading(true);
 
-    try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: newMessages }),
+    // Only show a loading bubble when we're clearly asking about a specific known stock
+    const RESP_STOP = new Set(["A","I","AT","BE","IS","TO","OF","IN","ON","DO","IF","US","THE","FOR","AND","OR","HOW","WHY","WHAT","SHOW","GET","ITS","ARE","ETF","USD","CAD","EPS","P/E","CEO","BUY","HOLD","SELL"]);
+    let responseSym = "";
+    const lowerText = text.toLowerCase();
+    for (const [name, ticker] of COMPANY_TO_TICKER) {
+      if (lowerText.includes(name)) { responseSym = ticker; break; }
+    }
+    if (!responseSym) {
+      const upperMatches = (text.match(/\b[A-Z]{2,5}(?:\.TO)?\b/g) || []).filter(t => !RESP_STOP.has(t));
+      for (const m of upperMatches) {
+        if (ALL_TICKERS_SET.has(m) || ALL_TICKERS_SET.has(m.replace(/\.TO$/i, ""))) { responseSym = m; break; }
+      }
+    }
+    setResponseTicker(responseSym);
+
+    // Kick off the API fetch immediately (runs in parallel with forming animation)
+    const portfolioCtx = isPortfolio ? buildPortfolioContext() : undefined;
+    const fetchPromise = fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages: newMessages, portfolioContext: portfolioCtx }),
+    });
+
+    if (isFirst) {
+      // Compute fly-to-center vectors for each bubble from its screen position to viewport center
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const headerH = 52;
+      const containerH = vh - headerH;
+      const cX = vw / 2;
+      const cY = headerH + containerH / 2;
+      const offsets: Record<string, { x: number; y: number }> = {};
+      activeBubbles.forEach(b => {
+        const bL = (parseFloat(b.left) / 100) * vw;
+        const bT = headerH + (parseFloat(b.top) / 100) * containerH;
+        offsets[b.symbol] = { x: cX - bL, y: cY - bT };
       });
+      setFormingOffsets(offsets);
+      setOrbitTicker(responseSym || extractTicker(text));
+      setAppPhase("forming");
+      await new Promise(r => setTimeout(r, 750));
+      setAppPhase("orbiting");
+    }
+
+    const fetchStart = Date.now();
+
+    try {
+      const res = await fetchPromise;
       const data = await res.json();
-      setMessages([...newMessages, { role: "assistant", content: data.content, charts: data.charts || [], analystRatings: data.analystRatings || [] }]);
+      const mentionedTickers: string[] = data.mentionedTickers || [];
+      const assistantMsg: Message = { role: "assistant", content: data.content, charts: data.charts || [], analystRatings: data.analystRatings || [], tickers: mentionedTickers.length > 0 ? mentionedTickers : undefined };
+
+      if (isFirst) {
+        const elapsed = Date.now() - fetchStart;
+        if (elapsed < 2800) await new Promise((r) => setTimeout(r, 2800 - elapsed));
+        setLoading(false);
+        setOrbitFading(true);
+        await new Promise((r) => setTimeout(r, 2000));
+        setMessages([...newMessages, assistantMsg]);
+        setAppPhase("chat");
+        setOrbitFading(false);
+      } else {
+        setMessages([...newMessages, assistantMsg]);
+        setLoading(false);
+      }
     } catch {
-      setMessages([...newMessages, { role: "assistant", content: "Sorry, something went wrong. Please try again." }]);
-    } finally {
-      setLoading(false);
+      const errorMsg: Message = { role: "assistant", content: "Sorry, something went wrong. Please try again." };
+      if (isFirst) {
+        const elapsed = Date.now() - fetchStart;
+        if (elapsed < 2800) await new Promise((r) => setTimeout(r, 2800 - elapsed));
+        setLoading(false);
+        setOrbitFading(true);
+        await new Promise((r) => setTimeout(r, 500));
+        setMessages([...newMessages, errorMsg]);
+        setAppPhase("chat");
+        setOrbitFading(false);
+      } else {
+        setMessages([...newMessages, errorMsg]);
+        setLoading(false);
+      }
     }
   }
 
@@ -697,40 +1692,144 @@ export default function Home() {
         flexShrink: 0,
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{
-            width: 30, height: 30,
-            background: "#cc1100",
-            borderRadius: 8,
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}>
-            <TrendingUp size={16} color="#fff" strokeWidth={2.5} />
-          </div>
+          <PixelWizard width="24" height="34" />
           <div>
             <div style={{ fontSize: 14, fontWeight: 600, color: "#1d1a1b", letterSpacing: "-0.01em" }}>
-              Market Assistant
+              Fred, The Market Wizard
             </div>
             <div style={{ fontSize: 10, color: "#555", marginTop: -1 }}>
-              Real-time data · Powered by Claude
+              Powered By Barrows Consulting
             </div>
           </div>
         </div>
-        <div style={{
-          fontSize: 10,
-          color: "#555",
-          padding: "3px 8px",
-          borderRadius: 4,
-          border: "1px solid rgba(28,26,27,0.1)",
-          letterSpacing: "0.02em",
-        }}>
-          EDUCATIONAL USE ONLY
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {(appPhase === "chat" || appPhase === "portfolio") && (
+            <button
+              onClick={goHome}
+              style={{
+                fontSize: 11, color: "#555", padding: "4px 10px", borderRadius: 6,
+                border: "1px solid rgba(28,26,27,0.12)", backgroundColor: "transparent",
+                cursor: "pointer", display: "flex", alignItems: "center", gap: 5,
+                transition: "border-color 0.15s, color 0.15s",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = "#cc1100"; e.currentTarget.style.color = "#cc1100"; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(28,26,27,0.12)"; e.currentTarget.style.color = "#555"; }}
+            >
+              ← Home
+            </button>
+          )}
+
+          {/* Premium dropdown */}
+          <div style={{ position: "relative" }} ref={premiumMenuRef}>
+            <button
+              onClick={() => setShowPremiumMenu(v => !v)}
+              style={{
+                fontSize: 11, fontWeight: 600, padding: "4px 10px", borderRadius: 6,
+                border: `1px solid ${showPremiumMenu ? "#cc1100" : "rgba(204,17,0,0.4)"}`,
+                backgroundColor: showPremiumMenu ? "rgba(204,17,0,0.08)" : "rgba(204,17,0,0.04)",
+                color: "#cc1100", cursor: "pointer",
+                display: "flex", alignItems: "center", gap: 4,
+                transition: "all 0.15s",
+              }}
+            >
+              ✦ Premium <span style={{ fontSize: 8 }}>{showPremiumMenu ? "▲" : "▼"}</span>
+            </button>
+            {showPremiumMenu && (
+              <div style={{
+                position: "absolute", top: "calc(100% + 6px)", right: 0,
+                backgroundColor: "#ffffff", border: "1px solid rgba(28,26,27,0.12)",
+                borderRadius: 10, boxShadow: "0 4px 24px rgba(0,0,0,0.10)",
+                padding: 6, zIndex: 200, minWidth: 220,
+              }}>
+                <button
+                  onClick={() => { setAppPhase("portfolio"); setMessages([]); setShowPremiumMenu(false); }}
+                  style={{
+                    width: "100%", padding: "9px 12px", borderRadius: 7, textAlign: "left",
+                    border: "none", backgroundColor: "transparent", fontSize: 12,
+                    color: "#1d1a1b", cursor: "pointer", display: "flex", flexDirection: "column", gap: 1,
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.backgroundColor = "#f5f2ee"}
+                  onMouseLeave={e => e.currentTarget.style.backgroundColor = "transparent"}
+                >
+                  <span style={{ fontWeight: 600, display: "flex", alignItems: "center", gap: 7 }}>
+                    <svg width="15" height="15" viewBox="0 0 20 20" fill="none" style={{ flexShrink: 0 }}>
+                      <rect x="1" y="10" width="4" height="8" rx="1" fill="#cc1100" opacity="0.7"/>
+                      <rect x="7" y="6" width="4" height="12" rx="1" fill="#cc1100" opacity="0.85"/>
+                      <rect x="13" y="2" width="4" height="16" rx="1" fill="#cc1100"/>
+                      <polyline points="2,9 8,5 14,2" stroke="#cc1100" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.4"/>
+                      <circle cx="2" cy="9" r="1.5" fill="#cc1100" opacity="0.6"/>
+                      <circle cx="8" cy="5" r="1.5" fill="#cc1100" opacity="0.75"/>
+                      <circle cx="14" cy="2" r="1.5" fill="#cc1100"/>
+                    </svg>
+                    Portfolio Simulator
+                  </span>
+                  <span style={{ fontSize: 10, color: "#888" }}>Build & analyze a simulated portfolio</span>
+                </button>
+                <button
+                  disabled
+                  style={{
+                    width: "100%", padding: "9px 12px", borderRadius: 7, textAlign: "left",
+                    border: "none", backgroundColor: "transparent", fontSize: 12,
+                    color: "#aaa", cursor: "not-allowed", display: "flex", flexDirection: "column", gap: 1,
+                  }}
+                >
+                  <span style={{ fontWeight: 600, display: "flex", alignItems: "center", gap: 7 }}>
+                    <svg width="15" height="15" viewBox="0 0 20 20" fill="none" style={{ flexShrink: 0 }}>
+                      <circle cx="8" cy="8" r="5.5" stroke="#aaa" strokeWidth="1.6"/>
+                      <line x1="12" y1="12" x2="18" y2="18" stroke="#aaa" strokeWidth="2" strokeLinecap="round"/>
+                      <line x1="5" y1="8" x2="11" y2="8" stroke="#aaa" strokeWidth="1.3" strokeLinecap="round" opacity="0.6"/>
+                      <line x1="8" y1="5" x2="8" y2="11" stroke="#aaa" strokeWidth="1.3" strokeLinecap="round" opacity="0.6"/>
+                    </svg>
+                    Deep Fundamentals Analysis
+                    <span style={{ fontSize: 9, backgroundColor: "#f0ece8", color: "#999", padding: "1px 5px", borderRadius: 4, fontWeight: 500 }}>Soon</span>
+                  </span>
+                  <span style={{ fontSize: 10, color: "#bbb" }}>Advanced financial modelling</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div style={{
+            fontSize: 10, color: "#555", padding: "3px 8px", borderRadius: 4,
+            border: "1px solid rgba(28,26,27,0.1)", letterSpacing: "0.02em",
+          }}>
+            EDUCATIONAL USE ONLY
+          </div>
         </div>
       </header>
 
-      {/* Empty home screen */}
-      {messages.length === 0 && (
+      {/* Home + Forming screens share the same DOM for seamless transition */}
+      {(appPhase === "home" || appPhase === "forming") && (
         <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
-          {/* Floating bubbles background */}
-          {FLOATING_BUBBLES.map((b) => <FloatingBubble key={b.symbol} {...b} />)}
+          {/* Floating bubbles — fly to center when forming */}
+          {activeBubbles.map((b) => (
+            <FloatingBubble
+              key={b.symbol} {...b}
+              forming={appPhase === "forming"}
+              isShockwave={isShockwave}
+              toX={formingOffsets[b.symbol]?.x ?? 0}
+              toY={formingOffsets[b.symbol]?.y ?? 0}
+            />
+          ))}
+
+          {/* Shockwave Rings */}
+          {isShockwave && (<>
+            <div style={{
+              position: "absolute", left: "50%", top: "42%",
+              width: 10, height: 10, borderRadius: "50%",
+              border: "4px solid #cc1100",
+              animation: "shockwaveRing 1s ease-out forwards",
+              zIndex: 10, pointerEvents: "none",
+            }} />
+            <div style={{
+              position: "absolute", left: "50%", top: "42%",
+              width: 10, height: 10, borderRadius: "50%",
+              border: "2px solid #fde047",
+              animation: "shockwaveRing 1s ease-out forwards",
+              animationDelay: "0.12s",
+              zIndex: 10, pointerEvents: "none",
+            }} />
+          </>)}
 
           {/* Center content */}
           <div style={{
@@ -739,65 +1838,109 @@ export default function Home() {
             alignItems: "center", justifyContent: "center",
             padding: "0 20px",
           }}>
-            <div style={{ marginBottom: 16 }}><PixelWizard /></div>
-            <div style={{ fontSize: 20, fontWeight: 600, marginBottom: 6, color: "#1d1a1b", letterSpacing: "-0.02em" }}>
-              Market Assistant
+            {/* Wizard stays visible during forming, scales up slightly */}
+            <div style={{
+              marginBottom: 16,
+              transform: appPhase === "forming" ? "scale(1.12)" : "scale(1)",
+              transition: "transform 0.5s ease",
+            }}>
+              <WizardEntrance onShockwave={() => setIsShockwave(true)}>
+                <PixelWizard />
+              </WizardEntrance>
             </div>
-            <div style={{ color: "#555", marginBottom: 24, fontSize: 13 }}>
-              Ask about stocks, earnings, analyst views, or market trends.
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, width: "100%", maxWidth: 480, marginBottom: 16 }}>
-              {SUGGESTIONS.map((s) => (
-                <button key={s.text} onClick={() => sendMessage(s.text)} style={{
-                  padding: "12px 14px", textAlign: "left", borderRadius: 8,
-                  border: "1px solid rgba(28,26,27,0.1)", backgroundColor: "#ffffff",
-                  cursor: "pointer", width: "100%", transition: "border-color 0.15s, background 0.15s",
-                }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = "#cc1100"; e.currentTarget.style.backgroundColor = "#ede8e4"; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(28,26,27,0.1)"; e.currentTarget.style.backgroundColor = "#ffffff"; }}
+
+            {/* Title + cards + input — hidden until Fred lands, fade out during forming */}
+            <div style={{
+              display: "flex", flexDirection: "column", alignItems: "center", width: "100%",
+              opacity: appPhase === "forming" ? 0 : contentVisible ? 1 : 0,
+              transform: appPhase === "forming" ? "translateY(-12px) scale(0.97)" : contentVisible ? "translateY(0)" : "translateY(10px)",
+              transition: "opacity 0.45s ease, transform 0.45s ease",
+              pointerEvents: appPhase === "forming" ? "none" : "auto",
+            }}>
+              <div style={{ fontSize: 20, fontWeight: 600, marginBottom: 6, color: "#1d1a1b", letterSpacing: "-0.02em", minHeight: "1.4em" }}>
+                {titleTyped}
+                {!titleDone && <span style={{ display: "inline-block", width: 2, height: "1em", background: "#cc1100", marginLeft: 2, verticalAlign: "text-bottom", animation: "blink 0.8s step-end infinite" }} />}
+              </div>
+              <div style={{ color: "#555", marginBottom: 24, fontSize: 13, opacity: titleDone ? 1 : 0, transition: "opacity 0.5s ease" }}>
+                stocks, ETFs, earnings, analyst views, and market trends.
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, width: "100%", maxWidth: 480, marginBottom: 16 }}>
+                {suggestions.map((s) => (
+                  <button key={s.text} onClick={() => sendMessage(s.text)} style={{
+                    padding: "12px 14px", textAlign: "left", borderRadius: 8,
+                    border: "1px solid rgba(28,26,27,0.1)", backgroundColor: "#ffffff",
+                    cursor: "pointer", width: "100%", transition: "border-color 0.15s, background 0.15s",
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = "#cc1100"; e.currentTarget.style.backgroundColor = "#ede8e4"; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(28,26,27,0.1)"; e.currentTarget.style.backgroundColor = "#ffffff"; }}
+                  >
+                    <div style={{ marginBottom: 6 }}><SuggestionIcon name={s.icon} /></div>
+                    <div style={{ fontSize: 12, fontWeight: 500, color: "#1d1a1b", lineHeight: 1.4 }}>{s.text}</div>
+                    <div style={{ fontSize: 11, color: "#555", marginTop: 3 }}>{s.sub}</div>
+                  </button>
+                ))}
+              </div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", width: "100%", maxWidth: 480 }}>
+                <input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Ask about a stock, ETF, or market concept..."
+                  autoFocus
+                  style={{
+                    flex: 1, padding: "10px 14px", borderRadius: 8,
+                    border: "1px solid rgba(28,26,27,0.14)", backgroundColor: "#ffffff",
+                    color: "#1d1a1b", fontSize: 13, outline: "none",
+                  }}
+                />
+                <button
+                  onClick={() => sendMessage(input)}
+                  disabled={!input.trim()}
+                  style={{
+                    width: 36, height: 36, borderRadius: 8, border: "none", flexShrink: 0,
+                    backgroundColor: input.trim() ? "#cc1100" : "#1a1a1a",
+                    color: input.trim() ? "#fff" : "#444",
+                    cursor: input.trim() ? "pointer" : "not-allowed",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    transition: "background 0.15s",
+                  }}
                 >
-                  <div style={{ marginBottom: 6 }}><SuggestionIcon name={s.icon} /></div>
-                  <div style={{ fontSize: 12, fontWeight: 500, color: "#1d1a1b", lineHeight: 1.4 }}>{s.text}</div>
-                  <div style={{ fontSize: 11, color: "#555", marginTop: 3 }}>{s.sub}</div>
+                  <Send size={14} strokeWidth={2} />
                 </button>
-              ))}
-            </div>
-            {/* Centered input bar */}
-            <div style={{ display: "flex", gap: 8, alignItems: "center", width: "100%", maxWidth: 480 }}>
-              <input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Ask about a stock, ETF, or market concept..."
-                autoFocus
-                style={{
-                  flex: 1, padding: "10px 14px", borderRadius: 8,
-                  border: "1px solid rgba(28,26,27,0.14)", backgroundColor: "#ffffff",
-                  color: "#1d1a1b", fontSize: 13, outline: "none",
-                }}
-              />
-              <button
-                onClick={() => sendMessage(input)}
-                disabled={!input.trim()}
-                style={{
-                  width: 36, height: 36, borderRadius: 8, border: "none", flexShrink: 0,
-                  backgroundColor: input.trim() ? "#cc1100" : "#1a1a1a",
-                  color: input.trim() ? "#fff" : "#444",
-                  cursor: input.trim() ? "pointer" : "not-allowed",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  transition: "background 0.15s",
-                }}
-              >
-                <Send size={14} strokeWidth={2} />
-              </button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
+      {/* Orbit animation screen */}
+      {appPhase === "orbiting" && (
+        <div style={{
+          flex: 1, display: "flex", flexDirection: "column",
+          opacity: orbitFading ? 0 : 1,
+          transition: "opacity 2s ease",
+          animation: "fadeIn 0.4s ease forwards",
+          position: "relative",
+        }}>
+          <OrbitScene ticker={orbitTicker} bubbles={activeBubbles} />
+          {/* Geometric Thinking Bubble positioned cleanly above the wizard */}
+          <div style={{
+            position: "absolute",
+            top: "18%",
+            left: "50%",
+            transform: "translateX(-48%)",
+            zIndex: 100,
+            animation: "fadeScaleIn 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards 0.2s",
+            opacity: 0,
+          }}>
+            <LoadingAssistant />
+          </div>
+        </div>
+      )}
+
       {/* Messages area — only when chatting */}
-      {messages.length > 0 && (
-      <div style={{ flex: 1, overflowY: "auto", padding: "24px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
+      {appPhase === "chat" && (
+      <div style={{ flex: 1, overflowY: "auto", padding: "24px 20px", display: "flex", flexDirection: "column", gap: 16, opacity: 0, animation: "fadeSlideUp 1s cubic-bezier(0.22,1,0.36,1) forwards" }}>
         {messages.map((msg, i) => (
           <div key={i} style={{
             display: "flex",
@@ -809,9 +1952,9 @@ export default function Home() {
               maxWidth: msg.role === "user" ? "70%" : "80%",
               padding: msg.role === "user" ? "9px 14px" : "12px 16px",
               borderRadius: msg.role === "user" ? "14px 14px 3px 14px" : "14px 14px 14px 3px",
-              backgroundColor: msg.role === "user" ? "#cc1100" : "#111",
-              border: msg.role === "user" ? "none" : "1px solid rgba(28,26,27,0.1)",
-              color: msg.role === "user" ? "#fff" : "#6b6460",
+              backgroundColor: msg.role === "user" ? "#cc1100" : "#ffffff",
+              border: msg.role === "user" ? "none" : "1px solid rgba(28,26,27,0.09)",
+              color: msg.role === "user" ? "#fff" : "#2c2a29",
               fontSize: 13,
               lineHeight: 1.6,
               wordBreak: "break-word",
@@ -819,6 +1962,16 @@ export default function Home() {
               {msg.role === "user" ? (
                 msg.content
               ) : (
+                <>
+                  {msg.tickers && msg.tickers.length > 0 && (
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10, paddingBottom: 10, borderBottom: "1px solid rgba(28,26,27,0.07)" }}>
+                      {msg.tickers.map((ticker, ti) => (
+                        <div key={ticker} style={{ opacity: 0, animation: `fadeScaleIn 0.35s ease forwards ${ti * 0.07}s` }}>
+                          <BubbleInner symbol={ticker} color={symbolColor(ticker)} size={38} />
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
                   components={{
@@ -829,40 +1982,75 @@ export default function Home() {
                       <th style={{ padding: "6px 10px", borderBottom: "1px solid rgba(28,26,27,0.1)", textAlign: "left", color: "#666", fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em" }}>{withIcons(children)}</th>
                     ),
                     td: ({ children }) => (
-                      <td style={{ padding: "6px 10px", borderBottom: "1px solid rgba(28,26,27,0.05)", color: "#d0d0d0" }}>{withIcons(children)}</td>
+                      <td style={{ padding: "6px 10px", borderBottom: "1px solid rgba(28,26,27,0.06)", color: "#3a3836" }}>{withIcons(children)}</td>
                     ),
                     p: ({ children }) => <p style={{ margin: "6px 0", lineHeight: 1.7 }}>{withIcons(children)}</p>,
                     ul: ({ children }) => <ul style={{ margin: "6px 0", paddingLeft: 16 }}>{children}</ul>,
                     ol: ({ children }) => <ol style={{ margin: "6px 0", paddingLeft: 16 }}>{children}</ol>,
                     li: ({ children }) => <li style={{ marginBottom: 4, lineHeight: 1.6 }}>{withIcons(children)}</li>,
-                    strong: ({ children }) => <strong style={{ color: "#f0f0f0", fontWeight: 600 }}>{children}</strong>,
+                    strong: ({ children }) => <strong style={{ color: "#1d1a1b", fontWeight: 700 }}>{children}</strong>,
                     h2: ({ children }) => (
                       <div style={{ margin: "14px 0 6px", display: "flex", alignItems: "center", gap: 8 }}>
-                        <span style={{ fontSize: 13, fontWeight: 700, color: "#f0f0f0", letterSpacing: "-0.01em" }}>{withIcons(children)}</span>
-                        <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, rgba(204,17,0,0.25), transparent)" }}/>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: "#1d1a1b", letterSpacing: "-0.01em" }}>{withIcons(children)}</span>
+                        <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, rgba(204,17,0,0.3), transparent)" }}/>
                       </div>
                     ),
-                    h3: ({ children }) => <h3 style={{ margin: "10px 0 4px", fontSize: 12, fontWeight: 700, color: "#cc1100", textTransform: "uppercase", letterSpacing: "0.06em" }}>{withIcons(children)}</h3>,
+                    h3: ({ children }) => <h3 style={{ margin: "10px 0 4px", fontSize: 11, fontWeight: 700, color: "#cc1100", textTransform: "uppercase", letterSpacing: "0.07em" }}>{withIcons(children)}</h3>,
                     a: ({ href, children }) => <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: "#cc1100", textDecoration: "underline" }}>{children}</a>,
-                    blockquote: ({ children }) => <blockquote style={{ margin: "10px 0 4px", padding: "8px 12px", borderLeft: "2px solid #cc1100", backgroundColor: "rgba(224,85,32,0.05)", borderRadius: "0 4px 4px 0", color: "#888", fontSize: 12 }}>{children}</blockquote>,
-                    code: ({ children }) => <code style={{ backgroundColor: "#ede8e4", padding: "1px 5px", borderRadius: 3, fontSize: 12, color: "#cc1100" }}>{children}</code>,
-                    hr: () => <hr style={{ border: "none", borderTop: "1px solid rgba(255,255,255,0.06)", margin: "10px 0" }}/>,
+                    blockquote: ({ children }) => <blockquote style={{ margin: "10px 0 4px", padding: "8px 12px", borderLeft: "2px solid #cc1100", backgroundColor: "rgba(204,17,0,0.04)", borderRadius: "0 4px 4px 0", color: "#666", fontSize: 12 }}>{children}</blockquote>,
+                    code: ({ children }) => <code style={{ backgroundColor: "#f0ece8", padding: "1px 5px", borderRadius: 3, fontSize: 12, color: "#cc1100", fontWeight: 600 }}>{children}</code>,
+                    hr: () => <hr style={{ border: "none", borderTop: "1px solid rgba(28,26,27,0.08)", margin: "10px 0" }}/>,
                   }}
                 >
                   {msg.content}
                 </ReactMarkdown>
+                </>
               )}
             </div>
-            {msg.role === "assistant" && msg.charts && msg.charts.length > 0 && msg.charts.map((chart, ci) => (
-              <div key={ci} style={{ width: "min(640px, 92vw)" }}>
-                <ChartMessage chart={chart} />
-              </div>
-            ))}
-            {msg.role === "assistant" && msg.analystRatings && msg.analystRatings.length > 0 && msg.analystRatings.map((rating, ri) => (
-              <div key={ri}>
-                <AnalystRatingsCard data={rating} />
-              </div>
-            ))}
+            {msg.role === "assistant" && (() => {
+              const chartCount = msg.charts?.length || 0;
+              const ratingCount = msg.analystRatings?.length || 0;
+              const totalVisuals = chartCount + ratingCount;
+              if (totalVisuals === 0) return null;
+              const isOpen = !!expandedCharts[i];
+              return (
+                <>
+                  <button
+                    onClick={() => toggleChart(i)}
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: 5,
+                      fontSize: 11, fontWeight: 500, color: isOpen ? "#cc1100" : "#666",
+                      padding: "4px 10px", borderRadius: 6,
+                      border: `1px solid ${isOpen ? "rgba(204,17,0,0.35)" : "rgba(28,26,27,0.12)"}`,
+                      backgroundColor: isOpen ? "rgba(204,17,0,0.05)" : "transparent",
+                      cursor: "pointer", transition: "all 0.15s",
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = "#cc1100"; e.currentTarget.style.color = "#cc1100"; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = isOpen ? "rgba(204,17,0,0.35)" : "rgba(28,26,27,0.12)"; e.currentTarget.style.color = isOpen ? "#cc1100" : "#666"; }}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+                      <rect x="1" y="9" width="3" height="6" rx="1" fill="currentColor" opacity="0.6"/>
+                      <rect x="6" y="5" width="3" height="10" rx="1" fill="currentColor" opacity="0.8"/>
+                      <rect x="11" y="2" width="3" height="13" rx="1" fill="currentColor"/>
+                    </svg>
+                    {totalVisuals} visual{totalVisuals > 1 ? "s" : ""}
+                    <span style={{ fontSize: 9 }}>{isOpen ? "▲" : "▼"}</span>
+                  </button>
+                  {isOpen && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {msg.charts?.map((chart, ci) => (
+                        <div key={ci} style={{ width: "min(640px, 92vw)" }}>
+                          <ChartMessage chart={chart} />
+                        </div>
+                      ))}
+                      {msg.analystRatings?.map((rating, ri) => (
+                        <div key={ri}><AnalystRatingsCard data={rating} /></div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </div>
         ))}
 
@@ -872,7 +2060,7 @@ export default function Home() {
               padding: "10px 14px",
               borderRadius: "14px 14px 14px 3px",
               backgroundColor: "#ffffff",
-              border: "1px solid rgba(28,26,27,0.1)",
+              border: "1px solid rgba(28,26,27,0.09)",
               display: "flex", gap: 4, alignItems: "center",
             }}>
               {[0, 1, 2].map((i) => (
@@ -892,13 +2080,85 @@ export default function Home() {
       )}
 
       {/* Bottom input — only while chatting */}
-      {messages.length > 0 && (
-      <div style={{
-        padding: "10px 14px",
-        borderTop: "1px solid rgba(28,26,27,0.1)",
-        backgroundColor: "#f5f2ee",
-        display: "flex", gap: 8, alignItems: "center", flexShrink: 0,
-      }}>
+      {appPhase === "chat" && (
+      <div style={{ backgroundColor: "#f5f2ee", borderTop: "1px solid rgba(28,26,27,0.1)", flexShrink: 0, animation: "fadeSlideUp 1s cubic-bezier(0.22,1,0.36,1) forwards 0.15s", opacity: 0 }}>
+        {/* Quick-action chips + dropdown */}
+        <div style={{ display: "flex", gap: 6, padding: "8px 14px 0", flexWrap: "wrap", alignItems: "center", position: "relative" }} ref={menuRef}>
+          {QUICK_ACTIONS.slice(0, 2).map((chip) => (
+            <button
+              key={chip.label}
+              onClick={() => { sendMessage(chip.msg); setShowActionMenu(false); }}
+              disabled={loading}
+              style={{
+                fontSize: 11, fontWeight: 500,
+                padding: "5px 12px", borderRadius: 20,
+                border: "1px solid rgba(204,17,0,0.35)",
+                backgroundColor: "rgba(204,17,0,0.06)",
+                color: "#cc1100", cursor: loading ? "not-allowed" : "pointer",
+                opacity: loading ? 0.5 : 1,
+                transition: "background-color 0.15s, border-color 0.15s",
+                whiteSpace: "nowrap",
+              }}
+              onMouseEnter={e => { if (!loading) { e.currentTarget.style.backgroundColor = "rgba(204,17,0,0.14)"; e.currentTarget.style.borderColor = "#cc1100"; } }}
+              onMouseLeave={e => { e.currentTarget.style.backgroundColor = "rgba(204,17,0,0.06)"; e.currentTarget.style.borderColor = "rgba(204,17,0,0.35)"; }}
+            >
+              {chip.label}
+            </button>
+          ))}
+
+          {/* More actions dropdown trigger */}
+          <button
+            onClick={() => setShowActionMenu(v => !v)}
+            disabled={loading}
+            style={{
+              fontSize: 11, fontWeight: 600,
+              padding: "5px 10px", borderRadius: 20,
+              border: `1px solid ${showActionMenu ? "#cc1100" : "rgba(28,26,27,0.15)"}`,
+              backgroundColor: showActionMenu ? "rgba(204,17,0,0.08)" : "transparent",
+              color: showActionMenu ? "#cc1100" : "#666",
+              cursor: loading ? "not-allowed" : "pointer",
+              opacity: loading ? 0.5 : 1,
+              transition: "all 0.15s", whiteSpace: "nowrap",
+              display: "flex", alignItems: "center", gap: 4,
+            }}
+          >
+            ⚡ More tools
+            <span style={{ fontSize: 8 }}>{showActionMenu ? "▲" : "▼"}</span>
+          </button>
+
+          {/* Dropdown menu */}
+          {showActionMenu && (
+            <div style={{
+              position: "absolute", bottom: "calc(100% + 6px)", left: 0,
+              backgroundColor: "#ffffff",
+              border: "1px solid rgba(28,26,27,0.12)",
+              borderRadius: 10, boxShadow: "0 4px 24px rgba(0,0,0,0.10)",
+              padding: "6px", zIndex: 100,
+              display: "grid", gridTemplateColumns: "1fr 1fr",
+              gap: 4, width: "min(460px, 92vw)",
+            }}>
+              {QUICK_ACTIONS.map((action) => (
+                <button
+                  key={action.label}
+                  onClick={() => { sendMessage(action.msg); setShowActionMenu(false); }}
+                  disabled={loading}
+                  style={{
+                    padding: "8px 10px", borderRadius: 7, textAlign: "left",
+                    border: "1px solid transparent", backgroundColor: "transparent",
+                    fontSize: 12, color: "#2c2a29", cursor: "pointer",
+                    transition: "background 0.1s, border-color 0.1s",
+                    whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.backgroundColor = "#f5f2ee"; e.currentTarget.style.borderColor = "rgba(204,17,0,0.2)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.borderColor = "transparent"; }}
+                >
+                  {action.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div style={{ padding: "8px 14px 10px", display: "flex", gap: 8, alignItems: "center" }}>
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -935,10 +2195,409 @@ export default function Home() {
         >
           <Send size={14} strokeWidth={2} />
         </button>
+        </div>
       </div>
       )}
 
+      {/* ── Portfolio Screen ─────────────────────────────────────────────── */}
+      {appPhase === "portfolio" && (
+        <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+
+          {/* Left: Portfolio Panel */}
+          <div style={{
+            width: 340, flexShrink: 0, display: "flex", flexDirection: "column",
+            borderRight: "1px solid rgba(28,26,27,0.1)", backgroundColor: "#fafaf8",
+            overflow: "hidden",
+          }}>
+            {/* Panel header */}
+            <div style={{
+              padding: "14px 16px 10px", borderBottom: "1px solid rgba(28,26,27,0.08)",
+              display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0,
+            }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#1d1a1b", letterSpacing: "-0.01em" }}>
+                📊 My Portfolio
+              </div>
+              <div style={{ display: "flex", gap: 6 }}>
+                <button
+                  onClick={fetchLivePrices}
+                  disabled={fetchingPrices || portfolioPositions.length === 0}
+                  title="Refresh prices"
+                  style={{
+                    padding: "4px 8px", borderRadius: 6, border: "1px solid rgba(28,26,27,0.12)",
+                    backgroundColor: "transparent", fontSize: 11, cursor: "pointer",
+                    color: "#666", opacity: fetchingPrices ? 0.5 : 1,
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = "#cc1100"}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = "rgba(28,26,27,0.12)"}
+                >
+                  {fetchingPrices ? "..." : "↻"}
+                </button>
+                <button
+                  onClick={() => setShowAddForm(v => !v)}
+                  style={{
+                    padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600,
+                    border: "1px solid rgba(204,17,0,0.4)",
+                    backgroundColor: showAddForm ? "rgba(204,17,0,0.1)" : "rgba(204,17,0,0.05)",
+                    color: "#cc1100", cursor: "pointer",
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.backgroundColor = "rgba(204,17,0,0.12)"}
+                  onMouseLeave={e => e.currentTarget.style.backgroundColor = showAddForm ? "rgba(204,17,0,0.1)" : "rgba(204,17,0,0.05)"}
+                >
+                  + Add
+                </button>
+              </div>
+            </div>
+
+            {/* Add position form */}
+            {showAddForm && (
+              <div style={{
+                padding: "12px 14px", borderBottom: "1px solid rgba(28,26,27,0.08)",
+                backgroundColor: "#ffffff", flexShrink: 0,
+              }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#1d1a1b", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  Add Position
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 6 }}>
+                  <div>
+                    <div style={{ fontSize: 10, color: "#888", marginBottom: 3 }}>Ticker</div>
+                    <input
+                      value={addTicker}
+                      onChange={e => setAddTicker(e.target.value.toUpperCase())}
+                      placeholder="AAPL"
+                      style={{
+                        width: "100%", padding: "6px 8px", borderRadius: 6, boxSizing: "border-box",
+                        border: "1px solid rgba(28,26,27,0.15)", fontSize: 12, outline: "none",
+                        backgroundColor: "#f5f2ee", color: "#1d1a1b", fontWeight: 600,
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 10, color: "#888", marginBottom: 3 }}>Shares</div>
+                    <input
+                      value={addShares}
+                      onChange={e => setAddShares(e.target.value)}
+                      placeholder="10"
+                      type="number" min="0"
+                      style={{
+                        width: "100%", padding: "6px 8px", borderRadius: 6, boxSizing: "border-box",
+                        border: "1px solid rgba(28,26,27,0.15)", fontSize: 12, outline: "none",
+                        backgroundColor: "#f5f2ee", color: "#1d1a1b",
+                      }}
+                    />
+                  </div>
+                </div>
+                <div style={{ marginBottom: 8 }}>
+                  <div style={{ fontSize: 10, color: "#888", marginBottom: 3 }}>Avg cost per share ($)</div>
+                  <input
+                    value={addCost}
+                    onChange={e => setAddCost(e.target.value)}
+                    placeholder="150.00"
+                    type="number" min="0"
+                    style={{
+                      width: "100%", padding: "6px 8px", borderRadius: 6, boxSizing: "border-box",
+                      border: "1px solid rgba(28,26,27,0.15)", fontSize: 12, outline: "none",
+                      backgroundColor: "#f5f2ee", color: "#1d1a1b",
+                    }}
+                  />
+                </div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button
+                    onClick={() => { setShowAddForm(false); setAddTicker(""); setAddShares(""); setAddCost(""); }}
+                    style={{
+                      flex: 1, padding: "7px", borderRadius: 6, border: "1px solid rgba(28,26,27,0.15)",
+                      backgroundColor: "transparent", fontSize: 11, color: "#666", cursor: "pointer",
+                    }}
+                  >Cancel</button>
+                  <button
+                    onClick={addPosition}
+                    disabled={!addTicker.trim() || !addShares || !addCost}
+                    style={{
+                      flex: 2, padding: "7px", borderRadius: 6, border: "none",
+                      backgroundColor: addTicker && addShares && addCost ? "#cc1100" : "#ddd",
+                      color: addTicker && addShares && addCost ? "#fff" : "#aaa",
+                      fontSize: 11, fontWeight: 600, cursor: addTicker && addShares && addCost ? "pointer" : "not-allowed",
+                    }}
+                  >Add Position →</button>
+                </div>
+              </div>
+            )}
+
+            {/* Positions list */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "8px" }}>
+              {portfolioPositions.length === 0 ? (
+                <div style={{ padding: "32px 16px", textAlign: "center", color: "#aaa", fontSize: 12, lineHeight: 1.7 }}>
+                  No positions yet.<br/>Click <strong>+ Add</strong> to build your portfolio.
+                </div>
+              ) : (
+                portfolioPositions.map(p => {
+                  const lp = livePrices[p.ticker];
+                  const cost = p.shares * p.avgCost;
+                  const value = lp ? p.shares * lp.price : null;
+                  const pnl = value !== null ? value - cost : null;
+                  const pnlPct = pnl !== null ? (pnl / cost) * 100 : null;
+                  const isUp = pnl !== null && pnl >= 0;
+                  return (
+                    <div key={p.id} style={{
+                      backgroundColor: "#ffffff", borderRadius: 8, padding: "10px 12px",
+                      marginBottom: 6, border: "1px solid rgba(28,26,27,0.07)",
+                      position: "relative",
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
+                        <BubbleInner symbol={p.ticker} color={symbolColor(p.ticker)} size={30} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: "#1d1a1b" }}>{p.ticker}</div>
+                          {lp?.name && <div style={{ fontSize: 10, color: "#888", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{lp.name}</div>}
+                        </div>
+                        <button
+                          onClick={() => removePosition(p.id)}
+                          style={{
+                            width: 18, height: 18, borderRadius: "50%", border: "none",
+                            backgroundColor: "transparent", color: "#bbb", cursor: "pointer",
+                            fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center",
+                            flexShrink: 0,
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.color = "#cc1100"}
+                          onMouseLeave={e => e.currentTarget.style.color = "#bbb"}
+                        >×</button>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+                        <div style={{ fontSize: 10, color: "#888" }}>
+                          {p.shares} sh × ${p.avgCost.toFixed(2)}{" "}
+                          <span style={{ color: "#bbb" }}>= ${cost.toFixed(0)}</span>
+                        </div>
+                        {lp ? (
+                          <div style={{ textAlign: "right" }}>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: "#1d1a1b" }}>
+                              ${value!.toFixed(0)} <span style={{ fontSize: 10, color: "#888" }}>{lp.currency}</span>
+                            </div>
+                            <div style={{ fontSize: 10, fontWeight: 600, color: isUp ? "#16a34a" : "#dc2626" }}>
+                              {isUp ? "+" : ""}{pnl!.toFixed(0)} ({isUp ? "+" : ""}{pnlPct!.toFixed(1)}%)
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: 10, color: "#bbb" }}>loading…</div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Summary footer */}
+            {portfolioPositions.length > 0 && (() => {
+              const totalCost = portfolioPositions.reduce((s, p) => s + p.shares * p.avgCost, 0);
+              const totalValue = portfolioPositions.reduce((s, p) => {
+                const lp = livePrices[p.ticker];
+                return s + (lp ? p.shares * lp.price : p.shares * p.avgCost);
+              }, 0);
+              const totalPnl = totalValue - totalCost;
+              const totalPct = (totalPnl / totalCost) * 100;
+              const isUp = totalPnl >= 0;
+              return (
+                <div style={{
+                  padding: "12px 14px", borderTop: "1px solid rgba(28,26,27,0.08)",
+                  backgroundColor: "#ffffff", flexShrink: 0,
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                    <span style={{ fontSize: 11, color: "#888" }}>Cost basis</span>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "#1d1a1b" }}>${totalCost.toLocaleString("en", { maximumFractionDigits: 0 })}</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                    <span style={{ fontSize: 11, color: "#888" }}>Current value</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "#1d1a1b" }}>${totalValue.toLocaleString("en", { maximumFractionDigits: 0 })}</span>
+                  </div>
+                  <div style={{
+                    display: "flex", justifyContent: "space-between", alignItems: "center",
+                    padding: "6px 10px", borderRadius: 6,
+                    backgroundColor: isUp ? "rgba(22,163,74,0.07)" : "rgba(220,38,38,0.07)",
+                  }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: isUp ? "#16a34a" : "#dc2626" }}>Unrealized P&L</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: isUp ? "#16a34a" : "#dc2626" }}>
+                      {isUp ? "+" : ""}${totalPnl.toLocaleString("en", { maximumFractionDigits: 0 })} ({isUp ? "+" : ""}{totalPct.toFixed(1)}%)
+                    </span>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* Right: Chat with Fred */}
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            {/* Portfolio-aware messages */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "20px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
+              {messages.length === 0 && (
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, padding: "40px 20px" }}>
+                  <PixelWizard />
+                  <div style={{ textAlign: "center" }}>
+                    <div style={{ fontSize: 15, fontWeight: 600, color: "#1d1a1b", marginBottom: 6 }}>Ask Fred about your portfolio</div>
+                    <div style={{ fontSize: 12, color: "#888", maxWidth: 320, lineHeight: 1.6 }}>
+                      Add positions on the left, then ask factual questions about your holdings.
+                    </div>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, width: "100%", maxWidth: 420 }}>
+                    {[
+                      { text: "What's my portfolio worth right now?", sub: "Live valuation" },
+                      { text: "Where am I most concentrated?", sub: "Allocation analysis" },
+                      { text: "Which position has the highest return?", sub: "Performance breakdown" },
+                      { text: "What sectors am I exposed to?", sub: "Sector distribution" },
+                    ].map(s => (
+                      <button key={s.text} onClick={() => sendMessage(s.text)} style={{
+                        padding: "10px 12px", textAlign: "left", borderRadius: 8,
+                        border: "1px solid rgba(28,26,27,0.1)", backgroundColor: "#ffffff",
+                        cursor: "pointer", transition: "border-color 0.15s, background 0.15s",
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = "#cc1100"; e.currentTarget.style.backgroundColor = "#f9f6f3"; }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(28,26,27,0.1)"; e.currentTarget.style.backgroundColor = "#ffffff"; }}
+                      >
+                        <div style={{ fontSize: 11, fontWeight: 600, color: "#1d1a1b", marginBottom: 2 }}>{s.text}</div>
+                        <div style={{ fontSize: 10, color: "#888" }}>{s.sub}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {messages.map((msg, i) => (
+                <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: msg.role === "user" ? "flex-end" : "flex-start", gap: 4 }}>
+                  <div style={{
+                    maxWidth: msg.role === "user" ? "70%" : "82%",
+                    padding: msg.role === "user" ? "9px 14px" : "12px 16px",
+                    borderRadius: msg.role === "user" ? "14px 14px 3px 14px" : "14px 14px 14px 3px",
+                    backgroundColor: msg.role === "user" ? "#cc1100" : "#ffffff",
+                    border: msg.role === "user" ? "none" : "1px solid rgba(28,26,27,0.09)",
+                    color: msg.role === "user" ? "#fff" : "#2c2a29",
+                    fontSize: 13, lineHeight: 1.6, wordBreak: "break-word",
+                  }}>
+                    {msg.role === "user" ? msg.content : (
+                      <>
+                        {msg.tickers && msg.tickers.length > 0 && (
+                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10, paddingBottom: 10, borderBottom: "1px solid rgba(28,26,27,0.07)" }}>
+                            {msg.tickers.map((ticker, ti) => (
+                              <div key={ticker} style={{ opacity: 0, animation: `fadeScaleIn 0.35s ease forwards ${ti * 0.07}s` }}>
+                                <BubbleInner symbol={ticker} color={symbolColor(ticker)} size={36} />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <ReactMarkdown remarkPlugins={[remarkGfm]} components={{
+                          table: ({ children }) => <table style={{ borderCollapse: "collapse", width: "100%", marginTop: 8, fontSize: 12 }}>{children}</table>,
+                          th: ({ children }) => <th style={{ padding: "6px 10px", borderBottom: "1px solid rgba(28,26,27,0.1)", textAlign: "left", color: "#666", fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em" }}>{children}</th>,
+                          td: ({ children }) => <td style={{ padding: "6px 10px", borderBottom: "1px solid rgba(28,26,27,0.06)", color: "#3a3836" }}>{children}</td>,
+                          p: ({ children }) => <p style={{ margin: "6px 0", lineHeight: 1.7 }}>{children}</p>,
+                          ul: ({ children }) => <ul style={{ margin: "6px 0", paddingLeft: 16 }}>{children}</ul>,
+                          li: ({ children }) => <li style={{ marginBottom: 4, lineHeight: 1.6 }}>{children}</li>,
+                          strong: ({ children }) => <strong style={{ color: "#1d1a1b", fontWeight: 700 }}>{children}</strong>,
+                          blockquote: ({ children }) => <blockquote style={{ margin: "10px 0 4px", padding: "8px 12px", borderLeft: "2px solid #cc1100", backgroundColor: "rgba(204,17,0,0.04)", borderRadius: "0 4px 4px 0", color: "#666", fontSize: 12 }}>{children}</blockquote>,
+                          code: ({ children }) => <code style={{ backgroundColor: "#f0ece8", padding: "1px 5px", borderRadius: 3, fontSize: 12, color: "#cc1100", fontWeight: 600 }}>{children}</code>,
+                        }}>{msg.content}</ReactMarkdown>
+                      </>
+                    )}
+                  </div>
+                  {msg.role === "assistant" && (() => {
+                    const total = (msg.charts?.length || 0) + (msg.analystRatings?.length || 0);
+                    if (!total) return null;
+                    const isOpen = !!expandedCharts[i + 10000];
+                    return (
+                      <>
+                        <button onClick={() => toggleChart(i + 10000)} style={{
+                          display: "inline-flex", alignItems: "center", gap: 5,
+                          fontSize: 11, fontWeight: 500, color: isOpen ? "#cc1100" : "#666",
+                          padding: "4px 10px", borderRadius: 6,
+                          border: `1px solid ${isOpen ? "rgba(204,17,0,0.35)" : "rgba(28,26,27,0.12)"}`,
+                          backgroundColor: isOpen ? "rgba(204,17,0,0.05)" : "transparent",
+                          cursor: "pointer", transition: "all 0.15s",
+                        }}>
+                          <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><rect x="1" y="9" width="3" height="6" rx="1" fill="currentColor" opacity="0.6"/><rect x="6" y="5" width="3" height="10" rx="1" fill="currentColor" opacity="0.8"/><rect x="11" y="2" width="3" height="13" rx="1" fill="currentColor"/></svg>
+                          {total} visual{total > 1 ? "s" : ""} <span style={{ fontSize: 9 }}>{isOpen ? "▲" : "▼"}</span>
+                        </button>
+                        {isOpen && <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          {msg.charts?.map((chart, ci) => <div key={ci} style={{ width: "min(560px, 92vw)" }}><ChartMessage chart={chart} /></div>)}
+                          {msg.analystRatings?.map((r, ri) => <div key={ri}><AnalystRatingsCard data={r} /></div>)}
+                        </div>}
+                      </>
+                    );
+                  })()}
+                </div>
+              ))}
+              {loading && (
+                <div style={{ display: "flex", justifyContent: "flex-start" }}>
+                  <div style={{
+                    padding: "10px 14px",
+                    borderRadius: "14px 14px 14px 3px",
+                    backgroundColor: "#ffffff",
+                    border: "1px solid rgba(28,26,27,0.09)",
+                    display: "flex", gap: 4, alignItems: "center",
+                  }}>
+                    {[0, 1, 2].map((i) => (
+                      <div key={i} style={{
+                        width: 5, height: 5, borderRadius: "50%",
+                        backgroundColor: "#cc1100",
+                        animation: "pulse 1.2s ease-in-out infinite",
+                        animationDelay: `${i * 0.18}s`,
+                      }} />
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div ref={bottomRef} />
+            </div>
+
+            {/* Portfolio chat input */}
+            <div style={{ backgroundColor: "#f5f2ee", borderTop: "1px solid rgba(28,26,27,0.1)", padding: "8px 14px 10px", display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+              <input
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Ask Fred about your portfolio…"
+                disabled={loading}
+                style={{
+                  flex: 1, padding: "9px 14px", borderRadius: 8,
+                  border: "1px solid rgba(28,26,27,0.1)", backgroundColor: "#ffffff",
+                  color: "#1d1a1b", fontSize: 13, outline: "none",
+                  opacity: loading ? 0.6 : 1,
+                }}
+              />
+              <button
+                onClick={() => sendMessage(input)}
+                disabled={loading || !input.trim()}
+                style={{
+                  width: 34, height: 34, borderRadius: 8, border: "none", flexShrink: 0,
+                  backgroundColor: input.trim() && !loading ? "#cc1100" : "#1a1a1a",
+                  color: input.trim() && !loading ? "#fff" : "#444",
+                  cursor: input.trim() && !loading ? "pointer" : "not-allowed",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  transition: "background 0.15s",
+                }}
+              >
+                <Send size={14} strokeWidth={2} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <style>{`
+        @keyframes flyToCenter {
+          0%   { transform: translate(0, 0) scale(1); opacity: 1; }
+          60%  { opacity: 0.5; }
+          100% { transform: translate(var(--to-x), var(--to-y)) scale(0.25); opacity: 0; }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+        @keyframes orbitCW {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(360deg); }
+        }
+        @keyframes orbitCCW {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(-360deg); }
+        }
+        @keyframes fadeScaleIn {
+          from { opacity: 0; transform: scale(0.4); }
+          to   { opacity: 1; transform: scale(1); }
+        }
         @keyframes scaleBarUp {
           to { transform: scaleY(1); }
         }
@@ -970,9 +2629,157 @@ export default function Home() {
           0%, 80%, 100% { opacity: 0.2; transform: scale(0.75); }
           40% { opacity: 1; transform: scale(1); }
         }
+        @keyframes floatingCloud {
+          0%, 100% { transform: translateY(0) translateX(0); }
+          33% { transform: translateY(-4px) translateX(2px); }
+          66% { transform: translateY(2px) translateX(-2px); }
+        }
         @keyframes wizardFloat {
           0%, 100% { transform: translateY(0px); }
           50% { transform: translateY(-6px); }
+        }
+        @keyframes blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0; }
+        }
+        @keyframes fadeSlideUp {
+          from { opacity: 0; transform: translateY(40px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes wizardTeleportIn {
+          0%   { opacity: 0; transform: scale(0.08) rotate(-18deg); filter: brightness(6) saturate(0.5); }
+          25%  { opacity: 1; filter: brightness(2.5); }
+          65%  { transform: scale(1.12) rotate(5deg); filter: brightness(1.15); }
+          82%  { transform: scale(0.96) rotate(-2deg); filter: brightness(1); }
+          100% { opacity: 1; transform: scale(1) rotate(0deg); filter: brightness(1); }
+        }
+        @keyframes wizardDropIn {
+          0%   { opacity: 0; transform: translateY(-55px) scale(0.75); filter: brightness(4); }
+          30%  { opacity: 1; filter: brightness(2); transform: translateY(-10px) scale(1.06); }
+          60%  { transform: translateY(7px) scale(0.97); filter: brightness(1); }
+          80%  { transform: translateY(-3px) scale(1.02); }
+          100% { opacity: 1; transform: translateY(0) scale(1); filter: brightness(1); }
+        }
+        @keyframes wizardSpinIn {
+          0%   { opacity: 0; transform: scale(0.05) rotate(-270deg); filter: brightness(5); }
+          30%  { opacity: 1; filter: brightness(2); }
+          70%  { transform: scale(1.1) rotate(12deg); filter: brightness(1.1); }
+          85%  { transform: scale(0.97) rotate(-4deg); }
+          100% { opacity: 1; transform: scale(1) rotate(0deg); filter: brightness(1); }
+        }
+        @keyframes wizardCelestialRise {
+          0%   { opacity: 0; transform: translateY(60px) scale(0.85); filter: brightness(2.5) blur(4px) saturate(0.2); }
+          40%  { opacity: 1; filter: brightness(1.8) blur(1px) saturate(0.6); }
+          75%  { transform: translateY(-8px) scale(1.04); filter: brightness(1.1) blur(0); }
+          100% { opacity: 1; transform: translateY(0) scale(1); filter: brightness(1) blur(0) saturate(1); }
+        }
+        @keyframes meteorStreak {
+          0%   { transform: translate(500px, -500px) rotate(45deg); opacity: 0; }
+          10%  { opacity: 1; }
+          95%  { opacity: 1; }
+          100% { transform: translate(0px, 0px) rotate(45deg); opacity: 0; }
+        }
+        @keyframes meteorShockwave {
+          0%   { opacity: 1; transform: scale(0.2); border-width: 4px; }
+          100% { opacity: 0; transform: scale(10); border-width: 0.1px; }
+        }
+        @keyframes meteorFlash {
+          0%   { opacity: 0; transform: scale(0.1); }
+          40%  { opacity: 1; transform: scale(1.4); }
+          100% { opacity: 0; transform: scale(2.8); }
+        }
+        @keyframes wizardImpactIn {
+          0%   { opacity: 0; transform: scale(0.1) translateY(-30px); filter: brightness(10); }
+          20%  { opacity: 1; transform: scale(1.4) translateY(10px); filter: brightness(3); }
+          40%  { transform: scale(0.9) translateY(-5px); }
+          60%  { transform: scale(1.05) translateY(2px); }
+          100% { opacity: 1; transform: scale(1) translateY(0); filter: brightness(1); }
+        }        @keyframes wizardBounceIn {          /* Start: lower-left bubble */
+          0%   { transform: translate(-170px, 90px) scaleX(1.22) scaleY(0.82); }
+          /* Launch up-right */
+          7%   { transform: translate(-145px, 18px) scaleX(0.84) scaleY(1.22); }
+          /* Arc peak */
+          17%  { transform: translate(-55px, -52px) scaleX(0.9) scaleY(1.12); }
+          /* Descend to bubble 2 */
+          24%  { transform: translate(75px, 40px); }
+          /* Land: right bubble — squish */
+          28%  { transform: translate(110px, 75px) scaleX(1.28) scaleY(0.78); }
+          /* Launch up-left */
+          36%  { transform: translate(88px, -2px) scaleX(0.84) scaleY(1.22); }
+          /* Arc peak */
+          47%  { transform: translate(18px, -92px) scaleX(0.9) scaleY(1.12); }
+          /* Descend to bubble 3 */
+          54%  { transform: translate(-55px, -58px); }
+          /* Land: upper-left bubble — squish */
+          57%  { transform: translate(-75px, -80px) scaleX(1.22) scaleY(0.82); }
+          /* Launch toward center */
+          65%  { transform: translate(-52px, -142px) scaleX(0.84) scaleY(1.22); }
+          /* Arc peak */
+          75%  { transform: translate(-10px, -78px) scaleX(0.9) scaleY(1.1); }
+          /* Overshoot center */
+          85%  { transform: translate(0px, 12px) scaleX(1.18) scaleY(0.86); }
+          92%  { transform: translate(0px, -6px) scaleX(0.95) scaleY(1.06); }
+          100% { transform: translate(0px, 0px) scaleX(1) scaleY(1); }
+        }
+        @keyframes scannerSweep {
+          0%   { top: -5%; opacity: 0; }
+          10%  { opacity: 1; }
+          90%  { opacity: 1; }
+          100% { top: 105%; opacity: 0; }
+        }
+        @keyframes wizardReveal {
+          0%   { clip-path: inset(0 0 100% 0); opacity: 0; }
+          10%  { opacity: 1; }
+          100% { clip-path: inset(0 0 0 0); opacity: 1; }
+        }
+        @keyframes scannerGlow {
+          0%, 100% { filter: brightness(1); }
+          50% { filter: brightness(1.5) drop-shadow(0 0 8px #cc1100); }
+        }
+        @keyframes shockwaveRing {
+          0%   { transform: translate(-50%, -50%) scale(0.1); opacity: 1; border-width: 4px; }
+          100% { transform: translate(-50%, -50%) scale(6); opacity: 0; border-width: 0.1px; }
+        }
+        @keyframes wizardCastAction {
+          0%   { transform: scale(1) translateY(0); filter: brightness(1); }
+          20%  { transform: scale(1.5) translateY(-18px) rotate(-8deg); filter: brightness(3) drop-shadow(0 0 16px #cc1100) drop-shadow(0 0 32px #fde047); }
+          45%  { transform: scale(1.35) translateY(-14px) rotate(-4deg); filter: brightness(2.5) drop-shadow(0 0 10px #cc1100); }
+          70%  { transform: scale(1.1) translateY(-4px) rotate(0deg); filter: brightness(1.5); }
+          100% { transform: scale(1) translateY(0); filter: brightness(1); }
+        }
+        @keyframes wandCharge {
+          0%, 100% { transform: translate(-50%, -50%) scale(0.6); opacity: 0.4; }
+          50% { transform: translate(-50%, -50%) scale(2.2); opacity: 1; filter: blur(1px); }
+        }
+        @keyframes castBurst {
+          0%   { transform: translate(-50%, -50%) scale(0.2); opacity: 1; }
+          60%  { transform: translate(-50%, -50%) scale(1.4); opacity: 0.7; }
+          100% { transform: translate(-50%, -50%) scale(2.2); opacity: 0; }
+        }
+        @keyframes bubbleShock {
+          0%   { transform: translate(0, 0); }
+          15%  { transform: translate(var(--shock-x), var(--shock-y)) scale(1.2); }
+          50%  { transform: translate(var(--shock-x), var(--shock-y)) scale(1.1); }
+          100% { transform: translate(0, 0) scale(1); }
+        }
+        @keyframes dustPuff {
+          0%   { opacity: 0.85; transform: translate(-50%, -50%) scale(0.15); }
+          55%  { opacity: 0.4;  transform: translate(-50%, -50%) scale(1.4); }
+          100% { opacity: 0;    transform: translate(-50%, -50%) scale(2.4); }
+        }
+        @keyframes portalRing {
+          0%   { opacity: 1; transform: scale(0.15); }
+          100% { opacity: 0; transform: scale(3.2); }
+        }
+        @keyframes glowBurst {
+          0%   { opacity: 0.9; transform: scale(0.3); }
+          60%  { opacity: 0.4; transform: scale(1.6); }
+          100% { opacity: 0; transform: scale(2.5); }
+        }
+        @keyframes sparkleFade {
+          0%   { opacity: 0; transform: translate(-50%,-50%) scale(0); }
+          35%  { opacity: 1; transform: translate(-50%,-50%) scale(1.5); }
+          100% { opacity: 0; transform: translate(-50%,-70%) scale(0.6); }
         }
         @keyframes wandGlow {
           0%, 100% { filter: drop-shadow(0 0 2px #fde047); opacity: 1; }
@@ -982,7 +2789,14 @@ export default function Home() {
           0%, 100% { opacity: 1; transform: scale(1); }
           50% { opacity: 0.2; transform: scale(0.5); }
         }
-        * { box-sizing: border-box; }
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+        @keyframes loadingBarMove {
+          0% { left: -40%; width: 40%; }
+          50% { left: 40%; width: 60%; }
+          100% { left: 100%; width: 40%; }
+        }        * { box-sizing: border-box; }
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(28,26,27,0.1); border-radius: 2px; }
