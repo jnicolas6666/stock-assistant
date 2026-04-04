@@ -177,6 +177,8 @@ type Message = {
   charts?: ChartSpec[];
   analystRatings?: AnalystRatingsSpec[];
   tickers?: string[];
+  isFollowUp?: boolean;       // response was a follow-up chip — merged into parent, shown compact
+  followUpOfIndex?: number;   // index of the parent analysis this follow-up belongs to
 };
 
 type Position = { id: string; ticker: string; shares: number; avgCost: number };
@@ -1780,11 +1782,11 @@ export default function Home() {
   const [pendingTickers, setPendingTickers] = useState<string[]>([]);
   useEffect(() => { if (!loading) setPendingTickers([]); }, [loading]);
   const [selectedAnalysisIndex, setSelectedAnalysisIndex] = useState<number>(-1);
-  // Auto-select the newest analysis when a response arrives
+  // Auto-select the newest analysis when a response arrives (skip follow-up messages)
   useEffect(() => {
     if (!loading && messages.length > 0) {
       const lastIdx = messages.reduceRight((found: number, m: Message, idx: number) =>
-        found === -1 && m.role === "assistant" &&
+        found === -1 && m.role === "assistant" && !m.isFollowUp &&
         (parseMessageSections(m.content) !== null || (m.charts && m.charts.length > 0) || (m.analystRatings && m.analystRatings.length > 0))
           ? idx : found, -1);
       if (lastIdx !== -1) setSelectedAnalysisIndex(lastIdx);
@@ -1949,7 +1951,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  async function sendMessage(text: string) {
+  async function sendMessage(text: string, followUpOf?: number) {
     if (!text.trim() || loading) return;
     const isPortfolio = appPhase === "portfolio";
     const isFirst = messages.length === 0 && !isPortfolio;
@@ -2035,6 +2037,27 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
         setMessages([...newMessages, assistantMsg]);
         setAppPhase("chat");
         setOrbitFading(false);
+      } else if (followUpOf !== undefined) {
+        // Follow-up chip: merge charts/ratings into parent, show compact message
+        const updatedMessages = [...newMessages];
+        updatedMessages[followUpOf] = {
+          ...updatedMessages[followUpOf],
+          charts: [...(updatedMessages[followUpOf].charts || []), ...(data.charts || [])],
+          analystRatings: [...(updatedMessages[followUpOf].analystRatings || []), ...(data.analystRatings || [])],
+        };
+        updatedMessages.push({
+          role: "assistant" as const,
+          content: data.content,
+          charts: [],
+          analystRatings: [],
+          tickers: mentionedTickers.length > 0 ? mentionedTickers : undefined,
+          isFollowUp: true,
+          followUpOfIndex: followUpOf,
+        });
+        setMessages(updatedMessages);
+        setLoading(false);
+        // Keep selectedAnalysisIndex on the parent (useEffect will re-evaluate and pick followUpOf since it has charts now)
+        setSelectedAnalysisIndex(followUpOf);
       } else {
         setMessages([...newMessages, assistantMsg]);
         setLoading(false);
@@ -2477,6 +2500,47 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                 }
               }
 
+              // ── Follow-up compact message (chart/data added to parent analysis) ──
+              if (msg.isFollowUp) {
+                const parentIdx = msg.followUpOfIndex!;
+                return (
+                  <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: "#cc1100", letterSpacing: "0.07em", textTransform: "uppercase" as const, paddingLeft: 4, marginBottom: 1 }}>Fred</span>
+                    <div style={{
+                      maxWidth: "91%", padding: "10px 14px",
+                      borderRadius: "4px 18px 18px 18px",
+                      backgroundColor: "#eeeae6",
+                      fontSize: 13, lineHeight: 1.6, color: "#1d1a1b",
+                    }}>
+                      {/* Brief conversational response */}
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={{
+                        p: ({ children }) => <p style={{ margin: "3px 0" }}>{withIcons(children)}</p>,
+                        strong: ({ children }) => <strong style={{ fontWeight: 700 }}>{children}</strong>,
+                        a: () => null,
+                      }}>
+                        {msg.content.split(/\n#{2,3}\s/)[0].trim()}
+                      </ReactMarkdown>
+                      {/* "Added to analysis" badge */}
+                      <button
+                        onClick={() => setSelectedAnalysisIndex(parentIdx)}
+                        style={{
+                          display: "flex", alignItems: "center", gap: 6,
+                          marginTop: 10, padding: "6px 12px", borderRadius: 8,
+                          border: `1.5px solid ${selectedAnalysisIndex === parentIdx ? "#22c55e" : "rgba(34,197,94,0.35)"}`,
+                          backgroundColor: selectedAnalysisIndex === parentIdx ? "rgba(34,197,94,0.1)" : "rgba(34,197,94,0.06)",
+                          color: "#16a34a", fontSize: 11, fontWeight: 600, cursor: "pointer",
+                          transition: "all 0.15s",
+                        }}
+                      >
+                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="#16a34a" strokeWidth="1.5"/><polyline points="5,8 7,10 11,6" stroke="#16a34a" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        {selectedAnalysisIndex === parentIdx ? "Viewing updated analysis" : "Added to analysis — view →"}
+                      </button>
+                    </div>
+                  </div>
+                );
+              }
+
+              // ── Normal message ──
               return (
                 <div key={i} style={{
                   display: "flex",
@@ -2486,7 +2550,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                 }}>
                   {msg.role === "assistant" && (
                     <span style={{ fontSize: 10, fontWeight: 700, color: "#cc1100", letterSpacing: "0.07em", textTransform: "uppercase" as const, paddingLeft: 4, marginBottom: 1 }}>
-                      AI
+                      Fred
                     </span>
                   )}
                   <div style={{
@@ -2515,9 +2579,18 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                         {hasSections ? (
                           <>
                             {chatPreamble && (
-                              <p style={{ margin: "0 0 12px", fontSize: 13, lineHeight: 1.65, color: "#1d1a1b" }}>
-                                {chatPreamble}
-                              </p>
+                              <div style={{ marginBottom: 12, fontSize: 13, lineHeight: 1.65, color: "#1d1a1b" }}>
+                                <ReactMarkdown remarkPlugins={[remarkGfm]} components={{
+                                  p: ({ children }) => <p style={{ margin: "3px 0" }}>{withIcons(children)}</p>,
+                                  strong: ({ children }) => <strong style={{ fontWeight: 700 }}>{children}</strong>,
+                                  em: ({ children }) => <em>{children}</em>,
+                                  a: () => null,
+                                  ul: ({ children }) => <ul style={{ margin: "4px 0", paddingLeft: 14 }}>{children}</ul>,
+                                  li: ({ children }) => <li style={{ marginBottom: 2 }}>{children}</li>,
+                                }}>
+                                  {chatPreamble}
+                                </ReactMarkdown>
+                              </div>
                             )}
                             <button
                               onClick={() => setSelectedAnalysisIndex(i)}
@@ -2539,7 +2612,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                               </svg>
                               {selectedAnalysisIndex === i ? "Viewing in left panel" : "View full analysis →"}
                             </button>
-                            {/* Follow-up suggestion chips */}
+                            {/* Follow-up suggestion chips — send as follow-up (merges into this analysis) */}
                             {(() => {
                               const t = msg.tickers?.[0] ?? "";
                               const noChart = !msg.charts || msg.charts.length === 0;
@@ -2556,7 +2629,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                                   {chips.map((chip) => (
                                     <button
                                       key={chip.label}
-                                      onClick={() => sendMessage(chip.prompt)}
+                                      onClick={() => sendMessage(chip.prompt, i)}
                                       style={{
                                         display: "flex", alignItems: "center", gap: 5,
                                         padding: "5px 11px", borderRadius: 20,
