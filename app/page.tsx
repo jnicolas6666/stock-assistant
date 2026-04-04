@@ -1292,10 +1292,10 @@ const MD_COMPONENTS_SECTION = {
   a: ({ href, children }: any) => <span style={{ color: "#cc1100" }}>{children}</span>,
 };
 
-function CollapsibleSection({ title, content, delay = 0, children }: {
-  title: string; content?: string; delay?: number; children?: React.ReactNode;
+function CollapsibleSection({ title, content, delay = 0, defaultOpen = false, children }: {
+  title: string; content?: string; delay?: number; defaultOpen?: boolean; children?: React.ReactNode;
 }) {
-  const [phase, setPhase] = React.useState<"closed" | "loading" | "open">("closed");
+  const [phase, setPhase] = React.useState<"closed" | "loading" | "open">(defaultOpen ? "open" : "closed");
   const color = SECTION_COLORS[title] ?? "#888";
 
   const toggle = () => {
@@ -2186,295 +2186,308 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
         </div>
       )}
 
-      {/* Messages area — only when chatting */}
+      {/* Two-column chat layout */}
       {appPhase === "chat" && (
-      <div style={{ flex: 1, overflowY: "auto", padding: "24px 20px", display: "flex", flexDirection: "column", gap: 16, opacity: 0, animation: "fadeSlideUp 1s cubic-bezier(0.22,1,0.36,1) forwards" }}>
-        {messages.map((msg, i) => (
-          <div key={i} style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: msg.role === "user" ? "flex-end" : "flex-start",
-            gap: 4,
-          }}>
-            <div style={{
-              maxWidth: msg.role === "user" ? "70%" : "80%",
-              padding: msg.role === "user" ? "9px 14px" : "12px 16px",
-              borderRadius: msg.role === "user" ? "14px 14px 3px 14px" : "14px 14px 14px 3px",
-              backgroundColor: msg.role === "user" ? "#cc1100" : "#ffffff",
-              border: msg.role === "user" ? "none" : "1px solid rgba(28,26,27,0.09)",
-              color: msg.role === "user" ? "#fff" : "#2c2a29",
-              fontSize: 13,
-              lineHeight: 1.6,
-              wordBreak: "break-word",
-            }}>
-              {msg.role === "user" ? (
-                msg.content
-              ) : (
-                <>
-                  {msg.tickers && msg.tickers.length > 0 && (
-                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10, paddingBottom: 10, borderBottom: "1px solid rgba(28,26,27,0.07)" }}>
-                      {msg.tickers.map((ticker, ti) => (
-                        <div key={ticker} style={{ opacity: 0, animation: `fadeScaleIn 0.35s ease forwards ${ti * 0.07}s` }}>
-                          <BubbleInner symbol={ticker} color={symbolColor(ticker)} size={38} />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {(() => {
-                    const sections = parseMessageSections(msg.content);
-                    if (sections) {
-                      const totalSections = sections.length + (msg.analystRatings?.length ? 1 : 0);
-                      return (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                          {sections.map((s, si) => (
-                            <CollapsibleSection key={si} title={s.title} content={s.content} delay={si * 0.05} />
+      <div style={{ flex: 1, display: "flex", overflow: "hidden", opacity: 0, animation: "fadeSlideUp 1s cubic-bezier(0.22,1,0.36,1) forwards" }}>
+
+        {/* LEFT PANEL: Analysis content */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "28px 32px", backgroundColor: "#f9f7f5", borderRight: "1px solid rgba(28,26,27,0.1)" }}>
+          {(() => {
+            // Find latest AI message with sections or charts
+            const latestAiMsg = [...messages].reverse().find(m => m.role === "assistant" && (parseMessageSections(m.content) !== null || (m.charts && m.charts.length > 0) || (m.analystRatings && m.analystRatings.length > 0)));
+            if (!latestAiMsg) {
+              return (
+                <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, color: "#bbb" }}>
+                  <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                    <rect x="4" y="26" width="6" height="10" rx="2" fill="currentColor" opacity="0.4"/>
+                    <rect x="14" y="18" width="6" height="18" rx="2" fill="currentColor" opacity="0.6"/>
+                    <rect x="24" y="10" width="6" height="26" rx="2" fill="currentColor" opacity="0.8"/>
+                    <rect x="34" y="4" width="2" height="32" rx="1" fill="#cc1100" opacity="0.5"/>
+                  </svg>
+                  <div style={{ fontSize: 13, textAlign: "center", lineHeight: 1.6 }}>
+                    Ask a question to see the<br/>analysis here
+                  </div>
+                </div>
+              );
+            }
+            const sections = parseMessageSections(latestAiMsg.content);
+            return (
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                {/* Tickers row */}
+                {latestAiMsg.tickers && latestAiMsg.tickers.length > 0 && (
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
+                    {latestAiMsg.tickers.map((ticker, ti) => (
+                      <div key={ticker} style={{ opacity: 0, animation: `fadeScaleIn 0.35s ease forwards ${ti * 0.07}s` }}>
+                        <BubbleInner symbol={ticker} color={symbolColor(ticker)} size={44} />
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {sections ? (
+                  <>
+                    {sections.map((s, si) => (
+                      <CollapsibleSection key={si} title={s.title} content={s.content} delay={si * 0.04} defaultOpen={si === 0} />
+                    ))}
+                    {latestAiMsg.analystRatings && latestAiMsg.analystRatings.length > 0 && (
+                      <CollapsibleSection title="Analyst Ratings" delay={sections.length * 0.04}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 4 }}>
+                          {latestAiMsg.analystRatings.map((rating, ri) => (
+                            <AnalystRatingsCard key={ri} data={rating} />
                           ))}
-                          {msg.analystRatings && msg.analystRatings.length > 0 && (
-                            <CollapsibleSection title="Analyst Ratings" delay={sections.length * 0.05}>
-                              <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 4 }}>
-                                {msg.analystRatings.map((rating, ri) => (
-                                  <AnalystRatingsCard key={ri} data={rating} />
-                                ))}
-                              </div>
-                            </CollapsibleSection>
-                          )}
                         </div>
-                      );
-                    }
-                    // Flat render — short/conversational responses
-                    return (
+                      </CollapsibleSection>
+                    )}
+                    {latestAiMsg.charts && latestAiMsg.charts.length > 0 && (
+                      <CollapsibleSection title={`Charts (${latestAiMsg.charts.length})`} delay={(sections.length + (latestAiMsg.analystRatings?.length ? 1 : 0)) * 0.04}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingTop: 4 }}>
+                          {latestAiMsg.charts.map((chart, ci) => (
+                            <ChartMessage key={ci} chart={chart} />
+                          ))}
+                        </div>
+                      </CollapsibleSection>
+                    )}
+                  </>
+                ) : (
+                  // Flat content (no sections) — show full markdown in left panel too
+                  <div style={{ fontSize: 13, lineHeight: 1.7, color: "#2c2a29" }}>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={MD_COMPONENTS_SECTION}>
+                      {latestAiMsg.content}
+                    </ReactMarkdown>
+                    {latestAiMsg.analystRatings && latestAiMsg.analystRatings.length > 0 && (
+                      <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+                        {latestAiMsg.analystRatings.map((rating, ri) => (
+                          <AnalystRatingsCard key={ri} data={rating} />
+                        ))}
+                      </div>
+                    )}
+                    {latestAiMsg.charts && latestAiMsg.charts.length > 0 && (
+                      <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+                        {latestAiMsg.charts.map((chart, ci) => (
+                          <ChartMessage key={ci} chart={chart} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+        </div>
+
+        {/* RIGHT PANEL: Chat thread + input */}
+        <div style={{ width: 360, flexShrink: 0, display: "flex", flexDirection: "column", backgroundColor: "#ffffff" }}>
+          {/* Chat messages */}
+          <div style={{ flex: 1, overflowY: "auto", padding: "16px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
+            {messages.map((msg, i) => {
+              const hasSections = msg.role === "assistant" && parseMessageSections(msg.content) !== null;
+              return (
+                <div key={i} style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: msg.role === "user" ? "flex-end" : "flex-start",
+                  gap: 3,
+                }}>
+                  <div style={{
+                    maxWidth: "88%",
+                    padding: msg.role === "user" ? "8px 12px" : "10px 14px",
+                    borderRadius: msg.role === "user" ? "14px 14px 3px 14px" : "14px 14px 14px 3px",
+                    backgroundColor: msg.role === "user" ? "#cc1100" : "#ffffff",
+                    border: msg.role === "user" ? "none" : "1px solid rgba(28,26,27,0.09)",
+                    color: msg.role === "user" ? "#fff" : "#2c2a29",
+                    fontSize: 12,
+                    lineHeight: 1.6,
+                    wordBreak: "break-word" as const,
+                  }}>
+                    {msg.role === "user" ? (
+                      msg.content
+                    ) : (
                       <>
-                        <ReactMarkdown
-                          remarkPlugins={[remarkGfm]}
-                          components={{
-                            table: ({ children }) => <table style={{ borderCollapse: "collapse", width: "100%", marginTop: 8, fontSize: 12 }}>{children}</table>,
-                            th: ({ children }) => <th style={{ padding: "6px 10px", borderBottom: "1px solid rgba(28,26,27,0.1)", textAlign: "left", color: "#666", fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em" }}>{withIcons(children)}</th>,
-                            td: ({ children }) => <td style={{ padding: "6px 10px", borderBottom: "1px solid rgba(28,26,27,0.06)", color: "#3a3836" }}>{withIcons(children)}</td>,
-                            p: ({ children }) => <p style={{ margin: "6px 0", lineHeight: 1.7 }}>{withIcons(children)}</p>,
-                            ul: ({ children }) => <ul style={{ margin: "6px 0", paddingLeft: 16 }}>{children}</ul>,
-                            ol: ({ children }) => <ol style={{ margin: "6px 0", paddingLeft: 16 }}>{children}</ol>,
-                            li: ({ children }) => <li style={{ marginBottom: 4, lineHeight: 1.6 }}>{withIcons(children)}</li>,
-                            strong: ({ children }) => <strong style={{ color: "#1d1a1b", fontWeight: 700 }}>{children}</strong>,
-                            h2: ({ children }) => (
-                              <div style={{ margin: "14px 0 6px", display: "flex", alignItems: "center", gap: 8 }}>
-                                <span style={{ fontSize: 13, fontWeight: 700, color: "#1d1a1b", letterSpacing: "-0.01em" }}>{withIcons(children)}</span>
-                                <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, rgba(204,17,0,0.3), transparent)" }}/>
-                              </div>
-                            ),
-                            h3: ({ children }) => <h3 style={{ margin: "10px 0 4px", fontSize: 11, fontWeight: 700, color: "#cc1100", textTransform: "uppercase", letterSpacing: "0.07em" }}>{withIcons(children)}</h3>,
-                            a: ({ href, children }) => <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: "#cc1100", textDecoration: "underline" }}>{children}</a>,
-                            blockquote: ({ children }) => <blockquote style={{ margin: "10px 0 4px", padding: "8px 12px", borderLeft: "2px solid #cc1100", backgroundColor: "rgba(204,17,0,0.04)", borderRadius: "0 4px 4px 0", color: "#666", fontSize: 12 }}>{children}</blockquote>,
-                            code: ({ children }) => <code style={{ backgroundColor: "#f0ece8", padding: "1px 5px", borderRadius: 3, fontSize: 12, color: "#cc1100", fontWeight: 600 }}>{children}</code>,
-                            hr: () => <hr style={{ border: "none", borderTop: "1px solid rgba(28,26,27,0.08)", margin: "10px 0" }}/>,
-                          }}
-                        >
-                          {msg.content}
-                        </ReactMarkdown>
-                        {msg.analystRatings && msg.analystRatings.length > 0 && (
-                          <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
-                            {msg.analystRatings.map((rating, ri) => (
-                              <div key={ri} style={{ opacity: 0, animation: `fadeScaleIn 0.4s ease forwards ${ri * 0.1}s` }}>
-                                <AnalystRatingsCard data={rating} />
+                        {msg.tickers && msg.tickers.length > 0 && (
+                          <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 8, paddingBottom: 8, borderBottom: "1px solid rgba(28,26,27,0.07)" }}>
+                            {msg.tickers.map((ticker, ti) => (
+                              <div key={ticker} style={{ opacity: 0, animation: `fadeScaleIn 0.3s ease forwards ${ti * 0.06}s` }}>
+                                <BubbleInner symbol={ticker} color={symbolColor(ticker)} size={30} />
                               </div>
                             ))}
                           </div>
                         )}
+                        {hasSections ? (
+                          <div style={{ fontSize: 12, color: "#888" }}>
+                            Analysis ready — see left panel
+                          </div>
+                        ) : (
+                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            components={{
+                              p: ({ children }) => <p style={{ margin: "4px 0", lineHeight: 1.6 }}>{withIcons(children)}</p>,
+                              ul: ({ children }) => <ul style={{ margin: "4px 0", paddingLeft: 14 }}>{children}</ul>,
+                              li: ({ children }) => <li style={{ marginBottom: 2 }}>{withIcons(children)}</li>,
+                              strong: ({ children }) => <strong style={{ color: "#1d1a1b", fontWeight: 700 }}>{children}</strong>,
+                              a: () => null,
+                              h2: ({ children }) => <div style={{ fontWeight: 700, fontSize: 12, margin: "8px 0 4px" }}>{withIcons(children)}</div>,
+                              h3: ({ children }) => <div style={{ fontWeight: 700, fontSize: 11, color: "#cc1100", margin: "6px 0 2px", textTransform: "uppercase" as const }}>{withIcons(children)}</div>,
+                              blockquote: ({ children }) => <blockquote style={{ margin: "6px 0", padding: "4px 8px", borderLeft: "2px solid #cc1100", color: "#888", fontSize: 11 }}>{children}</blockquote>,
+                              code: ({ children }) => <code style={{ backgroundColor: "#f0ece8", padding: "1px 4px", borderRadius: 3, fontSize: 11, color: "#cc1100" }}>{children}</code>,
+                            }}
+                          >
+                            {msg.content}
+                          </ReactMarkdown>
+                        )}
                       </>
-                    );
-                  })()}
-                </>
-              )}
-            </div>
-            {msg.role === "assistant" && (() => {
-              const chartCount = msg.charts?.length || 0;
-              const totalVisuals = chartCount;
-              if (totalVisuals === 0) return null;
-              const isOpen = !!expandedCharts[i];
-              return (
-                <>
-                  <button
-                    onClick={() => toggleChart(i)}
-                    style={{
-                      display: "inline-flex", alignItems: "center", gap: 5,
-                      fontSize: 11, fontWeight: 500, color: isOpen ? "#cc1100" : "#666",
-                      padding: "4px 10px", borderRadius: 6,
-                      border: `1px solid ${isOpen ? "rgba(204,17,0,0.35)" : "rgba(28,26,27,0.12)"}`,
-                      backgroundColor: isOpen ? "rgba(204,17,0,0.05)" : "transparent",
-                      cursor: "pointer", transition: "all 0.15s",
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = "#cc1100"; e.currentTarget.style.color = "#cc1100"; }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = isOpen ? "rgba(204,17,0,0.35)" : "rgba(28,26,27,0.12)"; e.currentTarget.style.color = isOpen ? "#cc1100" : "#666"; }}
-                  >
-                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-                      <rect x="1" y="9" width="3" height="6" rx="1" fill="currentColor" opacity="0.6"/>
-                      <rect x="6" y="5" width="3" height="10" rx="1" fill="currentColor" opacity="0.8"/>
-                      <rect x="11" y="2" width="3" height="13" rx="1" fill="currentColor"/>
-                    </svg>
-                    {totalVisuals} chart{totalVisuals > 1 ? "s" : ""}
-                    <span style={{ fontSize: 9 }}>{isOpen ? "▲" : "▼"}</span>
-                  </button>
-                  {isOpen && (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                      {msg.charts?.map((chart, ci) => (
-                        <div key={ci} style={{ width: "min(640px, 92vw)" }}>
-                          <ChartMessage chart={chart} />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </>
+                    )}
+                  </div>
+                </div>
               );
-            })()}
-          </div>
-        ))}
+            })}
 
-        {loading && (
-          <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", gap: 8 }}>
-            <div style={{
-              padding: "10px 14px",
-              borderRadius: "14px 14px 14px 3px",
-              backgroundColor: "#ffffff",
-              border: "1px solid rgba(28,26,27,0.09)",
-              display: "flex", gap: 4, alignItems: "center",
-            }}>
-              {[0, 1, 2].map((i) => (
-                <div key={i} style={{
-                  width: 5, height: 5, borderRadius: "50%",
-                  backgroundColor: "#cc1100",
-                  animation: "pulse 1.2s ease-in-out infinite",
-                  animationDelay: `${i * 0.18}s`,
-                }} />
-              ))}
-            </div>
-            {pendingTickers.map((ticker, i) => (
-              <div key={ticker} style={{ opacity: 0, animation: `fadeScaleIn 0.3s ease forwards ${i * 0.08}s` }}>
-                <BubbleInner symbol={ticker} color={symbolColor(ticker)} size={34} />
+            {loading && (
+              <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", gap: 8 }}>
+                <div style={{
+                  padding: "8px 12px",
+                  borderRadius: "14px 14px 14px 3px",
+                  backgroundColor: "#ffffff",
+                  border: "1px solid rgba(28,26,27,0.09)",
+                  display: "flex", gap: 4, alignItems: "center",
+                }}>
+                  {[0, 1, 2].map((i) => (
+                    <div key={i} style={{
+                      width: 5, height: 5, borderRadius: "50%",
+                      backgroundColor: "#cc1100",
+                      animation: "pulse 1.2s ease-in-out infinite",
+                      animationDelay: `${i * 0.18}s`,
+                    }} />
+                  ))}
+                </div>
+                {pendingTickers.map((ticker, i) => (
+                  <div key={ticker} style={{ opacity: 0, animation: `fadeScaleIn 0.3s ease forwards ${i * 0.08}s` }}>
+                    <BubbleInner symbol={ticker} color={symbolColor(ticker)} size={28} />
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
+
+            <div ref={bottomRef} />
           </div>
-        )}
 
-        <div ref={bottomRef} />
-      </div>
-      )}
-
-      {/* Bottom input — only while chatting */}
-      {appPhase === "chat" && (
-      <div style={{ backgroundColor: "#f5f2ee", borderTop: "1px solid rgba(28,26,27,0.1)", flexShrink: 0, animation: "fadeSlideUp 1s cubic-bezier(0.22,1,0.36,1) forwards 0.15s", opacity: 0 }}>
-        {/* Quick-action chips + dropdown */}
-        <div style={{ display: "flex", gap: 6, padding: "8px 14px 0", flexWrap: "wrap", alignItems: "center", position: "relative" }} ref={menuRef}>
-          {QUICK_ACTIONS.slice(0, 2).map((chip) => (
-            <button
-              key={chip.label}
-              onClick={() => { sendMessage(chip.msg); setShowActionMenu(false); }}
-              disabled={loading}
-              style={{
-                fontSize: 11, fontWeight: 500,
-                padding: "5px 12px", borderRadius: 20,
-                border: "1px solid rgba(204,17,0,0.35)",
-                backgroundColor: "rgba(204,17,0,0.06)",
-                color: "#cc1100", cursor: loading ? "not-allowed" : "pointer",
-                opacity: loading ? 0.5 : 1,
-                transition: "background-color 0.15s, border-color 0.15s",
-                whiteSpace: "nowrap",
-              }}
-              onMouseEnter={e => { if (!loading) { e.currentTarget.style.backgroundColor = "rgba(204,17,0,0.14)"; e.currentTarget.style.borderColor = "#cc1100"; } }}
-              onMouseLeave={e => { e.currentTarget.style.backgroundColor = "rgba(204,17,0,0.06)"; e.currentTarget.style.borderColor = "rgba(204,17,0,0.35)"; }}
-            >
-              {chip.label}
-            </button>
-          ))}
-
-          {/* More actions dropdown trigger */}
-          <button
-            onClick={() => setShowActionMenu(v => !v)}
-            disabled={loading}
-            style={{
-              fontSize: 11, fontWeight: 600,
-              padding: "5px 10px", borderRadius: 20,
-              border: `1px solid ${showActionMenu ? "#cc1100" : "rgba(28,26,27,0.15)"}`,
-              backgroundColor: showActionMenu ? "rgba(204,17,0,0.08)" : "transparent",
-              color: showActionMenu ? "#cc1100" : "#666",
-              cursor: loading ? "not-allowed" : "pointer",
-              opacity: loading ? 0.5 : 1,
-              transition: "all 0.15s", whiteSpace: "nowrap",
-              display: "flex", alignItems: "center", gap: 4,
-            }}
-          >
-            ⚡ More tools
-            <span style={{ fontSize: 8 }}>{showActionMenu ? "▲" : "▼"}</span>
-          </button>
-
-          {/* Dropdown menu */}
-          {showActionMenu && (
-            <div style={{
-              position: "absolute", bottom: "calc(100% + 6px)", left: 0,
-              backgroundColor: "#ffffff",
-              border: "1px solid rgba(28,26,27,0.12)",
-              borderRadius: 10, boxShadow: "0 4px 24px rgba(0,0,0,0.10)",
-              padding: "6px", zIndex: 100,
-              display: "grid", gridTemplateColumns: "1fr 1fr",
-              gap: 4, width: "min(460px, 92vw)",
-            }}>
-              {QUICK_ACTIONS.map((action) => (
+          {/* Input area */}
+          <div style={{ backgroundColor: "#f5f2ee", borderTop: "1px solid rgba(28,26,27,0.1)", flexShrink: 0 }}>
+            {/* Quick-action chips + dropdown */}
+            <div style={{ display: "flex", gap: 6, padding: "8px 14px 0", flexWrap: "wrap", alignItems: "center", position: "relative" }} ref={menuRef}>
+              {QUICK_ACTIONS.slice(0, 2).map((chip) => (
                 <button
-                  key={action.label}
-                  onClick={() => { sendMessage(action.msg); setShowActionMenu(false); }}
+                  key={chip.label}
+                  onClick={() => { sendMessage(chip.msg); setShowActionMenu(false); }}
                   disabled={loading}
                   style={{
-                    padding: "8px 10px", borderRadius: 7, textAlign: "left",
-                    border: "1px solid transparent", backgroundColor: "transparent",
-                    fontSize: 12, color: "#2c2a29", cursor: "pointer",
-                    transition: "background 0.1s, border-color 0.1s",
-                    whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                    fontSize: 11, fontWeight: 500,
+                    padding: "5px 12px", borderRadius: 20,
+                    border: "1px solid rgba(204,17,0,0.35)",
+                    backgroundColor: "rgba(204,17,0,0.06)",
+                    color: "#cc1100", cursor: loading ? "not-allowed" : "pointer",
+                    opacity: loading ? 0.5 : 1,
+                    transition: "background-color 0.15s, border-color 0.15s",
+                    whiteSpace: "nowrap",
                   }}
-                  onMouseEnter={e => { e.currentTarget.style.backgroundColor = "#f5f2ee"; e.currentTarget.style.borderColor = "rgba(204,17,0,0.2)"; }}
-                  onMouseLeave={e => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.borderColor = "transparent"; }}
+                  onMouseEnter={e => { if (!loading) { e.currentTarget.style.backgroundColor = "rgba(204,17,0,0.14)"; e.currentTarget.style.borderColor = "#cc1100"; } }}
+                  onMouseLeave={e => { e.currentTarget.style.backgroundColor = "rgba(204,17,0,0.06)"; e.currentTarget.style.borderColor = "rgba(204,17,0,0.35)"; }}
                 >
-                  {action.label}
+                  {chip.label}
                 </button>
               ))}
+
+              {/* More actions dropdown trigger */}
+              <button
+                onClick={() => setShowActionMenu(v => !v)}
+                disabled={loading}
+                style={{
+                  fontSize: 11, fontWeight: 600,
+                  padding: "5px 10px", borderRadius: 20,
+                  border: `1px solid ${showActionMenu ? "#cc1100" : "rgba(28,26,27,0.15)"}`,
+                  backgroundColor: showActionMenu ? "rgba(204,17,0,0.08)" : "transparent",
+                  color: showActionMenu ? "#cc1100" : "#666",
+                  cursor: loading ? "not-allowed" : "pointer",
+                  opacity: loading ? 0.5 : 1,
+                  transition: "all 0.15s", whiteSpace: "nowrap",
+                  display: "flex", alignItems: "center", gap: 4,
+                }}
+              >
+                ⚡ More tools
+                <span style={{ fontSize: 8 }}>{showActionMenu ? "▲" : "▼"}</span>
+              </button>
+
+              {/* Dropdown menu */}
+              {showActionMenu && (
+                <div style={{
+                  position: "absolute", bottom: "calc(100% + 6px)", left: 0,
+                  backgroundColor: "#ffffff",
+                  border: "1px solid rgba(28,26,27,0.12)",
+                  borderRadius: 10, boxShadow: "0 4px 24px rgba(0,0,0,0.10)",
+                  padding: "6px", zIndex: 100,
+                  display: "grid", gridTemplateColumns: "1fr 1fr",
+                  gap: 4, width: "min(460px, 92vw)",
+                }}>
+                  {QUICK_ACTIONS.map((action) => (
+                    <button
+                      key={action.label}
+                      onClick={() => { sendMessage(action.msg); setShowActionMenu(false); }}
+                      disabled={loading}
+                      style={{
+                        padding: "8px 10px", borderRadius: 7, textAlign: "left",
+                        border: "1px solid transparent", backgroundColor: "transparent",
+                        fontSize: 12, color: "#2c2a29", cursor: "pointer",
+                        transition: "background 0.1s, border-color 0.1s",
+                        whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.backgroundColor = "#f5f2ee"; e.currentTarget.style.borderColor = "rgba(204,17,0,0.2)"; }}
+                      onMouseLeave={e => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.borderColor = "transparent"; }}
+                    >
+                      {action.label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
+            <div style={{ padding: "8px 14px 10px", display: "flex", gap: 8, alignItems: "center" }}>
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Ask about a stock, ETF, or market concept..."
+              disabled={loading}
+              style={{
+                flex: 1,
+                padding: "9px 14px",
+                borderRadius: 8,
+                border: "1px solid rgba(28,26,27,0.1)",
+                backgroundColor: "#ffffff",
+                color: "#1d1a1b",
+                fontSize: 13,
+                outline: "none",
+                opacity: loading ? 0.6 : 1,
+              }}
+            />
+            <button
+              onClick={() => sendMessage(input)}
+              disabled={loading || !input.trim()}
+              style={{
+                width: 34, height: 34,
+                borderRadius: 8,
+                border: "none",
+                backgroundColor: input.trim() && !loading ? "#cc1100" : "#1a1a1a",
+                color: input.trim() && !loading ? "#fff" : "#444",
+                cursor: input.trim() && !loading ? "pointer" : "not-allowed",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                flexShrink: 0,
+                transition: "background 0.15s",
+              }}
+              aria-label="Send"
+            >
+              <Send size={14} strokeWidth={2} />
+            </button>
+            </div>
+          </div>
         </div>
-        <div style={{ padding: "8px 14px 10px", display: "flex", gap: 8, alignItems: "center" }}>
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Ask about a stock, ETF, or market concept..."
-          disabled={loading}
-          style={{
-            flex: 1,
-            padding: "9px 14px",
-            borderRadius: 8,
-            border: "1px solid rgba(28,26,27,0.1)",
-            backgroundColor: "#ffffff",
-            color: "#1d1a1b",
-            fontSize: 13,
-            outline: "none",
-            opacity: loading ? 0.6 : 1,
-          }}
-        />
-        <button
-          onClick={() => sendMessage(input)}
-          disabled={loading || !input.trim()}
-          style={{
-            width: 34, height: 34,
-            borderRadius: 8,
-            border: "none",
-            backgroundColor: input.trim() && !loading ? "#cc1100" : "#1a1a1a",
-            color: input.trim() && !loading ? "#fff" : "#444",
-            cursor: input.trim() && !loading ? "pointer" : "not-allowed",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            flexShrink: 0,
-            transition: "background 0.15s",
-          }}
-          aria-label="Send"
-        >
-          <Send size={14} strokeWidth={2} />
-        </button>
-        </div>
+
       </div>
       )}
 
