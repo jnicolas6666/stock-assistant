@@ -2332,27 +2332,63 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
         </div>
 
         {/* RIGHT PANEL: Chat thread + input */}
-        <div style={{ width: 360, flexShrink: 0, display: "flex", flexDirection: "column", backgroundColor: "#ffffff" }}>
+        <div style={{ width: 390, flexShrink: 0, display: "flex", flexDirection: "column", backgroundColor: "#fafaf8" }}>
+
+          {/* Panel header */}
+          <div style={{
+            padding: "13px 18px",
+            borderBottom: "1px solid rgba(28,26,27,0.09)",
+            display: "flex", alignItems: "center", gap: 8,
+            flexShrink: 0, backgroundColor: "#fff",
+          }}>
+            <div style={{ width: 7, height: 7, borderRadius: "50%", backgroundColor: "#cc1100", flexShrink: 0 }} />
+            <span style={{ fontSize: 11, fontWeight: 700, color: "#1d1a1b", letterSpacing: "0.06em", textTransform: "uppercase" as const }}>
+              Conversation
+            </span>
+            <span style={{ marginLeft: "auto", fontSize: 11, color: "#bbb", fontWeight: 500 }}>
+              {messages.filter(m => m.role === "user").length} {messages.filter(m => m.role === "user").length === 1 ? "message" : "messages"}
+            </span>
+          </div>
+
           {/* Chat messages */}
-          <div style={{ flex: 1, overflowY: "auto", padding: "16px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ flex: 1, overflowY: "auto", padding: "20px 16px", display: "flex", flexDirection: "column", gap: 16 }}>
             {messages.map((msg, i) => {
               const hasSections = msg.role === "assistant" && parseMessageSections(msg.content) !== null;
+
+              // Build preamble for AI messages
+              let chatPreamble = "";
+              if (msg.role === "assistant") {
+                const firstHeader = msg.content.search(/(?:^|\n)#{1,3}\s+/);
+                chatPreamble = firstHeader > 0 ? msg.content.slice(0, firstHeader).trim() : "";
+                // If AI jumped straight to ## headers with no intro, extract teaser from first section
+                if (!chatPreamble && hasSections) {
+                  const parsed = parseMessageSections(msg.content);
+                  const firstContent = parsed?.[0]?.content ?? "";
+                  const clean = firstContent.replace(/\*\*/g, "").replace(/#{1,3}\s+/g, "").trim();
+                  chatPreamble = clean.length > 140 ? clean.slice(0, 137) + "…" : clean;
+                }
+              }
+
               return (
                 <div key={i} style={{
                   display: "flex",
                   flexDirection: "column",
                   alignItems: msg.role === "user" ? "flex-end" : "flex-start",
-                  gap: 3,
+                  gap: 4,
                 }}>
+                  {msg.role === "assistant" && (
+                    <span style={{ fontSize: 10, fontWeight: 700, color: "#cc1100", letterSpacing: "0.07em", textTransform: "uppercase" as const, paddingLeft: 4, marginBottom: 1 }}>
+                      AI
+                    </span>
+                  )}
                   <div style={{
-                    maxWidth: "88%",
-                    padding: msg.role === "user" ? "8px 12px" : "10px 14px",
-                    borderRadius: msg.role === "user" ? "14px 14px 3px 14px" : "14px 14px 14px 3px",
-                    backgroundColor: msg.role === "user" ? "#cc1100" : "#ffffff",
-                    border: msg.role === "user" ? "none" : "1px solid rgba(28,26,27,0.09)",
-                    color: msg.role === "user" ? "#fff" : "#2c2a29",
-                    fontSize: 12,
-                    lineHeight: 1.6,
+                    maxWidth: "91%",
+                    padding: msg.role === "user" ? "10px 15px" : "13px 16px",
+                    borderRadius: msg.role === "user" ? "18px 18px 4px 18px" : "4px 18px 18px 18px",
+                    backgroundColor: msg.role === "user" ? "#cc1100" : "#eeeae6",
+                    color: msg.role === "user" ? "#fff" : "#1d1a1b",
+                    fontSize: 13,
+                    lineHeight: 1.65,
                     wordBreak: "break-word" as const,
                   }}>
                     {msg.role === "user" ? (
@@ -2360,57 +2396,55 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                     ) : (
                       <>
                         {msg.tickers && msg.tickers.length > 0 && (
-                          <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 8, paddingBottom: 8, borderBottom: "1px solid rgba(28,26,27,0.07)" }}>
+                          <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginBottom: 11, paddingBottom: 11, borderBottom: "1px solid rgba(28,26,27,0.09)" }}>
                             {msg.tickers.map((ticker, ti) => (
                               <div key={ticker} style={{ opacity: 0, animation: `fadeScaleIn 0.3s ease forwards ${ti * 0.06}s` }}>
-                                <BubbleInner symbol={ticker} color={symbolColor(ticker)} size={30} />
+                                <BubbleInner symbol={ticker} color={symbolColor(ticker)} size={42} />
                               </div>
                             ))}
                           </div>
                         )}
                         {hasSections ? (
                           <>
-                            {(() => {
-                              const firstHeader = msg.content.search(/(?:^|\n)#{1,3}\s+/);
-                              const preamble = firstHeader > 0 ? msg.content.slice(0, firstHeader).trim() : "";
-                              return preamble ? (
-                                <p style={{ margin: "0 0 8px", fontSize: 12, lineHeight: 1.6, color: "#3a3836" }}>{preamble}</p>
-                              ) : null;
-                            })()}
+                            {chatPreamble && (
+                              <p style={{ margin: "0 0 12px", fontSize: 13, lineHeight: 1.65, color: "#1d1a1b" }}>
+                                {chatPreamble}
+                              </p>
+                            )}
                             <button
                               onClick={() => setSelectedAnalysisIndex(i)}
                               style={{
-                                display: "flex", alignItems: "center", gap: 6,
-                                padding: "6px 10px", borderRadius: 7,
-                                border: `1px solid ${selectedAnalysisIndex === i ? "#cc1100" : "rgba(28,26,27,0.12)"}`,
-                                backgroundColor: selectedAnalysisIndex === i ? "rgba(204,17,0,0.08)" : "#f5f2ee",
-                                color: selectedAnalysisIndex === i ? "#cc1100" : "#666",
-                                fontSize: 11, fontWeight: 600, cursor: "pointer",
+                                display: "flex", alignItems: "center", gap: 8,
+                                padding: "9px 14px", borderRadius: 10,
+                                border: `1.5px solid ${selectedAnalysisIndex === i ? "#cc1100" : "rgba(28,26,27,0.18)"}`,
+                                backgroundColor: selectedAnalysisIndex === i ? "rgba(204,17,0,0.09)" : "rgba(255,255,255,0.65)",
+                                color: selectedAnalysisIndex === i ? "#cc1100" : "#444",
+                                fontSize: 12, fontWeight: 600, cursor: "pointer",
                                 width: "100%", textAlign: "left" as const,
                                 transition: "all 0.15s",
                               }}
                             >
-                              <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+                              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
                                 <rect x="1" y="9" width="3" height="6" rx="1" fill="currentColor" opacity="0.6"/>
                                 <rect x="6" y="5" width="3" height="10" rx="1" fill="currentColor" opacity="0.8"/>
                                 <rect x="11" y="2" width="3" height="13" rx="1" fill="currentColor"/>
                               </svg>
-                              {selectedAnalysisIndex === i ? "Viewing in left panel" : "View analysis →"}
+                              {selectedAnalysisIndex === i ? "Viewing in left panel" : "View full analysis →"}
                             </button>
                           </>
                         ) : (
                           <ReactMarkdown
                             remarkPlugins={[remarkGfm]}
                             components={{
-                              p: ({ children }) => <p style={{ margin: "4px 0", lineHeight: 1.6 }}>{withIcons(children)}</p>,
-                              ul: ({ children }) => <ul style={{ margin: "4px 0", paddingLeft: 14 }}>{children}</ul>,
-                              li: ({ children }) => <li style={{ marginBottom: 2 }}>{withIcons(children)}</li>,
+                              p: ({ children }) => <p style={{ margin: "4px 0", lineHeight: 1.65 }}>{withIcons(children)}</p>,
+                              ul: ({ children }) => <ul style={{ margin: "4px 0", paddingLeft: 16 }}>{children}</ul>,
+                              li: ({ children }) => <li style={{ marginBottom: 3 }}>{withIcons(children)}</li>,
                               strong: ({ children }) => <strong style={{ color: "#1d1a1b", fontWeight: 700 }}>{children}</strong>,
                               a: () => null,
-                              h2: ({ children }) => <div style={{ fontWeight: 700, fontSize: 12, margin: "8px 0 4px" }}>{withIcons(children)}</div>,
-                              h3: ({ children }) => <div style={{ fontWeight: 700, fontSize: 11, color: "#cc1100", margin: "6px 0 2px", textTransform: "uppercase" as const }}>{withIcons(children)}</div>,
-                              blockquote: ({ children }) => <blockquote style={{ margin: "6px 0", padding: "4px 8px", borderLeft: "2px solid #cc1100", color: "#888", fontSize: 11 }}>{children}</blockquote>,
-                              code: ({ children }) => <code style={{ backgroundColor: "#f0ece8", padding: "1px 4px", borderRadius: 3, fontSize: 11, color: "#cc1100" }}>{children}</code>,
+                              h2: ({ children }) => <div style={{ fontWeight: 700, fontSize: 13, margin: "10px 0 4px" }}>{withIcons(children)}</div>,
+                              h3: ({ children }) => <div style={{ fontWeight: 700, fontSize: 11, color: "#cc1100", margin: "7px 0 2px", textTransform: "uppercase" as const }}>{withIcons(children)}</div>,
+                              blockquote: ({ children }) => <blockquote style={{ margin: "6px 0", padding: "5px 10px", borderLeft: "2px solid #cc1100", color: "#666", fontSize: 12 }}>{children}</blockquote>,
+                              code: ({ children }) => <code style={{ backgroundColor: "rgba(0,0,0,0.07)", padding: "1px 5px", borderRadius: 3, fontSize: 11, color: "#cc1100" }}>{children}</code>,
                             }}
                           >
                             {msg.content}
@@ -2426,24 +2460,23 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
             {loading && (
               <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", gap: 8 }}>
                 <div style={{
-                  padding: "8px 12px",
-                  borderRadius: "14px 14px 14px 3px",
-                  backgroundColor: "#ffffff",
-                  border: "1px solid rgba(28,26,27,0.09)",
-                  display: "flex", gap: 4, alignItems: "center",
+                  padding: "11px 15px",
+                  borderRadius: "4px 18px 18px 18px",
+                  backgroundColor: "#eeeae6",
+                  display: "flex", gap: 5, alignItems: "center",
                 }}>
-                  {[0, 1, 2].map((i) => (
-                    <div key={i} style={{
-                      width: 5, height: 5, borderRadius: "50%",
+                  {[0, 1, 2].map((j) => (
+                    <div key={j} style={{
+                      width: 6, height: 6, borderRadius: "50%",
                       backgroundColor: "#cc1100",
                       animation: "pulse 1.2s ease-in-out infinite",
-                      animationDelay: `${i * 0.18}s`,
+                      animationDelay: `${j * 0.18}s`,
                     }} />
                   ))}
                 </div>
-                {pendingTickers.map((ticker, i) => (
-                  <div key={ticker} style={{ opacity: 0, animation: `fadeScaleIn 0.3s ease forwards ${i * 0.08}s` }}>
-                    <BubbleInner symbol={ticker} color={symbolColor(ticker)} size={28} />
+                {pendingTickers.map((ticker, j) => (
+                  <div key={ticker} style={{ opacity: 0, animation: `fadeScaleIn 0.3s ease forwards ${j * 0.08}s` }}>
+                    <BubbleInner symbol={ticker} color={symbolColor(ticker)} size={36} />
                   </div>
                 ))}
               </div>
@@ -2453,7 +2486,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
           </div>
 
           {/* Input area */}
-          <div style={{ backgroundColor: "#f5f2ee", borderTop: "1px solid rgba(28,26,27,0.1)", flexShrink: 0 }}>
+          <div style={{ backgroundColor: "#f0ece8", borderTop: "1px solid rgba(28,26,27,0.1)", flexShrink: 0 }}>
             {/* Quick-action chips + dropdown */}
             <div style={{ display: "flex", gap: 6, padding: "8px 14px 0", flexWrap: "wrap", alignItems: "center", position: "relative" }} ref={menuRef}>
               {QUICK_ACTIONS.slice(0, 2).map((chip) => (
