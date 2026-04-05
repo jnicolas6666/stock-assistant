@@ -2267,6 +2267,12 @@ export default function Home() {
   const [responseTicker, setResponseTicker] = useState("");
   const [pendingTickers, setPendingTickers] = useState<string[]>([]);
   useEffect(() => { if (!loading) setPendingTickers([]); }, [loading]);
+  const [previewTicker, setPreviewTicker] = useState("");
+  useEffect(() => {
+    if (appPhase !== "home") { setPreviewTicker(""); return; }
+    const t = setTimeout(() => setPreviewTicker(extractTicker(input)), 350);
+    return () => clearTimeout(t);
+  }, [input, appPhase]);
   const [selectedAnalysisIndex, setSelectedAnalysisIndex] = useState<number>(-1);
   // Auto-select the newest analysis when a response arrives (skip follow-up messages)
   useEffect(() => {
@@ -2812,49 +2818,57 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
             alignItems: "center", justifyContent: "center",
             padding: "0 20px",
           }}>
-            {/* Wizard + tip bubble — column layout: bubble above Fred */}
+            {/* Wizard + bubble — column layout: bubble above Fred */}
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 16 }}>
-              {/* Tip speech bubble — sits above Fred in DOM so it's naturally above */}
-              <div style={{
-                marginBottom: 12,
-                opacity: (appPhase === "home" && contentVisible) ? (tipVisible ? 1 : 0) : 0,
-                transition: "opacity 0.35s ease",
-                pointerEvents: "none",
-                position: "relative",
-                backgroundColor: "#fff",
-                border: "1px solid rgba(204,17,0,0.25)",
-                borderRadius: 14,
-                padding: "11px 16px",
-                maxWidth: 230, minWidth: 180,
-                boxShadow: "0 4px 18px rgba(0,0,0,0.08)",
-                textAlign: "center",
-              }}>
-                <div style={{ fontSize: 11, color: "#1d1a1b", lineHeight: 1.65, fontStyle: "italic" }}>
-                  {activeTips[tipIndex % activeTips.length]}
+
+              {/* Ticker preview bubble — pops in when user types a recognized ticker */}
+              {previewTicker && appPhase === "home" && (
+                <div key={previewTicker} style={{
+                  marginBottom: 12,
+                  animation: "fadeScaleIn 0.25s cubic-bezier(0.34,1.56,0.64,1) forwards",
+                  pointerEvents: "none",
+                  position: "relative",
+                  display: "flex", flexDirection: "column", alignItems: "center",
+                }}>
+                  <BubbleInner symbol={previewTicker} color={symbolColor(previewTicker)} size={54} />
+                  {/* Tail */}
+                  <div style={{ width: 0, height: 0, borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderTop: `6px solid ${symbolColor(previewTicker)}`, opacity: 0.5, marginTop: -1 }} />
                 </div>
-                <div style={{ marginTop: 7, display: "flex", gap: 3, justifyContent: "center" }}>
-                  {activeTips.map((_, i) => (
-                    <div key={i} style={{
-                      width: i === tipIndex ? 10 : 4, height: 4, borderRadius: 2,
-                      backgroundColor: i === tipIndex ? "#cc1100" : "rgba(28,26,27,0.15)",
-                      transition: "all 0.3s ease",
-                    }} />
-                  ))}
+              )}
+
+              {/* Tip speech bubble — hidden when ticker preview is showing */}
+              {!previewTicker && (
+                <div style={{
+                  marginBottom: 12,
+                  opacity: (appPhase === "home" && contentVisible) ? (tipVisible ? 1 : 0) : 0,
+                  transition: "opacity 0.35s ease",
+                  pointerEvents: "none",
+                  position: "relative",
+                  backgroundColor: "#fff",
+                  border: "1px solid rgba(204,17,0,0.25)",
+                  borderRadius: 14,
+                  padding: "11px 16px",
+                  maxWidth: 230, minWidth: 180,
+                  boxShadow: "0 4px 18px rgba(0,0,0,0.08)",
+                  textAlign: "center",
+                }}>
+                  <div style={{ fontSize: 11, color: "#1d1a1b", lineHeight: 1.65, fontStyle: "italic" }}>
+                    {activeTips[tipIndex % activeTips.length]}
+                  </div>
+                  <div style={{ marginTop: 7, display: "flex", gap: 3, justifyContent: "center" }}>
+                    {activeTips.map((_, i) => (
+                      <div key={i} style={{
+                        width: i === tipIndex ? 10 : 4, height: 4, borderRadius: 2,
+                        backgroundColor: i === tipIndex ? "#cc1100" : "rgba(28,26,27,0.15)",
+                        transition: "all 0.3s ease",
+                      }} />
+                    ))}
+                  </div>
+                  {/* Tail pointing down toward Fred */}
+                  <div style={{ position: "absolute", bottom: -7, left: "50%", transform: "translateX(-50%)", width: 0, height: 0, borderLeft: "7px solid transparent", borderRight: "7px solid transparent", borderTop: "7px solid rgba(204,17,0,0.25)" }} />
+                  <div style={{ position: "absolute", bottom: -5.5, left: "50%", transform: "translateX(-50%)", width: 0, height: 0, borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderTop: "6px solid #fff" }} />
                 </div>
-                {/* Tail pointing down toward Fred */}
-                <div style={{
-                  position: "absolute", bottom: -7, left: "50%", transform: "translateX(-50%)",
-                  width: 0, height: 0,
-                  borderLeft: "7px solid transparent", borderRight: "7px solid transparent",
-                  borderTop: "7px solid rgba(204,17,0,0.25)",
-                }} />
-                <div style={{
-                  position: "absolute", bottom: -5.5, left: "50%", transform: "translateX(-50%)",
-                  width: 0, height: 0,
-                  borderLeft: "6px solid transparent", borderRight: "6px solid transparent",
-                  borderTop: "6px solid #fff",
-                }} />
-              </div>
+              )}
 
               {/* Fred */}
               <div style={{
