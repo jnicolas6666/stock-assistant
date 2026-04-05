@@ -898,13 +898,13 @@ function SuggestionIcon({ name }: { name: string }) {
 
 // ── Home screen Fred tips ────────────────────────────────────────────────────
 const HOME_TIPS = [
-  "Type any ticker or ask in plain English — try 'What is Apple doing?'",
-  "Works for Canadian stocks too — try 'TD.TO' or 'CNR.TO'",
-  "Ask for a chart: 'Show me Apple revenue growth as a bar chart'",
-  "Compare stocks head-to-head: 'Compare NVDA vs AMD'",
-  "I can fetch insider transactions, dividends & analyst upgrades",
-  "Try 'How is the market doing today?' for a macro snapshot",
-  "Ask about ETFs too — 'What's in QQQ?' or 'Analyze SPY'",
+  "Hi! I'm Fred — your AI market intelligence tool. Ask me anything about stocks, ETFs, or markets!",
+  "Type a company name or ask in plain English — I understand natural language",
+  "I cover both US and Canadian markets — equities, ETFs, and more",
+  "Ask for a chart and I'll generate one automatically with live data",
+  "Compare two stocks side-by-side — just ask me to compare them",
+  "I can fetch insider transactions, dividend history & analyst upgrades",
+  "Ask about the market environment — I'll pull macro context for you",
   "Earnings history, price targets, short interest — just ask",
   "Click any past analysis button in chat to switch the left panel view",
 ];
@@ -2162,17 +2162,26 @@ export default function Home() {
     }
   }, [isShockwave]);
 
-  // Tip cycling on home screen
+  // Tip cycling — greeting (index 0) stays 9s, rest 5s
   useEffect(() => {
     if (appPhase !== "home") return;
-    const cycle = setInterval(() => {
-      setTipVisible(false);
-      setTimeout(() => {
-        setTipIndex(i => (i + 1) % HOME_TIPS.length);
-        setTipVisible(true);
-      }, 400);
-    }, 5000);
-    return () => clearInterval(cycle);
+    let current = tipIndex;
+    let timer: ReturnType<typeof setTimeout>;
+    function scheduleNext() {
+      const delay = current === 0 ? 9000 : 5000;
+      timer = setTimeout(() => {
+        setTipVisible(false);
+        setTimeout(() => {
+          current = (current + 1) % HOME_TIPS.length;
+          setTipIndex(current);
+          setTipVisible(true);
+          scheduleNext();
+        }, 400);
+      }, delay);
+    }
+    scheduleNext();
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appPhase]);
 
   // Escape key exits demo
@@ -2631,8 +2640,51 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
             alignItems: "center", justifyContent: "center",
             padding: "0 20px",
           }}>
-            {/* Wizard + tip bubble */}
-            <div style={{ position: "relative", marginBottom: 16, display: "inline-flex", alignItems: "center" }}>
+            {/* Wizard + tip bubble — column layout: bubble above Fred */}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 16 }}>
+              {/* Tip speech bubble — sits above Fred in DOM so it's naturally above */}
+              <div style={{
+                marginBottom: 12,
+                opacity: (appPhase === "home" && contentVisible) ? (tipVisible ? 1 : 0) : 0,
+                transition: "opacity 0.35s ease",
+                pointerEvents: "none",
+                position: "relative",
+                backgroundColor: "#fff",
+                border: "1px solid rgba(204,17,0,0.25)",
+                borderRadius: 14,
+                padding: "11px 16px",
+                maxWidth: 230, minWidth: 180,
+                boxShadow: "0 4px 18px rgba(0,0,0,0.08)",
+                textAlign: "center",
+              }}>
+                <div style={{ fontSize: 11, color: "#1d1a1b", lineHeight: 1.65, fontStyle: "italic" }}>
+                  {HOME_TIPS[tipIndex]}
+                </div>
+                <div style={{ marginTop: 7, display: "flex", gap: 3, justifyContent: "center" }}>
+                  {HOME_TIPS.map((_, i) => (
+                    <div key={i} style={{
+                      width: i === tipIndex ? 10 : 4, height: 4, borderRadius: 2,
+                      backgroundColor: i === tipIndex ? "#cc1100" : "rgba(28,26,27,0.15)",
+                      transition: "all 0.3s ease",
+                    }} />
+                  ))}
+                </div>
+                {/* Tail pointing down toward Fred */}
+                <div style={{
+                  position: "absolute", bottom: -7, left: "50%", transform: "translateX(-50%)",
+                  width: 0, height: 0,
+                  borderLeft: "7px solid transparent", borderRight: "7px solid transparent",
+                  borderTop: "7px solid rgba(204,17,0,0.25)",
+                }} />
+                <div style={{
+                  position: "absolute", bottom: -5.5, left: "50%", transform: "translateX(-50%)",
+                  width: 0, height: 0,
+                  borderLeft: "6px solid transparent", borderRight: "6px solid transparent",
+                  borderTop: "6px solid #fff",
+                }} />
+              </div>
+
+              {/* Fred */}
               <div style={{
                 transform: appPhase === "forming" ? "scale(1.12)" : "scale(1)",
                 transition: "transform 0.5s ease",
@@ -2641,52 +2693,6 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                   <PixelWizard />
                 </WizardEntrance>
               </div>
-              {/* Tip speech bubble — above Fred, cartoon style */}
-              {appPhase === "home" && contentVisible && (
-                <div style={{
-                  position: "absolute",
-                  bottom: "calc(100% + 14px)",
-                  left: "50%", transform: "translateX(-50%)",
-                  backgroundColor: "#fff",
-                  border: "1px solid rgba(204,17,0,0.25)",
-                  borderRadius: 14,
-                  padding: "10px 15px",
-                  maxWidth: 220, minWidth: 170,
-                  boxShadow: "0 4px 18px rgba(0,0,0,0.08)",
-                  opacity: tipVisible ? 1 : 0,
-                  transition: "opacity 0.35s ease",
-                  pointerEvents: "none",
-                  zIndex: 10,
-                  textAlign: "center",
-                  whiteSpace: "normal",
-                }}>
-                  <div style={{ fontSize: 10.5, color: "#1d1a1b", lineHeight: 1.6, fontStyle: "italic" }}>
-                    {HOME_TIPS[tipIndex]}
-                  </div>
-                  <div style={{ marginTop: 6, display: "flex", gap: 3, justifyContent: "center" }}>
-                    {HOME_TIPS.map((_, i) => (
-                      <div key={i} style={{
-                        width: i === tipIndex ? 10 : 4, height: 4, borderRadius: 2,
-                        backgroundColor: i === tipIndex ? "#cc1100" : "rgba(28,26,27,0.15)",
-                        transition: "all 0.3s ease",
-                      }} />
-                    ))}
-                  </div>
-                  {/* Tail pointing down toward Fred */}
-                  <div style={{
-                    position: "absolute", bottom: -7, left: "50%", transform: "translateX(-50%)",
-                    width: 0, height: 0,
-                    borderLeft: "7px solid transparent", borderRight: "7px solid transparent",
-                    borderTop: "7px solid rgba(204,17,0,0.25)",
-                  }} />
-                  <div style={{
-                    position: "absolute", bottom: -5.5, left: "50%", transform: "translateX(-50%)",
-                    width: 0, height: 0,
-                    borderLeft: "6px solid transparent", borderRight: "6px solid transparent",
-                    borderTop: "6px solid #fff",
-                  }} />
-                </div>
-              )}
             </div>
 
             {/* Title + cards + input — hidden until Fred lands, fade out during forming */}
