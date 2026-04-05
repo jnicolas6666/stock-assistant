@@ -923,7 +923,7 @@ const DEMO_STEPS: DemoStep[] = [
     fredLeft: "50%", fredTop: "38%",
   },
   {
-    text: "This is the search bar. Type any ticker like 'AAPL', a company name, or a full question — I understand plain English.",
+    text: "This is the search bar. Type a company name, ask a question in plain English, or enter a ticker symbol — I understand it all.",
     fredLeft: "50%", fredTop: "74%",
     tilt: 12, highlightId: "fred-demo-input",
   },
@@ -942,7 +942,7 @@ const DEMO_STEPS: DemoStep[] = [
     flip: true, highlightId: "fred-demo-premium",
   },
   {
-    text: "That's the tour! I work with thousands of tickers including Canadian stocks. Go ahead — ask me anything!",
+    text: "That's the tour! I cover US and Canadian markets — equities, ETFs, earnings, and more. Go ahead, ask me anything!",
     fredLeft: "50%", fredTop: "38%",
   },
 ];
