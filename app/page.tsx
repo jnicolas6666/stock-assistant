@@ -428,6 +428,40 @@ const ALL_TICKERS: string[] = [
   "BEKE","YUMC","VIPS","CAN","DLO","CSAN","TIMB","BRFS","AZUL","GLOB",
   // ── Space / Autonomous / Lidar ────────────────────────────────────────────
   "SPCE","LUNR","LILM","LAZR","MVIS","RKLB","ACHR","JOBY","EVEX","VTOL",
+  // ── NYSE/NASDAQ — Apparel & Consumer Brands ───────────────────────────────
+  "WSM","PVH","RL","TPR","CPRI","LEVI","COLM","UAA","SIG","OXM","MOV","VFC","HBI",
+  "XPOF","SIX","CNK","IMAX","NCLH","EXPE","MTN","PLNT","BJ",
+  // ── NYSE/NASDAQ — Financial Services (additions) ──────────────────────────
+  "PFG","VOYA","CBRE","JLL","ACGL","RE","MTG","RDN","ESNT","NMIH",
+  "OMF","SLM","ENVA","CACC","FCFS","VLY","COLB","PNFP","GBCI","ORI","KMPR","WR",
+  // ── NYSE/NASDAQ — Transport & Logistics (additions) ───────────────────────
+  "AL","KEX","ZIM","MATX","HUBG","WERN","SNDR","URI","HRI","HTZ","SKYW","HA","FWRD",
+  // ── NYSE/NASDAQ — Food, Beverage & Restaurants (additions) ───────────────
+  "SYY","USFD","LW","WEN","BJRI","CHE","GATX","MWA","NVT","BCC",
+  // ── NYSE/NASDAQ — Tech (additions) ───────────────────────────────────────
+  "SSYS","DDD","XMTR","AVAV","TTEC","ALRM","SWAV","RVNC","KRTX","IMVT",
+  // ── NYSE/NASDAQ — ETFs (additions) ───────────────────────────────────────
+  "VGT","VHT","VFH","VCR","VIS","VAW","VPU","VDC","VOX","VTIP","VCIT",
+  "SCHG","SCHV","SCHF","SCHA","SCHB","SCHX","SCHP","SCHZ","SCHD","SCHE",
+  // ── TSX — ETFs ────────────────────────────────────────────────────────────
+  "XIU","XIC","XEI","XDV","XRE","XHY","XHB","XIT","XEG","XMA","XUT",
+  "ZEB","ZCN","ZSP","ZQQ","ZLB","ZLU","ZDV","ZWC","ZWB","ZWG","ZRE","ZAG",
+  "HXT","HXU","HXH","HXQ","HBAL","XBAL","XCNS","XDIV","XINC",
+  // ── TSX — Energy (additions) ──────────────────────────────────────────────
+  "GEI","ESI","PD","CNE","PSI","PSD","CJ","SCL","FEC","PPR","TOU","HWX",
+  "VET","FRU","PKI","BTE","SGY","OBE","RMP","NVA","TVE","CPG","WCP",
+  // ── TSX — Mining & Metals (additions) ────────────────────────────────────
+  "OLA","EXN","GGD","BTO","JAG","LIF","YRI","EQX","KNT","PRB","GOG",
+  "MRC","AMY","ACG","SBB","CFB","ATX","MDI","GSC","TLO","URE",
+  // ── TSX — Technology (additions) ─────────────────────────────────────────
+  "TIXT","WELL","TOY","HPS","XBC","DCBO","KXS","PMC","REAL","LSPD",
+  // ── TSX — Consumer & Industrial (additions) ───────────────────────────────
+  "CHR","WPK","PET","DIV","DFY","EIF","WPF","TFII","BRP","DOOO",
+  "FSV","CIGI","STN","WSP","CAE","MDA","GFL","WCN","TIH","BDT",
+  // ── TSX — Finance & Insurance (additions) ────────────────────────────────
+  "EQB","DFY","PWF","CWB","LB","HCG","ECN","FFH","SFC","IAG","PWF","GWL",
+  // ── TSX — Clean Energy & Utilities (additions) ───────────────────────────
+  "BLX","AQN","CPX","INE","NPI","RNW","BEP","BEPC","TA","HNL","NWH","ACO",
 ];
 const ALL_TICKERS_SET = new Set(ALL_TICKERS);
 
