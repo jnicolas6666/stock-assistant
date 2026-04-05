@@ -680,37 +680,219 @@ function OrbitScene({ ticker, bubbles }: { ticker: string; bubbles: BubbleData[]
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-const ALL_SUGGESTIONS = [
-  { text: "Show me a stock's 6-month price chart", sub: "Price history · Any stock or ETF", icon: "linechart" },
-  { text: "Compare P/E ratios across a sector", sub: "Peer comparison · Valuations", icon: "barchart" },
-  { text: "Explain earnings per share surprises", sub: "EPS actual vs estimate", icon: "search" },
-  { text: "What do analyst ratings mean?", sub: "Buy · Hold · Sell · Consensus", icon: "analyst" },
-  { text: "What's the dividend yield on a stock?", sub: "Income · Dividend investing", icon: "barchart" },
-  { text: "How does a stock sit vs its 52-week range?", sub: "Momentum · High / Low context", icon: "linechart" },
-  { text: "Show me analyst price targets for a stock", sub: "Consensus target · Upside estimate", icon: "analyst" },
-  { text: "What's the latest news on a stock?", sub: "Headlines · Recent events", icon: "search" },
-  { text: "Explain what forward P/E means", sub: "Valuation · Growth expectations", icon: "barchart" },
-  { text: "What does market cap tell us?", sub: "Size · Risk · Sector context", icon: "analyst" },
-  { text: "How do ETFs compare to individual stocks?", sub: "Diversification · Passive investing", icon: "search" },
-  { text: "Show me a company's earnings history", sub: "Quarterly EPS trends · Growth", icon: "linechart" },
-  { text: "What is a stock's current price?", sub: "Live quote · Any ticker", icon: "linechart" },
-  { text: "Is a stock overbought or oversold?", sub: "RSI · Technical sentiment", icon: "barchart" },
-  { text: "Compare two stocks on key metrics", sub: "Side-by-side · Any sector", icon: "barchart" },
-  { text: "What sectors are outperforming this year?", sub: "Sector rotation · Market trends", icon: "search" },
-  { text: "Explain short interest and what it signals", sub: "Short squeeze · Bearish bets", icon: "analyst" },
-  { text: "How do I read an ETF's top holdings?", sub: "ETF breakdown · Concentration risk", icon: "linechart" },
-  { text: "What is a stock's beta and why does it matter?", sub: "Volatility · Risk vs market", icon: "analyst" },
-  { text: "How do I read a company's balance sheet?", sub: "Assets · Liabilities · Equity", icon: "search" },
-  { text: "What's the difference between growth and value stocks?", sub: "Investing styles · Valuation", icon: "barchart" },
-  { text: "Show me free cash flow for a company", sub: "FCF · Financial health", icon: "linechart" },
-  { text: "What does the yield curve tell us?", sub: "Macro · Recession signals", icon: "barchart" },
-  { text: "Explain options — calls and puts basics", sub: "Derivatives · Hedging · Speculation", icon: "analyst" },
-  { text: "Which TSX stocks pay the highest dividends?", sub: "Canadian market · Income plays", icon: "barchart" },
-  { text: "What is dollar-cost averaging?", sub: "Investing strategy · Risk reduction", icon: "search" },
-];
+// ── Language system ───────────────────────────────────────────────────────────
+type Lang = "en" | "fr";
 
-function getRandomSuggestions() {
-  return [...ALL_SUGGESTIONS].sort(() => Math.random() - 0.5).slice(0, 4);
+const TRANSLATIONS = {
+  en: {
+    wizardPhrases: [
+      "Fred — real-time market intelligence.",
+      "Your market assistant is ready.",
+      "Ask me anything about stocks, ETFs, or markets.",
+      "Live data. Analyst insights. On demand.",
+      "Fred — your self-directed investing companion.",
+      "Market intelligence, at your fingertips.",
+      "From price history to analyst consensus.",
+      "Stocks, ETFs, earnings — ask me anything.",
+      "Your financial information hub, powered by AI.",
+      "Real-time data, synthesized for you.",
+    ],
+    homeTips: [
+      "Hi! I'm Fred — your AI market intelligence tool. Ask me anything about stocks, ETFs, or markets!",
+      "Type a company name or ask in plain English — I understand natural language",
+      "I cover both US and Canadian markets — equities, ETFs, and more",
+      "Ask for a chart and I'll generate one automatically with live data",
+      "Compare two stocks side-by-side — just ask me to compare them",
+      "I can fetch insider transactions, dividend history & analyst upgrades",
+      "Ask about the market environment — I'll pull macro context for you",
+      "Earnings history, price targets, short interest — just ask",
+      "Click any past analysis button in chat to switch the left panel view",
+    ],
+    demoSteps: [
+      "Hi! I'm Fred, your Market Wizard. I pull live stock data and synthesize it with AI. Let me show you around!",
+      "This is the search bar. Type a company name, ask a question in plain English, or enter a ticker symbol — I understand it all.",
+      "These suggestion cards give you a running start. Click one and I'll fetch live market data instantly.",
+      "After I respond, a two-panel view opens. The left side shows deep analysis — expandable sections, live charts, insider data.",
+      "The Premium menu unlocks the Portfolio Simulator — build a hypothetical portfolio and I'll track it with live prices.",
+      "That's the tour! I cover US and Canadian markets — equities, ETFs, earnings, and more. Go ahead, ask me anything!",
+    ],
+    loadingPhrases: [
+      "Gathering market intelligence...",
+      "Consulting the financial scrolls...",
+      "Alcheming the data points...",
+      "Analyzing ticker symbols...",
+      "Synthesizing analyst consensus...",
+      "Brewing a fresh response...",
+      "Polling the Big Six banks...",
+      "Extracting historical trends...",
+      "Mapping the volatility...",
+      "Polishing the crystal ball...",
+      "Crunching the quarterly numbers...",
+      "Scanning recent headlines...",
+      "Decoding the market sentiment...",
+      "Filtering out the noise...",
+      "Normalizing valuation metrics...",
+      "Preparing the visual charts...",
+      "Fact-checking the fundamentals...",
+      "Optimizing the insight engine...",
+      "Aligning the stars (and stocks)...",
+      "Finalizing the synthesis...",
+      "Reviewing the educational guardrails...",
+    ],
+    suggestions: [
+      { text: "Show me a stock's 6-month price chart", sub: "Price history · Any stock or ETF", icon: "linechart" },
+      { text: "Compare P/E ratios across a sector", sub: "Peer comparison · Valuations", icon: "barchart" },
+      { text: "Explain earnings per share surprises", sub: "EPS actual vs estimate", icon: "search" },
+      { text: "What do analyst ratings mean?", sub: "Buy · Hold · Sell · Consensus", icon: "analyst" },
+      { text: "What's the dividend yield on a stock?", sub: "Income · Dividend investing", icon: "barchart" },
+      { text: "How does a stock sit vs its 52-week range?", sub: "Momentum · High / Low context", icon: "linechart" },
+      { text: "Show me analyst price targets for a stock", sub: "Consensus target · Upside estimate", icon: "analyst" },
+      { text: "What's the latest news on a stock?", sub: "Headlines · Recent events", icon: "search" },
+      { text: "Explain what forward P/E means", sub: "Valuation · Growth expectations", icon: "barchart" },
+      { text: "What does market cap tell us?", sub: "Size · Risk · Sector context", icon: "analyst" },
+      { text: "How do ETFs compare to individual stocks?", sub: "Diversification · Passive investing", icon: "search" },
+      { text: "Show me a company's earnings history", sub: "Quarterly EPS trends · Growth", icon: "linechart" },
+      { text: "What is a stock's current price?", sub: "Live quote · Any ticker", icon: "linechart" },
+      { text: "Is a stock overbought or oversold?", sub: "RSI · Technical sentiment", icon: "barchart" },
+      { text: "Compare two stocks on key metrics", sub: "Side-by-side · Any sector", icon: "barchart" },
+      { text: "What sectors are outperforming this year?", sub: "Sector rotation · Market trends", icon: "search" },
+      { text: "Explain short interest and what it signals", sub: "Short squeeze · Bearish bets", icon: "analyst" },
+      { text: "How do I read an ETF's top holdings?", sub: "ETF breakdown · Concentration risk", icon: "linechart" },
+      { text: "What is a stock's beta and why does it matter?", sub: "Volatility · Risk vs market", icon: "analyst" },
+      { text: "How do I read a company's balance sheet?", sub: "Assets · Liabilities · Equity", icon: "search" },
+      { text: "What's the difference between growth and value stocks?", sub: "Investing styles · Valuation", icon: "barchart" },
+      { text: "Show me free cash flow for a company", sub: "FCF · Financial health", icon: "linechart" },
+      { text: "What does the yield curve tell us?", sub: "Macro · Recession signals", icon: "barchart" },
+      { text: "Explain options — calls and puts basics", sub: "Derivatives · Hedging · Speculation", icon: "analyst" },
+      { text: "Which TSX stocks pay the highest dividends?", sub: "Canadian market · Income plays", icon: "barchart" },
+      { text: "What is dollar-cost averaging?", sub: "Investing strategy · Risk reduction", icon: "search" },
+    ],
+    ui: {
+      placeholder: "Ask about a stock, ETF, or market concept...",
+      homeBtn: "← Home",
+      demoBtn: "Request Demo",
+      educationalOnly: "EDUCATIONAL USE ONLY",
+      poweredBy: "Powered By Barrows Consulting",
+      conversationLabel: "CONVERSATION",
+      messageCount: (n: number) => `${n} ${n === 1 ? "message" : "messages"}`,
+      sendBtn: "Send",
+      greeting: `Hi! I'm **Fred**, your AI-powered market intelligence tool. I provide real-time stock data, earnings analysis, analyst views, and market insights — for **educational purposes only**. I don't give financial advice or tell you what to buy or sell. Ask me anything about stocks, ETFs, or market trends!`,
+      loginSubtitle: "Sign in to access your market intelligence",
+      loginUsername: "Username",
+      loginPassword: "Password",
+      loginSignIn: "Sign In",
+      loginAuthenticated: "✓ Authenticated",
+      loginWelcome: "Welcome back! Loading your workspace...",
+      loginError: "Invalid username or password.",
+      loginFooter: "Powered by Barrows Consulting · Educational Use Only",
+      skipBtn: "Skip",
+      nextBtn: "Next →",
+      letsGoBtn: "Let's go!",
+      viewAnalysis: "View full analysis →",
+      viewingAnalysis: "Viewing in left panel",
+      comparePeers: "Compare peers",
+      dividends: "Dividends",
+      emptyState: "Ask a question to see the\nanalysis here",
+      subtitle: "stocks, ETFs, earnings, analyst views, and market trends.",
+    },
+  },
+  fr: {
+    wizardPhrases: [
+      "Fred — intelligence de marché en temps réel.",
+      "Votre assistant de marché est prêt.",
+      "Posez-moi n'importe quelle question sur les marchés.",
+      "Données en direct. Analyses d'experts. À la demande.",
+      "Fred — votre compagnon d'investissement autonome.",
+      "L'intelligence de marché, au bout des doigts.",
+      "De l'historique des prix au consensus des analystes.",
+      "Actions, FNB, résultats — posez-moi vos questions.",
+      "Votre hub d'information financière, propulsé par l'IA.",
+      "Des données en temps réel, synthétisées pour vous.",
+    ],
+    homeTips: [
+      "Bonjour! Je suis Fred — votre outil d'intelligence de marché. Posez-moi n'importe quelle question!",
+      "Tapez le nom d'une entreprise ou posez une question en français — je comprends le langage naturel",
+      "Je couvre les marchés américains et canadiens — actions, FNB et plus encore",
+      "Demandez un graphique et j'en génère un automatiquement avec des données en direct",
+      "Comparez deux titres côte à côte — demandez-moi simplement de les comparer",
+      "Je peux récupérer les transactions d'initiés, l'historique des dividendes et les révisions d'analystes",
+      "Demandez-moi le contexte macroéconomique — je vous fournirai une vue d'ensemble des marchés",
+      "Historique des bénéfices, cibles de prix, intérêt vendeur — il suffit de demander",
+      "Cliquez sur un bouton d'analyse passée dans le chat pour changer le panneau gauche",
+    ],
+    demoSteps: [
+      "Bonjour! Je suis Fred, votre Sorcier des marchés. Je récupère des données boursières en direct et les synthétise avec l'IA. Laissez-moi vous faire visiter!",
+      "Voici la barre de recherche. Tapez un nom d'entreprise, posez une question en français, ou entrez un symbole boursier — je comprends tout.",
+      "Ces suggestions vous donnent un bon départ. Cliquez sur une et je récupère des données de marché en direct instantanément.",
+      "Après ma réponse, une vue à deux panneaux s'ouvre. Le côté gauche affiche l'analyse approfondie — sections extensibles, graphiques en direct, données d'initiés.",
+      "Le menu Premium déverrouille le Simulateur de portefeuille — construisez un portefeuille hypothétique et je le suivrai avec des prix en direct.",
+      "C'est la visite! Je couvre les marchés américains et canadiens — actions, FNB, résultats et plus. Allez-y, posez-moi n'importe quoi!",
+    ],
+    loadingPhrases: [
+      "Analyse en cours...",
+      "Récupération des données en direct...",
+      "Consultation des analystes...",
+      "Synthèse des informations...",
+      "Vérification du contexte de marché...",
+      "Calcul des métriques...",
+      "Traitement des données fondamentales...",
+      "Revue de l'actualité récente...",
+      "Presque prêt...",
+      "Mise en forme de l'analyse...",
+    ],
+    suggestions: [
+      { text: "Analyser une action", sub: "Cours, fondamentaux, analystes", icon: "linechart" },
+      { text: "Comparer deux titres", sub: "Analyse côte à côte", icon: "barchart" },
+      { text: "Contexte de marché", sub: "S&P 500, VIX, taux", icon: "search" },
+      { text: "Résultats trimestriels", sub: "Réel vs estimé, tendances", icon: "linechart" },
+      { text: "Consensus des analystes", sub: "Notes Achat/Conserver/Vendre", icon: "analyst" },
+      { text: "Historique du cours", sub: "Graphique sur 1 an", icon: "linechart" },
+      { text: "Données fondamentales", sub: "Marges, ROE, endettement", icon: "barchart" },
+      { text: "Dividendes", sub: "Historique et rendement", icon: "barchart" },
+      { text: "Transactions d'initiés", sub: "Achats et ventes récents", icon: "analyst" },
+      { text: "Bilan financier", sub: "Revenus, flux de trésorerie", icon: "search" },
+      { text: "Révisions d'analystes", sub: "Hausses et baisses récentes", icon: "analyst" },
+      { text: "Comparaison sectorielle", sub: "Vs les pairs du secteur", icon: "barchart" },
+      { text: "Cours actuel", sub: "Cotation en direct", icon: "linechart" },
+      { text: "Cible de prix des analystes", sub: "Potentiel de hausse estimé", icon: "analyst" },
+      { text: "Historique des bénéfices", sub: "BPA trimestriel, tendances", icon: "linechart" },
+      { text: "Santé financière", sub: "Flux de trésorerie disponible", icon: "search" },
+    ],
+    ui: {
+      placeholder: "Posez une question sur un titre, FNB ou tendance de marché...",
+      homeBtn: "← Accueil",
+      demoBtn: "Voir la démo",
+      educationalOnly: "À TITRE ÉDUCATIF SEULEMENT",
+      poweredBy: "Propulsé par Barrows Consulting",
+      conversationLabel: "CONVERSATION",
+      messageCount: (n: number) => `${n} message${n === 1 ? "" : "s"}`,
+      sendBtn: "Envoyer",
+      greeting: `Bonjour! Je suis **Fred**, votre outil d'intelligence de marché propulsé par l'IA. Je fournis des données boursières en temps réel, des analyses de résultats, des avis d'analystes et des informations de marché — à **titre éducatif uniquement**. Je ne donne pas de conseils financiers. Posez-moi vos questions sur les actions, FNB ou les tendances de marché!`,
+      loginSubtitle: "Connectez-vous pour accéder à votre intelligence de marché",
+      loginUsername: "Nom d'utilisateur",
+      loginPassword: "Mot de passe",
+      loginSignIn: "Se connecter",
+      loginAuthenticated: "✓ Authentifié",
+      loginWelcome: "Bon retour! Chargement de votre espace...",
+      loginError: "Nom d'utilisateur ou mot de passe invalide.",
+      loginFooter: "Propulsé par Barrows Consulting · À titre éducatif seulement",
+      skipBtn: "Passer",
+      nextBtn: "Suivant →",
+      letsGoBtn: "C'est parti!",
+      viewAnalysis: "Voir l'analyse →",
+      viewingAnalysis: "Affiché dans le panneau gauche",
+      comparePeers: "Comparer les pairs",
+      dividends: "Dividendes",
+      emptyState: "Posez une question pour voir\nl'analyse ici",
+      subtitle: "actions, FNB, résultats, analyses et tendances de marché.",
+    },
+  },
+} as const;
+
+const ALL_SUGGESTIONS = TRANSLATIONS.en.suggestions;
+
+function getRandomSuggestions(lang: Lang = "en") {
+  return [...TRANSLATIONS[lang].suggestions].sort(() => Math.random() - 0.5).slice(0, 4);
 }
 
 const CONSENSUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
@@ -896,18 +1078,8 @@ function SuggestionIcon({ name }: { name: string }) {
   );
 }
 
-// ── Home screen Fred tips ────────────────────────────────────────────────────
-const HOME_TIPS = [
-  "Hi! I'm Fred — your AI market intelligence tool. Ask me anything about stocks, ETFs, or markets!",
-  "Type a company name or ask in plain English — I understand natural language",
-  "I cover both US and Canadian markets — equities, ETFs, and more",
-  "Ask for a chart and I'll generate one automatically with live data",
-  "Compare two stocks side-by-side — just ask me to compare them",
-  "I can fetch insider transactions, dividend history & analyst upgrades",
-  "Ask about the market environment — I'll pull macro context for you",
-  "Earnings history, price targets, short interest — just ask",
-  "Click any past analysis button in chat to switch the left panel view",
-];
+// ── Home screen Fred tips (now sourced from TRANSLATIONS at runtime) ─────────
+const HOME_TIPS = TRANSLATIONS.en.homeTips; // fallback reference (unused at runtime)
 
 // ── Interactive demo steps ────────────────────────────────────────────────────
 interface DemoStep {
@@ -917,48 +1089,29 @@ interface DemoStep {
   tilt?: number;     // rotate degrees
   highlightId?: string;
 }
-const DEMO_STEPS: DemoStep[] = [
-  {
-    text: "Hi! I'm Fred, your Market Wizard. I pull live stock data and synthesize it with AI. Let me show you around!",
-    fredLeft: "50%", fredTop: "38%",
-  },
-  {
-    text: "This is the search bar. Type a company name, ask a question in plain English, or enter a ticker symbol — I understand it all.",
-    fredLeft: "50%", fredTop: "74%",
-    tilt: 12, highlightId: "fred-demo-input",
-  },
-  {
-    text: "These suggestion cards give you a running start. Click one and I'll fetch live market data instantly.",
-    fredLeft: "28%", fredTop: "56%",
-    flip: true, highlightId: "fred-demo-cards",
-  },
-  {
-    text: "After I respond, a two-panel view opens. The left side shows deep analysis — expandable sections, live charts, insider data.",
-    fredLeft: "50%", fredTop: "38%",
-  },
-  {
-    text: "The Premium menu unlocks the Portfolio Simulator — build a hypothetical portfolio and I'll track it with live prices.",
-    fredLeft: "78%", fredTop: "12%",
-    flip: true, highlightId: "fred-demo-premium",
-  },
-  {
-    text: "That's the tour! I cover US and Canadian markets — equities, ETFs, earnings, and more. Go ahead, ask me anything!",
-    fredLeft: "50%", fredTop: "38%",
-  },
+
+// Demo step layout (positions/layout only) — text is sourced from TRANSLATIONS at runtime
+const DEMO_STEP_LAYOUTS: Omit<DemoStep, "text">[] = [
+  { fredLeft: "50%", fredTop: "38%" },
+  { fredLeft: "50%", fredTop: "74%", tilt: 12, highlightId: "fred-demo-input" },
+  { fredLeft: "28%", fredTop: "56%", flip: true, highlightId: "fred-demo-cards" },
+  { fredLeft: "50%", fredTop: "38%" },
+  { fredLeft: "78%", fredTop: "12%", flip: true, highlightId: "fred-demo-premium" },
+  { fredLeft: "50%", fredTop: "38%" },
 ];
 
-const WIZARD_PHRASES = [
-  "Fred — real-time market intelligence.",
-  "Your market assistant is ready.",
-  "Ask me anything about stocks, ETFs, or markets.",
-  "Live data. Analyst insights. On demand.",
-  "Fred — your self-directed investing companion.",
-  "Market intelligence, at your fingertips.",
-  "From price history to analyst consensus.",
-  "Stocks, ETFs, earnings — ask me anything.",
-  "Your financial information hub, powered by AI.",
-  "Real-time data, synthesized for you.",
-];
+function buildDemoSteps(lang: Lang): DemoStep[] {
+  return DEMO_STEP_LAYOUTS.map((layout, i) => ({
+    ...layout,
+    text: TRANSLATIONS[lang].demoSteps[i] ?? TRANSLATIONS.en.demoSteps[i],
+  }));
+}
+
+// Keep DEMO_STEPS as a const for backward compat (unused at runtime — replaced by buildDemoSteps)
+const DEMO_STEPS = buildDemoSteps("en");
+
+// WIZARD_PHRASES — now sourced from TRANSLATIONS at runtime via lang state
+const WIZARD_PHRASES = TRANSLATIONS.en.wizardPhrases;
 
 const WIZARD_VARIANTS = [
   // 0 — Teleport: portal rings + sparkles, scale bounce
@@ -1847,39 +2000,20 @@ function useTypewriter(text: string, speed = 38, startDelay = 600) {
   return { displayed, done };
 }
 
-const LOADING_PHRASES = [
-  "Gathering market intelligence...",
-  "Consulting the financial scrolls...",
-  "Alcheming the data points...",
-  "Analyzing ticker symbols...",
-  "Synthesizing analyst consensus...",
-  "Brewing a fresh response...",
-  "Polling the Big Six banks...",
-  "Extracting historical trends...",
-  "Mapping the volatility...",
-  "Polishing the crystal ball...",
-  "Crunching the quarterly numbers...",
-  "Scanning recent headlines...",
-  "Decoding the market sentiment...",
-  "Filtering out the noise...",
-  "Normalizing valuation metrics...",
-  "Preparing the visual charts...",
-  "Fact-checking the fundamentals...",
-  "Optimizing the insight engine...",
-  "Aligning the stars (and stocks)...",
-  "Finalizing the synthesis...",
-  "Reviewing the educational guardrails...",
-];
+// LOADING_PHRASES — sourced from TRANSLATIONS at runtime
+const LOADING_PHRASES = TRANSLATIONS.en.loadingPhrases;
 
-function LoadingAssistant() {
+function LoadingAssistant({ lang = "en" as Lang }: { lang?: Lang }) {
+  const phrases = TRANSLATIONS[lang].loadingPhrases;
   const [phraseIdx, setPhraseIdx] = useState(0);
 
   useEffect(() => {
+    setPhraseIdx(0);
     const interval = setInterval(() => {
-      setPhraseIdx((prev) => (prev + 1) % LOADING_PHRASES.length);
+      setPhraseIdx((prev) => (prev + 1) % phrases.length);
     }, 2800);
     return () => clearInterval(interval);
-  }, []);
+  }, [lang, phrases.length]);
 
   return (
     <div style={{
@@ -1913,7 +2047,7 @@ function LoadingAssistant() {
           opacity: 0,
           animation: "fadeIn 0.4s ease forwards",
         }} key={phraseIdx}>
-          {LOADING_PHRASES[phraseIdx]}
+          {phrases[phraseIdx]}
         </div>
       </div>
 
@@ -1943,7 +2077,8 @@ function LoadingAssistant() {
 // ── Auth ─────────────────────────────────────────────────────────────────────
 const CREDENTIALS = { username: "admin", password: "Mkt@9274" };
 
-function LoginScreen({ onLogin }: { onLogin: () => void }) {
+function LoginScreen({ onLogin, lang = "en" }: { onLogin: () => void; lang?: Lang }) {
+  const T = TRANSLATIONS[lang].ui;
   const [user, setUser] = React.useState("");
   const [pass, setPass] = React.useState("");
   const [showPass, setShowPass] = React.useState(false);
@@ -1957,7 +2092,7 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
       sessionStorage.setItem("fred_authed", "1");
       setTimeout(onLogin, 900);
     } else {
-      setError("Invalid username or password.");
+      setError(T.loginError);
       setShake(true);
       setTimeout(() => setShake(false), 600);
     }
@@ -2011,17 +2146,17 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
           Fred, The Market Wizard
         </div>
         <div style={{ fontSize: 11, color: "#888", marginBottom: 28 }}>
-          {success ? "Welcome back! Loading your workspace..." : "Sign in to access your market intelligence"}
+          {success ? T.loginWelcome : T.loginSubtitle}
         </div>
 
         {/* Username */}
         <div style={{ width: "100%", marginBottom: 12 }}>
           <label style={{ fontSize: 10, fontWeight: 600, color: "#555", letterSpacing: "0.06em", textTransform: "uppercase", display: "block", marginBottom: 5 }}>
-            Username
+            {T.loginUsername}
           </label>
           <input
             value={user} onChange={e => { setUser(e.target.value); setError(""); }}
-            onKeyDown={onKey} placeholder="Enter username"
+            onKeyDown={onKey} placeholder={T.loginUsername}
             style={{
               width: "100%", padding: "10px 13px", borderRadius: 8, fontSize: 13,
               border: `1px solid ${error ? "rgba(204,17,0,0.5)" : "rgba(28,26,27,0.14)"}`,
@@ -2034,12 +2169,12 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
         {/* Password */}
         <div style={{ width: "100%", marginBottom: 8, position: "relative" }}>
           <label style={{ fontSize: 10, fontWeight: 600, color: "#555", letterSpacing: "0.06em", textTransform: "uppercase", display: "block", marginBottom: 5 }}>
-            Password
+            {T.loginPassword}
           </label>
           <input
             type={showPass ? "text" : "password"}
             value={pass} onChange={e => { setPass(e.target.value); setError(""); }}
-            onKeyDown={onKey} placeholder="Enter password"
+            onKeyDown={onKey} placeholder={T.loginPassword}
             style={{
               width: "100%", padding: "10px 38px 10px 13px", borderRadius: 8, fontSize: 13,
               border: `1px solid ${error ? "rgba(204,17,0,0.5)" : "rgba(28,26,27,0.14)"}`,
@@ -2082,12 +2217,12 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
             letterSpacing: "0.01em",
           }}
         >
-          {success ? "✓ Authenticated" : "Sign In"}
+          {success ? T.loginAuthenticated : T.loginSignIn}
         </button>
 
         {/* Footer */}
         <div style={{ marginTop: 20, fontSize: 9.5, color: "#bbb", textAlign: "center" }}>
-          Powered by Barrows Consulting · Educational Use Only
+          {T.loginFooter}
         </div>
       </div>
 
@@ -2108,6 +2243,19 @@ export default function Home() {
   useEffect(() => {
     if (sessionStorage.getItem("fred_authed") === "1") setAuthed(true);
   }, []);
+
+  // Language state — persisted in localStorage
+  const [lang, setLang] = useState<Lang>(() => {
+    try {
+      const saved = localStorage.getItem("fred_lang");
+      return (saved === "fr" || saved === "en") ? saved : "en";
+    } catch { return "en"; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem("fred_lang", lang); } catch {}
+  }, [lang]);
+  const T = TRANSLATIONS[lang].ui;
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -2130,7 +2278,7 @@ export default function Home() {
       if (lastIdx !== -1) setSelectedAnalysisIndex(lastIdx);
     }
   }, [messages, loading]);
-  const [suggestions, setSuggestions] = useState(() => getRandomSuggestions());
+  const [suggestions, setSuggestions] = useState(() => getRandomSuggestions("en"));
   const [expandedCharts, setExpandedCharts] = useState<Record<number, boolean>>({});
   const [showActionMenu, setShowActionMenu] = useState(false);
   // Portfolio state
@@ -2146,8 +2294,11 @@ export default function Home() {
   const [addShares, setAddShares] = useState("");
   const [addCost, setAddCost] = useState("");
   const [fetchingPrices, setFetchingPrices] = useState(false);
-  const [wizardPhrase] = useState(() => WIZARD_PHRASES[Math.floor(Math.random() * WIZARD_PHRASES.length)]);
-  const { displayed: titleTyped, done: titleDone } = useTypewriter(wizardPhrase);
+  const [wizardPhrase] = useState(() => TRANSLATIONS.en.wizardPhrases[Math.floor(Math.random() * TRANSLATIONS.en.wizardPhrases.length)]);
+  // Pick a phrase from current lang for display
+  const activePhrases = TRANSLATIONS[lang].wizardPhrases;
+  const activeWizardPhrase = activePhrases[Math.floor(activePhrases.length * (TRANSLATIONS.en.wizardPhrases.indexOf(wizardPhrase) / TRANSLATIONS.en.wizardPhrases.length))] ?? activePhrases[0];
+  const { displayed: titleTyped, done: titleDone } = useTypewriter(activeWizardPhrase);
   const [contentVisible, setContentVisible] = useState(false);
   useEffect(() => { const t = setTimeout(() => setContentVisible(true), 820); return () => clearTimeout(t); }, []);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -2162,7 +2313,13 @@ export default function Home() {
     }
   }, [isShockwave]);
 
+  // Update suggestions when lang changes
+  useEffect(() => {
+    setSuggestions(getRandomSuggestions(lang));
+  }, [lang]);
+
   // Tip cycling — greeting (index 0) stays 9s, rest 5s
+  const activeTips = TRANSLATIONS[lang].homeTips;
   useEffect(() => {
     if (appPhase !== "home") return;
     let current = tipIndex;
@@ -2172,7 +2329,7 @@ export default function Home() {
       timer = setTimeout(() => {
         setTipVisible(false);
         setTimeout(() => {
-          current = (current + 1) % HOME_TIPS.length;
+          current = (current + 1) % activeTips.length;
           setTipIndex(current);
           setTipVisible(true);
           scheduleNext();
@@ -2182,7 +2339,7 @@ export default function Home() {
     scheduleNext();
     return () => clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appPhase]);
+  }, [appPhase, lang]);
 
   // Escape key exits demo
   useEffect(() => {
@@ -2199,7 +2356,7 @@ export default function Home() {
     setOrbitFading(false);
     setFormingOffsets({});
     setActiveBubbles(getRandomBubbles());
-    setSuggestions(getRandomSuggestions());
+    setSuggestions(getRandomSuggestions(lang));
     setExpandedCharts({});
     setShowActionMenu(false);
     setShowPremiumMenu(false);
@@ -2366,7 +2523,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
     const fetchPromise = fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: newMessages, portfolioContext: portfolioCtx }),
+      body: JSON.stringify({ messages: newMessages, portfolioContext: portfolioCtx, lang }),
     });
 
     if (isFirst) {
@@ -2457,7 +2614,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
     }
   }
 
-  if (!authed) return <LoginScreen onLogin={() => setAuthed(true)} />;
+  if (!authed) return <LoginScreen onLogin={() => setAuthed(true)} lang={lang} />;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", backgroundColor: "#f5f2ee" }}>
@@ -2479,7 +2636,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
               Fred, The Market Wizard
             </div>
             <div style={{ fontSize: 10, color: "#555", marginTop: -1 }}>
-              Powered By Barrows Consulting
+              {T.poweredBy}
             </div>
           </div>
         </div>
@@ -2496,7 +2653,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
               onMouseEnter={e => { e.currentTarget.style.borderColor = "#cc1100"; e.currentTarget.style.color = "#cc1100"; }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(28,26,27,0.12)"; e.currentTarget.style.color = "#555"; }}
             >
-              ← Home
+              {T.homeBtn}
             </button>
           )}
 
@@ -2518,7 +2675,22 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
               <circle cx="10" cy="10" r="8.5" stroke="currentColor" strokeWidth="1.8"/>
               <polygon points="8,6.5 15,10 8,13.5" fill="currentColor"/>
             </svg>
-            Request Demo
+            {T.demoBtn}
+          </button>
+
+          {/* Language toggle */}
+          <button
+            onClick={() => setLang(l => l === "en" ? "fr" : "en")}
+            style={{
+              fontSize: 11, color: "#555", padding: "4px 10px", borderRadius: 6,
+              border: "1px solid rgba(28,26,27,0.12)", backgroundColor: "transparent",
+              cursor: "pointer", fontWeight: 600, letterSpacing: "0.04em",
+              transition: "border-color 0.15s, color 0.15s",
+            }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = "#cc1100"; e.currentTarget.style.color = "#cc1100"; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(28,26,27,0.12)"; e.currentTarget.style.color = "#555"; }}
+          >
+            {lang === "en" ? "FR" : "EN"}
           </button>
 
           {/* Premium dropdown */}
@@ -2595,7 +2767,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
             fontSize: 10, color: "#555", padding: "3px 8px", borderRadius: 4,
             border: "1px solid rgba(28,26,27,0.1)", letterSpacing: "0.02em",
           }}>
-            EDUCATIONAL USE ONLY
+            {T.educationalOnly}
           </div>
         </div>
       </header>
@@ -2658,10 +2830,10 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                 textAlign: "center",
               }}>
                 <div style={{ fontSize: 11, color: "#1d1a1b", lineHeight: 1.65, fontStyle: "italic" }}>
-                  {HOME_TIPS[tipIndex]}
+                  {activeTips[tipIndex % activeTips.length]}
                 </div>
                 <div style={{ marginTop: 7, display: "flex", gap: 3, justifyContent: "center" }}>
-                  {HOME_TIPS.map((_, i) => (
+                  {activeTips.map((_, i) => (
                     <div key={i} style={{
                       width: i === tipIndex ? 10 : 4, height: 4, borderRadius: 2,
                       backgroundColor: i === tipIndex ? "#cc1100" : "rgba(28,26,27,0.15)",
@@ -2708,7 +2880,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                 {!titleDone && <span style={{ display: "inline-block", width: 2, height: "1em", background: "#cc1100", marginLeft: 2, verticalAlign: "text-bottom", animation: "blink 0.8s step-end infinite" }} />}
               </div>
               <div style={{ color: "#555", marginBottom: 24, fontSize: 13, opacity: titleDone ? 1 : 0, transition: "opacity 0.5s ease" }}>
-                stocks, ETFs, earnings, analyst views, and market trends.
+                {T.subtitle}
               </div>
               <div id="fred-demo-cards" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, width: "100%", maxWidth: 480, marginBottom: 16 }}>
                 {suggestions.map((s) => (
@@ -2734,7 +2906,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Ask about a stock, ETF, or market concept..."
+                  placeholder={T.placeholder}
                   autoFocus
                   style={{
                     flex: 1, padding: "10px 14px", borderRadius: 8,
@@ -2782,7 +2954,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
             animation: "fadeScaleIn 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards 0.2s",
             opacity: 0,
           }}>
-            <LoadingAssistant />
+            <LoadingAssistant lang={lang} />
           </div>
         </div>
       )}
@@ -2806,7 +2978,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                     <rect x="34" y="4" width="2" height="32" rx="1" fill="#cc1100" opacity="0.5"/>
                   </svg>
                   <div style={{ fontSize: 13, textAlign: "center", lineHeight: 1.6 }}>
-                    Ask a question to see the<br/>analysis here
+                    {T.emptyState.split("\n").map((line, i) => <React.Fragment key={i}>{line}{i === 0 && <br/>}</React.Fragment>)}
                   </div>
                 </div>
               );
@@ -2911,10 +3083,10 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
           }}>
             <div style={{ width: 7, height: 7, borderRadius: "50%", backgroundColor: "#cc1100", flexShrink: 0 }} />
             <span style={{ fontSize: 11, fontWeight: 700, color: "#1d1a1b", letterSpacing: "0.06em", textTransform: "uppercase" as const }}>
-              Conversation
+              {T.conversationLabel}
             </span>
             <span style={{ marginLeft: "auto", fontSize: 11, color: "#bbb", fontWeight: 500 }}>
-              {messages.filter(m => m.role === "user").length} {messages.filter(m => m.role === "user").length === 1 ? "message" : "messages"}
+              {T.messageCount(messages.filter(m => m.role === "user").length)}
             </span>
           </div>
 
@@ -2928,7 +3100,10 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 9, fontWeight: 700, color: "#cc1100", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 4 }}>FRED</div>
                 <div style={{ backgroundColor: "#f5f2ee", borderRadius: "4px 12px 12px 12px", padding: "9px 12px", fontSize: 12, color: "#1d1a1b", lineHeight: 1.65 }}>
-                  Hi! I'm <strong>Fred</strong>, your AI-powered market intelligence tool. I provide real-time stock data, earnings analysis, analyst views, and market insights — for <strong>educational purposes only</strong>. I don't give financial advice or tell you what to buy or sell. Ask me anything about stocks, ETFs, or market trends!
+                  <ReactMarkdown remarkPlugins={[remarkGfm]} components={{
+                    p: ({ children }) => <p style={{ margin: 0 }}>{children}</p>,
+                    strong: ({ children }) => <strong style={{ fontWeight: 700 }}>{children}</strong>,
+                  }}>{T.greeting}</ReactMarkdown>
                 </div>
               </div>
             </div>
@@ -2983,7 +3158,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                         }}
                       >
                         <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="#16a34a" strokeWidth="1.5"/><polyline points="5,8 7,10 11,6" stroke="#16a34a" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                        {selectedAnalysisIndex === parentIdx ? "Viewing updated analysis" : "Added to analysis — view →"}
+                        {selectedAnalysisIndex === parentIdx ? T.viewingAnalysis : T.viewAnalysis}
                       </button>
                     </div>
                   </div>
@@ -3060,7 +3235,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                                 <rect x="6" y="5" width="3" height="10" rx="1" fill="currentColor" opacity="0.8"/>
                                 <rect x="11" y="2" width="3" height="13" rx="1" fill="currentColor"/>
                               </svg>
-                              {selectedAnalysisIndex === i ? "Viewing in left panel" : "View full analysis →"}
+                              {selectedAnalysisIndex === i ? T.viewingAnalysis : T.viewAnalysis}
                             </button>
                             {/* Follow-up suggestion chips — send as follow-up (merges into this analysis) */}
                             {(() => {
@@ -3070,8 +3245,8 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                               const chips = ([
                                 noChart && t && { icon: "trendup", label: "Price chart", prompt: `Show me ${t}'s price chart` },
                                 noRatings && t && { icon: "analyst", label: "Analyst view", prompt: `What do analysts say about ${t}?` },
-                                t && !noChart && { icon: "search", label: "Compare peers", prompt: `Compare ${t} with its main competitors` },
-                                t && { icon: "money", label: "Dividends", prompt: `Show ${t}'s dividend history` },
+                                t && !noChart && { icon: "search", label: T.comparePeers, prompt: `Compare ${t} with its main competitors` },
+                                t && { icon: "money", label: T.dividends, prompt: `Show ${t}'s dividend history` },
                               ].filter(Boolean) as Array<{ icon: string; label: string; prompt: string }>).slice(0, 2);
                               if (!chips.length) return null;
                               return (
@@ -3235,7 +3410,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask about a stock, ETF, or market concept..."
+              placeholder={T.placeholder}
               disabled={loading}
               style={{
                 flex: 1,
@@ -3623,7 +3798,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask Fred about your portfolio…"
+                placeholder={T.placeholder}
                 disabled={loading}
                 style={{
                   flex: 1, padding: "9px 14px", borderRadius: 8,
@@ -3899,8 +4074,9 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
 
       {/* ── Demo overlay ──────────────────────────────────────────────────── */}
       {demoStep !== null && (() => {
-        const step = DEMO_STEPS[demoStep];
-        const isLast = demoStep === DEMO_STEPS.length - 1;
+        const activeDemoSteps = buildDemoSteps(lang);
+        const step = activeDemoSteps[demoStep];
+        const isLast = demoStep === activeDemoSteps.length - 1;
         return (
           <div style={{ position: "fixed", inset: 0, zIndex: 9000, pointerEvents: "none" }}>
             {/* Backdrop — plain dim, NO blur so highlighted elements stay sharp */}
@@ -3983,7 +4159,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
 
               {/* Step dots */}
               <div style={{ display: "flex", gap: 5, marginTop: 10 }}>
-                {DEMO_STEPS.map((_, i) => (
+                {activeDemoSteps.map((_, i) => (
                   <div key={i} style={{
                     width: i === demoStep ? 14 : 6, height: 6, borderRadius: 3,
                     backgroundColor: i === demoStep ? "#cc1100" : "rgba(28,26,27,0.2)",
@@ -4007,7 +4183,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                   boxShadow: "0 2px 10px rgba(0,0,0,0.08)",
                 }}
               >
-                Skip
+                {T.skipBtn}
               </button>
               <button
                 onClick={() => isLast ? setDemoStep(null) : setDemoStep(demoStep + 1)}
@@ -4018,7 +4194,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                   boxShadow: "0 2px 12px rgba(204,17,0,0.35)",
                 }}
               >
-                {isLast ? "Let's go!" : "Next →"}
+                {isLast ? T.letsGoBtn : T.nextBtn}
               </button>
             </div>
           </div>

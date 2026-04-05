@@ -187,10 +187,14 @@ function getMockResponse(userMessage: string): { content: string; charts: ChartS
 }
 
 export async function POST(req: NextRequest) {
-  const { messages, portfolioContext } = await req.json();
+  const { messages, portfolioContext, lang } = await req.json();
+  const langSuffix = lang === "fr"
+    ? "\n\nIMPORTANT: Always respond entirely in French. Use formal French (vous)."
+    : "";
+  const baseSystem = SYSTEM_PROMPT + langSuffix;
   const activeSystem = portfolioContext
-    ? SYSTEM_PROMPT + "\n\n" + portfolioContext
-    : SYSTEM_PROMPT;
+    ? baseSystem + "\n\n" + portfolioContext
+    : baseSystem;
 
   if (isMockMode) {
     const lastUserMsg = [...messages].reverse().find((m: any) => m.role === "user");
