@@ -104,6 +104,14 @@ type AnalystRatingsSpec = {
   buyChangeVsLastMonth?: number;
 };
 
+type PortfolioActionSpec = {
+  actionType: "add" | "remove" | "update";
+  ticker: string;
+  shares?: number;
+  avgCost?: number;
+  note: string;
+};
+
 function getMockResponse(userMessage: string): { content: string; charts: ChartSpec[] } {
   const msg = userMessage.toLowerCase();
 
@@ -193,8 +201,9 @@ export async function POST(req: NextRequest) {
     ? "\n\nIMPORTANT: Always respond entirely in French. Use formal French (vous)."
     : "";
   const baseSystem = SYSTEM_PROMPT + langSuffix;
+  const portfolioModInstructions = portfolioContext ? `\n\nPORTFOLIO MODIFICATION: You can modify the user's portfolio by calling add_portfolio_position, remove_portfolio_position, or update_portfolio_position. Use these when the user explicitly asks to add, remove, or update a position. The user will see a confirmation button before any change is applied. After calling a modification tool, write a short natural-language message confirming what you proposed (e.g. "I've proposed adding 50 shares of NVDA at $120 — confirm in the panel below.").` : "";
   const activeSystem = portfolioContext
-    ? baseSystem + "\n\n" + portfolioContext
+    ? baseSystem + "\n\n" + portfolioContext + portfolioModInstructions
     : baseSystem;
 
   if (isMockMode) {
@@ -210,6 +219,7 @@ export async function POST(req: NextRequest) {
   const MAX_ITERATIONS = 10;
   const charts: ChartSpec[] = [];
   const analystRatings: AnalystRatingsSpec[] = [];
+  const portfolioActions: PortfolioActionSpec[] = [];
   const mentionedSymbols: string[] = []; // tickers the AI actually fetched data for
 
   try {
@@ -227,7 +237,7 @@ export async function POST(req: NextRequest) {
     if (response.stop_reason === "end_turn") {
       const textBlock = response.content.find((b) => b.type === "text");
       const text = textBlock && textBlock.type === "text" ? textBlock.text : "";
-      return NextResponse.json({ content: text, charts, analystRatings, mentionedTickers: mentionedSymbols.slice(0, 6) });
+      return NextResponse.json({ content: text, charts, analystRatings, portfolioActions, mentionedTickers: mentionedSymbols.slice(0, 6) });
     }
 
     if (response.stop_reason === "tool_use") {
@@ -257,6 +267,22 @@ export async function POST(req: NextRequest) {
               tool_use_id: block.id,
               content: JSON.stringify({ ok: true }),
             };
+          }
+
+          if (block.name === "add_portfolio_position") {
+            const inp = block.input as any;
+            portfolioActions.push({ actionType: "add", ticker: inp.ticker, shares: inp.shares, avgCost: inp.avgCost, note: inp.note });
+            return { type: "tool_result" as const, tool_use_id: block.id, content: JSON.stringify({ ok: true }) };
+          }
+          if (block.name === "remove_portfolio_position") {
+            const inp = block.input as any;
+            portfolioActions.push({ actionType: "remove", ticker: inp.ticker, note: inp.note });
+            return { type: "tool_result" as const, tool_use_id: block.id, content: JSON.stringify({ ok: true }) };
+          }
+          if (block.name === "update_portfolio_position") {
+            const inp = block.input as any;
+            portfolioActions.push({ actionType: "update", ticker: inp.ticker, shares: inp.shares, avgCost: inp.avgCost, note: inp.note });
+            return { type: "tool_result" as const, tool_use_id: block.id, content: JSON.stringify({ ok: true }) };
           }
 
           // Track which symbols were actually looked up
@@ -291,7 +317,7 @@ export async function POST(req: NextRequest) {
     break;
   }
 
-  return NextResponse.json({ content: "I'm sorry, I couldn't process your request.", charts, analystRatings, mentionedTickers: mentionedSymbols.slice(0, 6) });
+  return NextResponse.json({ content: "I'm sorry, I couldn't process your request.", charts, analystRatings, portfolioActions, mentionedTickers: mentionedSymbols.slice(0, 6) });
   } catch (e: any) {
     console.error("Chat route error:", e);
     return NextResponse.json(

@@ -10,6 +10,7 @@ import {
   AreaChart, Area,
   ComposedChart,
   ScatterChart, Scatter, ZAxis,
+  PieChart, Pie, Cell,
   XAxis, YAxis,
   CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, LabelList, ReferenceLine,
@@ -266,6 +267,14 @@ type AnalystRatingsSpec = {
   buyChangeVsLastMonth?: number;
 };
 
+type PortfolioAction = {
+  actionType: "add" | "remove" | "update";
+  ticker: string;
+  shares?: number;
+  avgCost?: number;
+  note: string;
+};
+
 type Message = {
   role: "user" | "assistant";
   content: string;
@@ -274,10 +283,11 @@ type Message = {
   tickers?: string[];
   isFollowUp?: boolean;       // response was a follow-up chip — merged into parent, shown compact
   followUpOfIndex?: number;   // index of the parent analysis this follow-up belongs to
+  portfolioActions?: PortfolioAction[];
 };
 
 type Position = { id: string; ticker: string; shares: number; avgCost: number };
-type LivePrice = { price: number; currency: string; change: number; changePercent: number; name: string };
+type LivePrice = { price: number; currency: string; change: number; changePercent: number; name: string; lastUpdated?: number };
 
 // ~1000+ popular tickers (US S&P 500, ETFs, ADRs, TSX)
 const ALL_TICKERS: string[] = [
@@ -2467,6 +2477,36 @@ function LoginScreen({ onLogin, lang = "en" }: { onLogin: () => void; lang?: Lan
   );
 }
 
+function PortfolioDonut({ positions, livePrices, colorFn }: { positions: Position[], livePrices: Record<string, LivePrice>, colorFn: (s: string) => string }) {
+  const data = positions.map(p => {
+    const lp = livePrices[p.ticker];
+    const value = lp ? p.shares * lp.price : p.shares * p.avgCost;
+    return { name: p.ticker, value, color: colorFn(p.ticker) };
+  }).filter(d => d.value > 0);
+  if (data.length < 2) return null;
+  const total = data.reduce((s, d) => s + d.value, 0);
+  return (
+    <div style={{ padding: "12px 14px 8px", borderBottom: "1px solid rgba(28,26,27,0.07)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <PieChart width={80} height={80}>
+          <Pie data={data} dataKey="value" cx={40} cy={40} innerRadius={24} outerRadius={38} strokeWidth={0}>
+            {data.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+          </Pie>
+        </PieChart>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 3 }}>
+          {data.map(d => (
+            <div key={d.name} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+              <div style={{ width: 7, height: 7, borderRadius: "50%", backgroundColor: d.color, flexShrink: 0 }} />
+              <span style={{ fontSize: 10, fontWeight: 600, color: "#1d1a1b", minWidth: 40 }}>{d.name}</span>
+              <span style={{ fontSize: 10, color: "#888" }}>{((d.value / total) * 100).toFixed(1)}%</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const [authed, setAuthed] = useState(false);
   useEffect(() => {
@@ -2513,6 +2553,16 @@ export default function Home() {
       if (lastIdx !== -1) setSelectedAnalysisIndex(lastIdx);
     }
   }, [messages, loading]);
+
+  useEffect(() => {
+    if (!loading && messages.length > 0 && appPhase === "portfolio") {
+      const lastIdx = messages.reduceRight((found: number, m: Message, idx: number) =>
+        found === -1 && m.role === "assistant" && !m.isFollowUp &&
+        (parseMessageSections(m.content) !== null || (m.charts && m.charts.length > 0))
+          ? idx : found, -1);
+      if (lastIdx !== -1) setPortfolioSelectedAnalysisIndex(lastIdx);
+    }
+  }, [messages, loading, appPhase]);
   const [suggestions, setSuggestions] = useState(() => getRandomSuggestions("en"));
   const [expandedCharts, setExpandedCharts] = useState<Record<number, boolean>>({});
   const [showActionMenu, setShowActionMenu] = useState(false);
@@ -2529,6 +2579,12 @@ export default function Home() {
   const [addShares, setAddShares] = useState("");
   const [addCost, setAddCost] = useState("");
   const [fetchingPrices, setFetchingPrices] = useState(false);
+  const [portfolioSelectedAnalysisIndex, setPortfolioSelectedAnalysisIndex] = useState<number>(-1);
+  const [editingPositionId, setEditingPositionId] = useState<string | null>(null);
+  const [editShares, setEditShares] = useState("");
+  const [editCost, setEditCost] = useState("");
+  const [pricesFetchedAt, setPricesFetchedAt] = useState<Date | null>(null);
+  const [pricesFailed, setPricesFailed] = useState(false);
   const [wizardPhrase] = useState(() => TRANSLATIONS.en.wizardPhrases[Math.floor(Math.random() * TRANSLATIONS.en.wizardPhrases.length)]);
   // Pick a phrase from current lang for display
   const activePhrases = TRANSLATIONS[lang].wizardPhrases;
@@ -2617,19 +2673,31 @@ export default function Home() {
   async function fetchLivePrices() {
     if (portfolioPositions.length === 0) return;
     setFetchingPrices(true);
+    let anySuccess = false;
     const results: Record<string, LivePrice> = {};
     await Promise.all(portfolioPositions.map(async (p) => {
       try {
         const res = await fetch(`/api/quote?symbol=${p.ticker}`);
         const d = await res.json();
-        if (d.price != null) results[p.ticker] = {
-          price: d.price, currency: d.currency || "USD",
-          change: d.change || 0, changePercent: d.changePercent || 0,
-          name: d.longName || d.shortName || p.ticker,
-        };
+        if (d.price != null) {
+          results[p.ticker] = {
+            price: d.price, currency: d.currency || "USD",
+            change: d.change || 0, changePercent: d.changePercent || 0,
+            name: d.longName || d.shortName || p.ticker,
+            lastUpdated: Date.now(),
+          };
+          anySuccess = true;
+        }
       } catch {}
     }));
-    setLivePrices(prev => ({ ...prev, ...results }));
+    // Preserve cached prices for any that failed — only overwrite when we got fresh data
+    setLivePrices(prev => {
+      const merged = { ...prev };
+      Object.entries(results).forEach(([k, v]) => { merged[k] = v; });
+      return merged;
+    });
+    setPricesFetchedAt(new Date());
+    setPricesFailed(!anySuccess && portfolioPositions.length > 0);
     setFetchingPrices(false);
   }
 
@@ -2654,6 +2722,40 @@ export default function Home() {
 
   function removePosition(id: string) {
     setPortfolioPositions(prev => prev.filter(p => p.id !== id));
+  }
+
+  function applyPortfolioAction(action: PortfolioAction) {
+    if (action.actionType === "add") {
+      const newPos: Position = { id: Date.now().toString(), ticker: action.ticker.toUpperCase(), shares: action.shares!, avgCost: action.avgCost! };
+      setPortfolioPositions(prev => {
+        const existing = prev.find(p => p.ticker === newPos.ticker);
+        if (existing) {
+          const totalShares = existing.shares + newPos.shares;
+          const weightedCost = (existing.shares * existing.avgCost + newPos.shares * newPos.avgCost) / totalShares;
+          return prev.map(p => p.ticker === newPos.ticker ? { ...p, shares: totalShares, avgCost: weightedCost } : p);
+        }
+        return [...prev, newPos];
+      });
+      fetch(`/api/quote?symbol=${newPos.ticker}`).then(r => r.json()).then(d => {
+        if (d.price != null) setLivePrices(prev => ({ ...prev, [newPos.ticker]: { price: d.price, currency: d.currency || "USD", change: d.change || 0, changePercent: d.changePercent || 0, name: d.longName || d.shortName || newPos.ticker, lastUpdated: Date.now() } }));
+      }).catch(() => {});
+    } else if (action.actionType === "remove") {
+      setPortfolioPositions(prev => prev.filter(p => p.ticker !== action.ticker.toUpperCase()));
+    } else if (action.actionType === "update") {
+      setPortfolioPositions(prev => prev.map(p => {
+        if (p.ticker !== action.ticker.toUpperCase()) return p;
+        return { ...p, shares: action.shares ?? p.shares, avgCost: action.avgCost ?? p.avgCost };
+      }));
+    }
+  }
+
+  function saveEditPosition(id: string) {
+    const sh = parseFloat(editShares);
+    const co = parseFloat(editCost);
+    if (isNaN(sh) || sh <= 0 || isNaN(co) || co <= 0) return;
+    setPortfolioPositions(prev => prev.map(p => p.id === id ? { ...p, shares: sh, avgCost: co } : p));
+    setEditingPositionId(null);
+    setEditShares(""); setEditCost("");
   }
 
   function buildPortfolioContext(): string {
@@ -2788,7 +2890,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
       const res = await fetchPromise;
       const data = await res.json();
       const mentionedTickers: string[] = data.mentionedTickers || [];
-      const assistantMsg: Message = { role: "assistant", content: data.content, charts: data.charts || [], analystRatings: data.analystRatings || [], tickers: mentionedTickers.length > 0 ? mentionedTickers : undefined };
+      const assistantMsg: Message = { role: "assistant", content: data.content, charts: data.charts || [], analystRatings: data.analystRatings || [], portfolioActions: data.portfolioActions || [], tickers: mentionedTickers.length > 0 ? mentionedTickers : undefined };
 
       if (isFirst) {
         const elapsed = Date.now() - fetchStart;
@@ -3694,185 +3796,166 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
       {appPhase === "portfolio" && (
         <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
 
-          {/* Left: Portfolio Panel */}
+          {/* ── LEFT PANEL: Positions ─────────────────────────────────────── */}
           <div style={{
-            width: 340, flexShrink: 0, display: "flex", flexDirection: "column",
+            width: 300, flexShrink: 0, display: "flex", flexDirection: "column",
             borderRight: "1px solid rgba(28,26,27,0.1)", backgroundColor: "#fafaf8",
             overflow: "hidden",
           }}>
-            {/* Panel header */}
+            {/* Header */}
             <div style={{
-              padding: "14px 16px 10px", borderBottom: "1px solid rgba(28,26,27,0.08)",
+              padding: "14px 14px 10px", borderBottom: "1px solid rgba(28,26,27,0.08)",
               display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0,
             }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: "#1d1a1b", letterSpacing: "-0.01em" }}>
-                📊 {T.portfolio}
+                {T.portfolio}
               </div>
-              <div style={{ display: "flex", gap: 6 }}>
+              <div style={{ display: "flex", gap: 5 }}>
                 <button
                   onClick={fetchLivePrices}
                   disabled={fetchingPrices || portfolioPositions.length === 0}
                   title="Refresh prices"
-                  style={{
-                    padding: "4px 8px", borderRadius: 6, border: "1px solid rgba(28,26,27,0.12)",
-                    backgroundColor: "transparent", fontSize: 11, cursor: "pointer",
-                    color: "#666", opacity: fetchingPrices ? 0.5 : 1,
-                  }}
+                  style={{ padding: "4px 8px", borderRadius: 6, border: "1px solid rgba(28,26,27,0.12)", backgroundColor: "transparent", fontSize: 11, cursor: "pointer", color: "#666", opacity: fetchingPrices ? 0.5 : 1 }}
                   onMouseEnter={e => e.currentTarget.style.borderColor = "#cc1100"}
                   onMouseLeave={e => e.currentTarget.style.borderColor = "rgba(28,26,27,0.12)"}
-                >
-                  {fetchingPrices ? "..." : "↻"}
-                </button>
+                >{fetchingPrices ? "..." : "↻"}</button>
                 <button
                   onClick={() => setShowAddForm(v => !v)}
-                  style={{
-                    padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600,
-                    border: "1px solid rgba(204,17,0,0.4)",
-                    backgroundColor: showAddForm ? "rgba(204,17,0,0.1)" : "rgba(204,17,0,0.05)",
-                    color: "#cc1100", cursor: "pointer",
-                  }}
+                  style={{ padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600, border: "1px solid rgba(204,17,0,0.4)", backgroundColor: showAddForm ? "rgba(204,17,0,0.1)" : "rgba(204,17,0,0.05)", color: "#cc1100", cursor: "pointer" }}
                   onMouseEnter={e => e.currentTarget.style.backgroundColor = "rgba(204,17,0,0.12)"}
                   onMouseLeave={e => e.currentTarget.style.backgroundColor = showAddForm ? "rgba(204,17,0,0.1)" : "rgba(204,17,0,0.05)"}
-                >
-                  {T.portfolioAdd}
-                </button>
+                >{T.portfolioAdd}</button>
               </div>
             </div>
 
+            {/* Price freshness indicator */}
+            {pricesFetchedAt && (
+              <div style={{ padding: "4px 14px", fontSize: 9, color: pricesFailed ? "#ef4444" : "#aaa", backgroundColor: pricesFailed ? "rgba(239,68,68,0.05)" : "transparent", flexShrink: 0, display: "flex", alignItems: "center", gap: 4 }}>
+                <div style={{ width: 5, height: 5, borderRadius: "50%", backgroundColor: pricesFailed ? "#ef4444" : "#22c55e" }} />
+                {pricesFailed ? (lang === "fr" ? "Marchés fermés — prix en cache" : "Markets may be closed — cached prices") : (lang === "fr" ? `Prix actualisés à ${pricesFetchedAt.toLocaleTimeString("fr-CA", { hour: "2-digit", minute: "2-digit" })}` : `Prices as of ${pricesFetchedAt.toLocaleTimeString("en-CA", { hour: "2-digit", minute: "2-digit" })}`)}
+              </div>
+            )}
+
             {/* Add position form */}
             {showAddForm && (
-              <div style={{
-                padding: "12px 14px", borderBottom: "1px solid rgba(28,26,27,0.08)",
-                backgroundColor: "#ffffff", flexShrink: 0,
-              }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#1d1a1b", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  {T.portfolioAddTitle}
-                </div>
+              <div style={{ padding: "12px 14px", borderBottom: "1px solid rgba(28,26,27,0.08)", backgroundColor: "#ffffff", flexShrink: 0 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#1d1a1b", marginBottom: 8, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>{T.portfolioAddTitle}</div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 6 }}>
                   <div>
                     <div style={{ fontSize: 10, color: "#888", marginBottom: 3 }}>{T.portfolioTicker}</div>
-                    <input
-                      value={addTicker}
-                      onChange={e => setAddTicker(e.target.value.toUpperCase())}
-                      placeholder="AAPL"
-                      style={{
-                        width: "100%", padding: "6px 8px", borderRadius: 6, boxSizing: "border-box",
-                        border: "1px solid rgba(28,26,27,0.15)", fontSize: 12, outline: "none",
-                        backgroundColor: "#f5f2ee", color: "#1d1a1b", fontWeight: 600,
-                      }}
-                    />
+                    <input value={addTicker} onChange={e => setAddTicker(e.target.value.toUpperCase())} placeholder="AAPL" style={{ width: "100%", padding: "6px 8px", borderRadius: 6, boxSizing: "border-box" as const, border: "1px solid rgba(28,26,27,0.15)", fontSize: 12, outline: "none", backgroundColor: "#f5f2ee", color: "#1d1a1b", fontWeight: 600 }} />
                   </div>
                   <div>
                     <div style={{ fontSize: 10, color: "#888", marginBottom: 3 }}>{T.portfolioShares}</div>
-                    <input
-                      value={addShares}
-                      onChange={e => setAddShares(e.target.value)}
-                      placeholder="10"
-                      type="number" min="0"
-                      style={{
-                        width: "100%", padding: "6px 8px", borderRadius: 6, boxSizing: "border-box",
-                        border: "1px solid rgba(28,26,27,0.15)", fontSize: 12, outline: "none",
-                        backgroundColor: "#f5f2ee", color: "#1d1a1b",
-                      }}
-                    />
+                    <input value={addShares} onChange={e => setAddShares(e.target.value)} placeholder="10" type="number" min="0" style={{ width: "100%", padding: "6px 8px", borderRadius: 6, boxSizing: "border-box" as const, border: "1px solid rgba(28,26,27,0.15)", fontSize: 12, outline: "none", backgroundColor: "#f5f2ee", color: "#1d1a1b" }} />
                   </div>
                 </div>
                 <div style={{ marginBottom: 8 }}>
                   <div style={{ fontSize: 10, color: "#888", marginBottom: 3 }}>{T.portfolioAvgCost}</div>
-                  <input
-                    value={addCost}
-                    onChange={e => setAddCost(e.target.value)}
-                    placeholder="150.00"
-                    type="number" min="0"
-                    style={{
-                      width: "100%", padding: "6px 8px", borderRadius: 6, boxSizing: "border-box",
-                      border: "1px solid rgba(28,26,27,0.15)", fontSize: 12, outline: "none",
-                      backgroundColor: "#f5f2ee", color: "#1d1a1b",
-                    }}
-                  />
+                  <input value={addCost} onChange={e => setAddCost(e.target.value)} placeholder="150.00" type="number" min="0" style={{ width: "100%", padding: "6px 8px", borderRadius: 6, boxSizing: "border-box" as const, border: "1px solid rgba(28,26,27,0.15)", fontSize: 12, outline: "none", backgroundColor: "#f5f2ee", color: "#1d1a1b" }} />
                 </div>
                 <div style={{ display: "flex", gap: 6 }}>
-                  <button
-                    onClick={() => { setShowAddForm(false); setAddTicker(""); setAddShares(""); setAddCost(""); }}
-                    style={{
-                      flex: 1, padding: "7px", borderRadius: 6, border: "1px solid rgba(28,26,27,0.15)",
-                      backgroundColor: "transparent", fontSize: 11, color: "#666", cursor: "pointer",
-                    }}
-                  >{T.portfolioCancel}</button>
-                  <button
-                    onClick={addPosition}
-                    disabled={!addTicker.trim() || !addShares || !addCost}
-                    style={{
-                      flex: 2, padding: "7px", borderRadius: 6, border: "none",
-                      backgroundColor: addTicker && addShares && addCost ? "#cc1100" : "#ddd",
-                      color: addTicker && addShares && addCost ? "#fff" : "#aaa",
-                      fontSize: 11, fontWeight: 600, cursor: addTicker && addShares && addCost ? "pointer" : "not-allowed",
-                    }}
-                  >{T.portfolioConfirm}</button>
+                  <button onClick={() => { setShowAddForm(false); setAddTicker(""); setAddShares(""); setAddCost(""); }} style={{ flex: 1, padding: "7px", borderRadius: 6, border: "1px solid rgba(28,26,27,0.15)", backgroundColor: "transparent", fontSize: 11, color: "#666", cursor: "pointer" }}>{T.portfolioCancel}</button>
+                  <button onClick={addPosition} disabled={!addTicker.trim() || !addShares || !addCost} style={{ flex: 2, padding: "7px", borderRadius: 6, border: "none", backgroundColor: addTicker && addShares && addCost ? "#cc1100" : "#ddd", color: addTicker && addShares && addCost ? "#fff" : "#aaa", fontSize: 11, fontWeight: 600, cursor: addTicker && addShares && addCost ? "pointer" : "not-allowed" }}>{T.portfolioConfirm}</button>
                 </div>
               </div>
             )}
 
-            {/* Positions list */}
-            <div style={{ flex: 1, overflowY: "auto", padding: "8px" }}>
-              {portfolioPositions.length === 0 ? (
-                <div style={{ padding: "32px 16px", textAlign: "center", color: "#aaa", fontSize: 12, lineHeight: 1.7 }}>
-                  {T.portfolioEmpty.split("\n").map((l, i) => <React.Fragment key={i}>{l}{i === 0 && <br/>}</React.Fragment>)}
-                </div>
-              ) : (
-                portfolioPositions.map(p => {
-                  const lp = livePrices[p.ticker];
-                  const cost = p.shares * p.avgCost;
-                  const value = lp ? p.shares * lp.price : null;
-                  const pnl = value !== null ? value - cost : null;
-                  const pnlPct = pnl !== null ? (pnl / cost) * 100 : null;
-                  const isUp = pnl !== null && pnl >= 0;
-                  return (
-                    <div key={p.id} style={{
-                      backgroundColor: "#ffffff", borderRadius: 8, padding: "10px 12px",
-                      marginBottom: 6, border: "1px solid rgba(28,26,27,0.07)",
-                      position: "relative",
-                    }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
-                        <BubbleInner symbol={p.ticker} color={symbolColor(p.ticker)} size={30} />
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 12, fontWeight: 700, color: "#1d1a1b" }}>{p.ticker}</div>
-                          {lp?.name && <div style={{ fontSize: 10, color: "#888", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{lp.name}</div>}
-                        </div>
-                        <button
-                          onClick={() => removePosition(p.id)}
-                          style={{
-                            width: 18, height: 18, borderRadius: "50%", border: "none",
-                            backgroundColor: "transparent", color: "#bbb", cursor: "pointer",
-                            fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center",
-                            flexShrink: 0,
-                          }}
-                          onMouseEnter={e => e.currentTarget.style.color = "#cc1100"}
-                          onMouseLeave={e => e.currentTarget.style.color = "#bbb"}
-                        >×</button>
-                      </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
-                        <div style={{ fontSize: 10, color: "#888" }}>
-                          {p.shares} sh × ${p.avgCost.toFixed(2)}{" "}
-                          <span style={{ color: "#bbb" }}>= ${cost.toFixed(0)}</span>
-                        </div>
-                        {lp ? (
-                          <div style={{ textAlign: "right" }}>
-                            <div style={{ fontSize: 12, fontWeight: 700, color: "#1d1a1b" }}>
-                              ${value!.toFixed(0)} <span style={{ fontSize: 10, color: "#888" }}>{lp.currency}</span>
-                            </div>
-                            <div style={{ fontSize: 10, fontWeight: 600, color: isUp ? "#16a34a" : "#dc2626" }}>
-                              {isUp ? "+" : ""}{pnl!.toFixed(0)} ({isUp ? "+" : ""}{pnlPct!.toFixed(1)}%)
-                            </div>
+            {/* Donut + positions */}
+            <div style={{ flex: 1, overflowY: "auto" }}>
+              {/* Allocation donut */}
+              {portfolioPositions.length >= 2 && (
+                <PortfolioDonut positions={portfolioPositions} livePrices={livePrices} colorFn={symbolColor} />
+              )}
+
+              {/* Positions list */}
+              <div style={{ padding: "8px" }}>
+                {portfolioPositions.length === 0 ? (
+                  <div style={{ padding: "32px 16px", textAlign: "center" as const, color: "#aaa", fontSize: 12, lineHeight: 1.7 }}>
+                    {T.portfolioEmpty.split("\n").map((l, i) => <React.Fragment key={i}>{l}{i === 0 && <br />}</React.Fragment>)}
+                  </div>
+                ) : (
+                  portfolioPositions.map(p => {
+                    const lp = livePrices[p.ticker];
+                    const cost = p.shares * p.avgCost;
+                    const value = lp ? p.shares * lp.price : null;
+                    const pnl = value !== null ? value - cost : null;
+                    const pnlPct = pnl !== null ? (pnl / cost) * 100 : null;
+                    const isUp = pnl !== null && pnl >= 0;
+                    const isEditing = editingPositionId === p.id;
+                    return (
+                      <div key={p.id} style={{ backgroundColor: "#ffffff", borderRadius: 8, padding: "10px 12px", marginBottom: 6, border: "1px solid rgba(28,26,27,0.07)" }}>
+                        {/* Card header */}
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: isEditing ? 8 : 5 }}>
+                          <BubbleInner symbol={p.ticker} color={symbolColor(p.ticker)} size={28} />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: "#1d1a1b" }}>{p.ticker}</div>
+                            {lp?.name && <div style={{ fontSize: 10, color: "#888", whiteSpace: "nowrap" as const, overflow: "hidden", textOverflow: "ellipsis" }}>{lp.name}</div>}
                           </div>
-                        ) : (
-                          <div style={{ fontSize: 10, color: "#bbb" }}>{T.portfolioLoading}</div>
+                          {/* Edit button */}
+                          <button
+                            onClick={() => {
+                              if (isEditing) { setEditingPositionId(null); }
+                              else { setEditingPositionId(p.id); setEditShares(String(p.shares)); setEditCost(String(p.avgCost)); }
+                            }}
+                            style={{ width: 20, height: 20, borderRadius: "50%", border: "none", backgroundColor: "transparent", color: isEditing ? "#cc1100" : "#bbb", cursor: "pointer", fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+                            onMouseEnter={e => e.currentTarget.style.color = "#cc1100"}
+                            onMouseLeave={e => { if (!isEditing) e.currentTarget.style.color = "#bbb"; }}
+                          >✎</button>
+                          {/* Delete button */}
+                          <button
+                            onClick={() => removePosition(p.id)}
+                            style={{ width: 20, height: 20, borderRadius: "50%", border: "none", backgroundColor: "transparent", color: "#bbb", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+                            onMouseEnter={e => e.currentTarget.style.color = "#cc1100"}
+                            onMouseLeave={e => e.currentTarget.style.color = "#bbb"}
+                          >×</button>
+                        </div>
+
+                        {/* Inline edit form */}
+                        {isEditing && (
+                          <div style={{ marginBottom: 6 }}>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 5, marginBottom: 5 }}>
+                              <div>
+                                <div style={{ fontSize: 9, color: "#888", marginBottom: 2 }}>{T.portfolioShares}</div>
+                                <input value={editShares} onChange={e => setEditShares(e.target.value)} type="number" min="0" style={{ width: "100%", padding: "5px 7px", borderRadius: 5, boxSizing: "border-box" as const, border: "1px solid rgba(204,17,0,0.3)", fontSize: 11, outline: "none", backgroundColor: "#fff9f8", color: "#1d1a1b" }} />
+                              </div>
+                              <div>
+                                <div style={{ fontSize: 9, color: "#888", marginBottom: 2 }}>{T.portfolioAvgCost}</div>
+                                <input value={editCost} onChange={e => setEditCost(e.target.value)} type="number" min="0" style={{ width: "100%", padding: "5px 7px", borderRadius: 5, boxSizing: "border-box" as const, border: "1px solid rgba(204,17,0,0.3)", fontSize: 11, outline: "none", backgroundColor: "#fff9f8", color: "#1d1a1b" }} />
+                              </div>
+                            </div>
+                            <button onClick={() => saveEditPosition(p.id)} disabled={!editShares || !editCost} style={{ width: "100%", padding: "5px", borderRadius: 5, border: "none", backgroundColor: "#cc1100", color: "#fff", fontSize: 10, fontWeight: 600, cursor: "pointer" }}>
+                              {lang === "fr" ? "Enregistrer" : "Save changes"}
+                            </button>
+                          </div>
+                        )}
+
+                        {/* P&L row */}
+                        {!isEditing && (
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+                            <div style={{ fontSize: 10, color: "#888" }}>
+                              {p.shares} sh × ${p.avgCost.toFixed(2)}{" "}
+                              <span style={{ color: "#bbb" }}>= ${cost.toFixed(0)}</span>
+                            </div>
+                            {lp ? (
+                              <div style={{ textAlign: "right" as const }}>
+                                <div style={{ fontSize: 12, fontWeight: 700, color: "#1d1a1b" }}>
+                                  ${value!.toFixed(0)} <span style={{ fontSize: 10, color: "#888" }}>{lp.currency}</span>
+                                </div>
+                                <div style={{ fontSize: 10, fontWeight: 600, color: isUp ? "#16a34a" : "#dc2626" }}>
+                                  {isUp ? "+" : ""}{pnl!.toFixed(0)} ({isUp ? "+" : ""}{pnlPct!.toFixed(1)}%)
+                                </div>
+                              </div>
+                            ) : (
+                              <div style={{ fontSize: 10, color: "#bbb" }}>{T.portfolioLoading}</div>
+                            )}
+                          </div>
                         )}
                       </div>
-                    </div>
-                  );
-                })
-              )}
+                    );
+                  })
+                )}
+              </div>
             </div>
 
             {/* Summary footer */}
@@ -3886,11 +3969,8 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
               const totalPct = (totalPnl / totalCost) * 100;
               const isUp = totalPnl >= 0;
               return (
-                <div style={{
-                  padding: "12px 14px", borderTop: "1px solid rgba(28,26,27,0.08)",
-                  backgroundColor: "#ffffff", flexShrink: 0,
-                }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                <div style={{ padding: "10px 14px", borderTop: "1px solid rgba(28,26,27,0.08)", backgroundColor: "#ffffff", flexShrink: 0 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
                     <span style={{ fontSize: 11, color: "#888" }}>{T.portfolioCostBasis}</span>
                     <span style={{ fontSize: 11, fontWeight: 600, color: "#1d1a1b" }}>${totalCost.toLocaleString("en", { maximumFractionDigits: 0 })}</span>
                   </div>
@@ -3898,11 +3978,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                     <span style={{ fontSize: 11, color: "#888" }}>{T.portfolioCurrentValue}</span>
                     <span style={{ fontSize: 12, fontWeight: 700, color: "#1d1a1b" }}>${totalValue.toLocaleString("en", { maximumFractionDigits: 0 })}</span>
                   </div>
-                  <div style={{
-                    display: "flex", justifyContent: "space-between", alignItems: "center",
-                    padding: "6px 10px", borderRadius: 6,
-                    backgroundColor: isUp ? "rgba(22,163,74,0.07)" : "rgba(220,38,38,0.07)",
-                  }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 10px", borderRadius: 6, backgroundColor: isUp ? "rgba(22,163,74,0.07)" : "rgba(220,38,38,0.07)" }}>
                     <span style={{ fontSize: 11, fontWeight: 600, color: isUp ? "#16a34a" : "#dc2626" }}>{T.portfolioPnl}</span>
                     <span style={{ fontSize: 12, fontWeight: 700, color: isUp ? "#16a34a" : "#dc2626" }}>
                       {isUp ? "+" : ""}${totalPnl.toLocaleString("en", { maximumFractionDigits: 0 })} ({isUp ? "+" : ""}{totalPct.toFixed(1)}%)
@@ -3913,150 +3989,177 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
             })()}
           </div>
 
-          {/* Right: Chat with Fred */}
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            {/* Portfolio-aware messages */}
-            <div style={{ flex: 1, overflowY: "auto", padding: "20px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
-              {messages.length === 0 && (
-                <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, padding: "40px 20px" }}>
-                  <PixelWizard />
-                  <div style={{ textAlign: "center" }}>
-                    <div style={{ fontSize: 15, fontWeight: 600, color: "#1d1a1b", marginBottom: 6 }}>{T.portfolioPrompt}</div>
-                    <div style={{ fontSize: 12, color: "#888", maxWidth: 320, lineHeight: 1.6 }}>
-                      {T.portfolioPromptSub}
+          {/* ── CENTER PANEL: Analysis ─────────────────────────────────────── */}
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", backgroundColor: "#f9f7f5" }}>
+            <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
+              {(() => {
+                const selMsg = portfolioSelectedAnalysisIndex >= 0 ? messages[portfolioSelectedAnalysisIndex] : null;
+                if (!selMsg) {
+                  return (
+                    <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, opacity: 0.5 }}>
+                      <PixelWizard />
+                      <div style={{ textAlign: "center" as const, color: "#888", fontSize: 13 }}>
+                        {lang === "fr" ? "L'analyse apparaîtra ici" : "Analysis will appear here"}
+                        <br /><span style={{ fontSize: 11 }}>{lang === "fr" ? "Posez une question à droite →" : "Ask a question on the right →"}</span>
+                      </div>
                     </div>
+                  );
+                }
+                const sections = parseMessageSections(selMsg.content);
+                return (
+                  <div>
+                    {/* Ticker bubbles */}
+                    {selMsg.tickers && selMsg.tickers.length > 0 && (
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" as const, marginBottom: 16 }}>
+                        {selMsg.tickers.map((t, ti) => <div key={t} style={{ opacity: 0, animation: `fadeScaleIn 0.35s ease forwards ${ti * 0.07}s` }}><BubbleInner symbol={t} color={symbolColor(t)} size={40} /></div>)}
+                      </div>
+                    )}
+                    {/* Sections */}
+                    {sections ? sections.map((sec, si) => (
+                      <CollapsibleSection key={si} title={sec.title} content={sec.content} delay={si * 80} defaultOpen={si === 0} />
+                    )) : (
+                      <div style={{ fontSize: 14, lineHeight: 1.75, color: "#2c2a29" }}>
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{selMsg.content}</ReactMarkdown>
+                      </div>
+                    )}
+                    {/* Charts rendered directly */}
+                    {selMsg.charts?.map((chart, ci) => <div key={ci} style={{ marginTop: 12 }}><ChartMessage chart={chart} /></div>)}
+                    {selMsg.analystRatings?.map((r, ri) => <div key={ri} style={{ marginTop: 12 }}><AnalystRatingsCard data={r} /></div>)}
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, width: "100%", maxWidth: 420 }}>
+                );
+              })()}
+            </div>
+          </div>
+
+          {/* ── RIGHT PANEL: Chat ──────────────────────────────────────────── */}
+          <div style={{ width: 340, flexShrink: 0, display: "flex", flexDirection: "column", borderLeft: "1px solid rgba(28,26,27,0.1)", backgroundColor: "#ffffff", overflow: "hidden" }}>
+
+            {/* Chat thread */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "16px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
+              {messages.length === 0 && (
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, padding: "20px 10px" }}>
+                  <PixelWizard />
+                  <div style={{ textAlign: "center" as const }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "#1d1a1b", marginBottom: 4 }}>{T.portfolioPrompt}</div>
+                    <div style={{ fontSize: 11, color: "#888", lineHeight: 1.6 }}>{T.portfolioPromptSub}</div>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column" as const, gap: 5, width: "100%" }}>
                     {T.portfolioSuggestions.map(s => (
-                      <button key={s.text} onClick={() => sendMessage(s.text)} style={{
-                        padding: "10px 12px", textAlign: "left", borderRadius: 8,
-                        border: "1px solid rgba(28,26,27,0.1)", backgroundColor: "#ffffff",
-                        cursor: "pointer", transition: "border-color 0.15s, background 0.15s",
-                      }}
-                      onMouseEnter={e => { e.currentTarget.style.borderColor = "#cc1100"; e.currentTarget.style.backgroundColor = "#f9f6f3"; }}
-                      onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(28,26,27,0.1)"; e.currentTarget.style.backgroundColor = "#ffffff"; }}
-                      >
-                        <div style={{ fontSize: 11, fontWeight: 600, color: "#1d1a1b", marginBottom: 2 }}>{s.text}</div>
+                      <button key={s.text} onClick={() => sendMessage(s.text)} style={{ padding: "9px 12px", textAlign: "left" as const, borderRadius: 8, border: "1px solid rgba(28,26,27,0.1)", backgroundColor: "#fafaf8", cursor: "pointer" }}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor = "#cc1100"; e.currentTarget.style.backgroundColor = "#f9f6f3"; }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(28,26,27,0.1)"; e.currentTarget.style.backgroundColor = "#fafaf8"; }}>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: "#1d1a1b", marginBottom: 1 }}>{s.text}</div>
                         <div style={{ fontSize: 10, color: "#888" }}>{s.sub}</div>
                       </button>
                     ))}
                   </div>
                 </div>
               )}
-              {messages.map((msg, i) => (
-                <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: msg.role === "user" ? "flex-end" : "flex-start", gap: 4 }}>
-                  <div style={{
-                    maxWidth: msg.role === "user" ? "70%" : "82%",
-                    padding: msg.role === "user" ? "9px 14px" : "12px 16px",
-                    borderRadius: msg.role === "user" ? "14px 14px 3px 14px" : "14px 14px 14px 3px",
-                    backgroundColor: msg.role === "user" ? "#cc1100" : "#ffffff",
-                    border: msg.role === "user" ? "none" : "1px solid rgba(28,26,27,0.09)",
-                    color: msg.role === "user" ? "#fff" : "#2c2a29",
-                    fontSize: 13, lineHeight: 1.6, wordBreak: "break-word",
-                  }}>
-                    {msg.role === "user" ? msg.content : (
-                      <>
-                        {msg.tickers && msg.tickers.length > 0 && (
-                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10, paddingBottom: 10, borderBottom: "1px solid rgba(28,26,27,0.07)" }}>
-                            {msg.tickers.map((ticker, ti) => (
-                              <div key={ticker} style={{ opacity: 0, animation: `fadeScaleIn 0.35s ease forwards ${ti * 0.07}s` }}>
-                                <BubbleInner symbol={ticker} color={symbolColor(ticker)} size={36} />
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        <ReactMarkdown remarkPlugins={[remarkGfm]} components={{
-                          table: ({ children }) => <table style={{ borderCollapse: "collapse", width: "100%", marginTop: 8, fontSize: 12 }}>{children}</table>,
-                          th: ({ children }) => <th style={{ padding: "6px 10px", borderBottom: "1px solid rgba(28,26,27,0.1)", textAlign: "left", color: "#666", fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em" }}>{children}</th>,
-                          td: ({ children }) => <td style={{ padding: "6px 10px", borderBottom: "1px solid rgba(28,26,27,0.06)", color: "#3a3836" }}>{children}</td>,
-                          p: ({ children }) => <p style={{ margin: "6px 0", lineHeight: 1.7 }}>{children}</p>,
-                          ul: ({ children }) => <ul style={{ margin: "6px 0", paddingLeft: 16 }}>{children}</ul>,
-                          li: ({ children }) => <li style={{ marginBottom: 4, lineHeight: 1.6 }}>{children}</li>,
-                          strong: ({ children }) => <strong style={{ color: "#1d1a1b", fontWeight: 700 }}>{children}</strong>,
-                          blockquote: ({ children }) => <blockquote style={{ margin: "10px 0 4px", padding: "8px 12px", borderLeft: "2px solid #cc1100", backgroundColor: "rgba(204,17,0,0.04)", borderRadius: "0 4px 4px 0", color: "#666", fontSize: 12 }}>{children}</blockquote>,
-                          code: ({ children }) => <code style={{ backgroundColor: "#f0ece8", padding: "1px 5px", borderRadius: 3, fontSize: 12, color: "#cc1100", fontWeight: 600 }}>{children}</code>,
-                        }}>{msg.content}</ReactMarkdown>
-                      </>
+
+              {messages.map((msg, i) => {
+                const isUser = msg.role === "user";
+                const sections = !isUser ? parseMessageSections(msg.content) : null;
+                const preamble = sections ? msg.content.split(/^## /m)[0].trim() : "";
+                const isSelectedHere = portfolioSelectedAnalysisIndex === i;
+
+                return (
+                  <div key={i} style={{ display: "flex", flexDirection: "column" as const, alignItems: isUser ? "flex-end" : "flex-start", gap: 4 }}>
+                    {/* Ticker bubbles */}
+                    {!isUser && msg.tickers && msg.tickers.length > 0 && (
+                      <div style={{ display: "flex", gap: 5, flexWrap: "wrap" as const }}>
+                        {msg.tickers.map((t, ti) => <div key={t} style={{ opacity: 0, animation: `fadeScaleIn 0.3s ease forwards ${ti * 0.06}s` }}><BubbleInner symbol={t} color={symbolColor(t)} size={28} /></div>)}
+                      </div>
                     )}
+                    <div style={{
+                      maxWidth: "86%", padding: isUser ? "8px 12px" : "10px 13px",
+                      borderRadius: isUser ? "14px 14px 3px 14px" : "14px 14px 14px 3px",
+                      backgroundColor: isUser ? "#cc1100" : "#f5f2ee",
+                      color: isUser ? "#fff" : "#2c2a29",
+                      fontSize: 12, lineHeight: 1.6, wordBreak: "break-word" as const,
+                    }}>
+                      {isUser ? msg.content : sections ? (
+                        <>
+                          {preamble && <p style={{ margin: "0 0 6px", fontSize: 12, lineHeight: 1.6 }}>{preamble}</p>}
+                          <button
+                            onClick={() => setPortfolioSelectedAnalysisIndex(i)}
+                            style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 600, color: isSelectedHere ? "#888" : "#cc1100", background: "none", border: "none", cursor: isSelectedHere ? "default" : "pointer", padding: 0 }}
+                          >
+                            <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><rect x="1" y="9" width="3" height="6" rx="1" fill="currentColor" opacity="0.6"/><rect x="6" y="5" width="3" height="10" rx="1" fill="currentColor" opacity="0.8"/><rect x="11" y="2" width="3" height="13" rx="1" fill="currentColor"/></svg>
+                            {isSelectedHere ? (lang === "fr" ? "Affiché au centre" : "Viewing in panel") : (lang === "fr" ? "Voir l'analyse →" : "View analysis →")}
+                          </button>
+                        </>
+                      ) : (
+                        <ReactMarkdown remarkPlugins={[remarkGfm]} components={{
+                          p: ({ children }) => <p style={{ margin: "4px 0", lineHeight: 1.6 }}>{children}</p>,
+                          strong: ({ children }) => <strong style={{ color: "#1d1a1b" }}>{children}</strong>,
+                          ul: ({ children }) => <ul style={{ margin: "4px 0", paddingLeft: 14 }}>{children}</ul>,
+                          li: ({ children }) => <li style={{ marginBottom: 2 }}>{children}</li>,
+                          table: ({ children }) => <table style={{ borderCollapse: "collapse", width: "100%", fontSize: 11, marginTop: 6 }}>{children}</table>,
+                          th: ({ children }) => <th style={{ padding: "4px 8px", borderBottom: "1px solid rgba(28,26,27,0.1)", textAlign: "left" as const, fontSize: 10, fontWeight: 600, color: "#666", textTransform: "uppercase" as const }}>{children}</th>,
+                          td: ({ children }) => <td style={{ padding: "4px 8px", borderBottom: "1px solid rgba(28,26,27,0.06)" }}>{children}</td>,
+                        }}>{msg.content}</ReactMarkdown>
+                      )}
+                    </div>
                   </div>
-                  {msg.role === "assistant" && (() => {
-                    const total = (msg.charts?.length || 0) + (msg.analystRatings?.length || 0);
-                    if (!total) return null;
-                    const isOpen = !!expandedCharts[i + 10000];
-                    return (
-                      <>
-                        <button onClick={() => toggleChart(i + 10000)} style={{
-                          display: "inline-flex", alignItems: "center", gap: 5,
-                          fontSize: 11, fontWeight: 500, color: isOpen ? "#cc1100" : "#666",
-                          padding: "4px 10px", borderRadius: 6,
-                          border: `1px solid ${isOpen ? "rgba(204,17,0,0.35)" : "rgba(28,26,27,0.12)"}`,
-                          backgroundColor: isOpen ? "rgba(204,17,0,0.05)" : "transparent",
-                          cursor: "pointer", transition: "all 0.15s",
-                        }}>
-                          <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><rect x="1" y="9" width="3" height="6" rx="1" fill="currentColor" opacity="0.6"/><rect x="6" y="5" width="3" height="10" rx="1" fill="currentColor" opacity="0.8"/><rect x="11" y="2" width="3" height="13" rx="1" fill="currentColor"/></svg>
-                          {total} visual{total > 1 ? "s" : ""} <span style={{ fontSize: 9 }}>{isOpen ? "▲" : "▼"}</span>
-                        </button>
-                        {isOpen && <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                          {msg.charts?.map((chart, ci) => <div key={ci} style={{ width: "min(560px, 92vw)" }}><ChartMessage chart={chart} /></div>)}
-                          {msg.analystRatings?.map((r, ri) => <div key={ri}><AnalystRatingsCard data={r} /></div>)}
-                        </div>}
-                      </>
-                    );
-                  })()}
-                </div>
-              ))}
+                );
+              })}
+
               {loading && (
                 <div style={{ display: "flex", justifyContent: "flex-start" }}>
-                  <div style={{
-                    padding: "10px 14px",
-                    borderRadius: "14px 14px 14px 3px",
-                    backgroundColor: "#ffffff",
-                    border: "1px solid rgba(28,26,27,0.09)",
-                    display: "flex", gap: 4, alignItems: "center",
-                  }}>
-                    {[0, 1, 2].map((i) => (
-                      <div key={i} style={{
-                        width: 5, height: 5, borderRadius: "50%",
-                        backgroundColor: "#cc1100",
-                        animation: "pulse 1.2s ease-in-out infinite",
-                        animationDelay: `${i * 0.18}s`,
-                      }} />
-                    ))}
+                  <div style={{ padding: "8px 12px", borderRadius: "14px 14px 14px 3px", backgroundColor: "#f5f2ee", display: "flex", gap: 4, alignItems: "center" }}>
+                    {[0, 1, 2].map(i => <div key={i} style={{ width: 5, height: 5, borderRadius: "50%", backgroundColor: "#cc1100", animation: "pulse 1.2s ease-in-out infinite", animationDelay: `${i * 0.18}s` }} />)}
                   </div>
                 </div>
               )}
               <div ref={bottomRef} />
             </div>
 
-            {/* Portfolio chat input */}
-            <div style={{ backgroundColor: "#f5f2ee", borderTop: "1px solid rgba(28,26,27,0.1)", padding: "8px 14px 10px", display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+            {/* Pending portfolio action confirmation */}
+            {(() => {
+              const pendingMsg = [...messages].reverse().find(m => m.role === "assistant" && m.portfolioActions && m.portfolioActions.length > 0);
+              if (!pendingMsg || !pendingMsg.portfolioActions) return null;
+              return (
+                <div style={{ margin: "0 10px 6px", padding: "10px 12px", borderRadius: 10, backgroundColor: "rgba(204,17,0,0.05)", border: "1px solid rgba(204,17,0,0.2)", flexShrink: 0 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: "#cc1100", textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: 6 }}>
+                    {lang === "fr" ? "Action proposée" : "Proposed Action"}
+                  </div>
+                  {pendingMsg.portfolioActions.map((action, ai) => (
+                    <div key={ai} style={{ fontSize: 12, color: "#1d1a1b", marginBottom: 8 }}>
+                      <div style={{ marginBottom: 6, lineHeight: 1.5 }}>{action.note}</div>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button
+                          onClick={() => {
+                            applyPortfolioAction(action);
+                            setMessages(prev => prev.map(m => m === pendingMsg ? { ...m, portfolioActions: [] } : m));
+                          }}
+                          style={{ flex: 2, padding: "6px", borderRadius: 6, border: "none", backgroundColor: "#cc1100", color: "#fff", fontSize: 11, fontWeight: 600, cursor: "pointer" }}
+                        >{lang === "fr" ? "Confirmer" : "Confirm"}</button>
+                        <button
+                          onClick={() => setMessages(prev => prev.map(m => m === pendingMsg ? { ...m, portfolioActions: [] } : m))}
+                          style={{ flex: 1, padding: "6px", borderRadius: 6, border: "1px solid rgba(28,26,27,0.15)", backgroundColor: "transparent", fontSize: 11, color: "#666", cursor: "pointer" }}
+                        >{lang === "fr" ? "Annuler" : "Dismiss"}</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+
+            {/* Input */}
+            <div style={{ backgroundColor: "#f5f2ee", borderTop: "1px solid rgba(28,26,27,0.1)", padding: "8px 12px 10px", display: "flex", gap: 7, alignItems: "center", flexShrink: 0 }}>
               <input
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder={T.placeholder}
                 disabled={loading}
-                style={{
-                  flex: 1, padding: "9px 14px", borderRadius: 8,
-                  border: "1px solid rgba(28,26,27,0.1)", backgroundColor: "#ffffff",
-                  color: "#1d1a1b", fontSize: 13, outline: "none",
-                  opacity: loading ? 0.6 : 1,
-                }}
+                style={{ flex: 1, padding: "9px 12px", borderRadius: 8, border: "1px solid rgba(28,26,27,0.1)", backgroundColor: "#ffffff", color: "#1d1a1b", fontSize: 13, outline: "none", opacity: loading ? 0.6 : 1 }}
               />
               <button
                 onClick={() => sendMessage(input)}
                 disabled={loading || !input.trim()}
-                style={{
-                  width: 34, height: 34, borderRadius: 8, border: "none", flexShrink: 0,
-                  backgroundColor: input.trim() && !loading ? "#cc1100" : "#1a1a1a",
-                  color: input.trim() && !loading ? "#fff" : "#444",
-                  cursor: input.trim() && !loading ? "pointer" : "not-allowed",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  transition: "background 0.15s",
-                }}
-              >
-                <svg width="15" height="15" viewBox="0 0 20 20" fill="none"><line x1="2" y1="10" x2="17" y2="10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><polyline points="11,4 17,10 11,16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              </button>
+                style={{ width: 34, height: 34, borderRadius: 8, border: "none", flexShrink: 0, backgroundColor: !loading && input.trim() ? "#cc1100" : "#ddd", color: "#fff", fontSize: 16, cursor: !loading && input.trim() ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center" }}
+              >›</button>
             </div>
           </div>
         </div>

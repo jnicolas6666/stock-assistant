@@ -215,6 +215,46 @@ export const toolDefinitions = [
       required: ["symbol"],
     },
   },
+  {
+    name: "add_portfolio_position",
+    description: "Add a new position to the user's simulated portfolio. Call this when the user asks to add a stock or ETF with a specified quantity and price.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        ticker: { type: "string", description: "Stock ticker symbol (e.g. AAPL, RY.TO)" },
+        shares: { type: "number", description: "Number of shares" },
+        avgCost: { type: "number", description: "Average cost per share in dollars" },
+        note: { type: "string", description: "Short human-readable label, e.g. 'Add 50 shares of NVDA at $120.00'" },
+      },
+      required: ["ticker", "shares", "avgCost", "note"],
+    },
+  },
+  {
+    name: "remove_portfolio_position",
+    description: "Remove an existing position from the user's simulated portfolio. Call this when the user asks to remove or delete a holding.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        ticker: { type: "string", description: "Ticker symbol of the position to remove" },
+        note: { type: "string", description: "Short human-readable label, e.g. 'Remove NVDA from portfolio'" },
+      },
+      required: ["ticker", "note"],
+    },
+  },
+  {
+    name: "update_portfolio_position",
+    description: "Update the share count or average cost of an existing portfolio position. Call this when the user wants to change the quantity or cost basis of a holding.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        ticker: { type: "string", description: "Ticker symbol to update" },
+        shares: { type: "number", description: "New share count (omit if not changing)" },
+        avgCost: { type: "number", description: "New average cost per share (omit if not changing)" },
+        note: { type: "string", description: "Short human-readable label, e.g. 'Update NVDA to 75 shares'" },
+      },
+      required: ["ticker", "note"],
+    },
+  },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
