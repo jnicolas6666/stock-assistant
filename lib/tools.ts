@@ -265,15 +265,20 @@ async function searchTicker(query: string) {
 async function getQuote(symbol: string) {
   try {
     // Fetch basic quote + extended summary (price targets, short interest) in parallel
-    const [q, summary] = await Promise.all([
+    const [q, summary, summaryFallback] = await Promise.all([
       yahooFinance.quote(symbol, {}, FETCH_OPTS),
       yahooFinance.quoteSummary(symbol, {
         modules: ["financialData", "defaultKeyStatistics"] as any,
         fetchOptions: FETCH_OPTS.fetchOptions,
       } as any).catch(() => null),
+      // Fallback: recommendationTrend also contains financialData price targets
+      yahooFinance.quoteSummary(symbol, {
+        modules: ["recommendationTrend", "financialData"] as any,
+        fetchOptions: FETCH_OPTS.fetchOptions,
+      } as any).catch(() => null),
     ]);
 
-    const fd = (summary as any)?.financialData ?? {};
+    const fd = (summary as any)?.financialData ?? (summaryFallback as any)?.financialData ?? {};
     const ks = (summary as any)?.defaultKeyStatistics ?? {};
 
     return {
