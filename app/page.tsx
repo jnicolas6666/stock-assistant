@@ -1526,6 +1526,25 @@ function extractTicker(text: string): string {
   return "";
 }
 
+function extractTickers(text: string): string[] {
+  const STOP = new Set(["A", "I", "AT", "BE", "IS", "TO", "OF", "IN", "ON", "DO", "IF", "US", "THE", "FOR", "AND", "OR", "HOW", "WHY", "WHAT", "SHOW", "GET", "ITS", "ARE"]);
+  const found: string[] = [];
+  const lower = text.toLowerCase();
+
+  // Company name matches (can find multiple)
+  for (const [name, ticker] of COMPANY_TO_TICKER) {
+    if (lower.includes(name) && !found.includes(ticker)) found.push(ticker);
+  }
+
+  // Explicit uppercase tickers
+  const upper = (text.match(/\b[A-Z]{2,5}(?:\.TO)?\b/g) || []).filter(t => !STOP.has(t));
+  for (const t of upper) {
+    if (!found.includes(t)) found.push(t);
+  }
+
+  return found.slice(0, 4); // cap at 4 bubbles
+}
+
 
 // ── Collapsible section helpers ──────────────────────────────────────────────
 
@@ -2267,10 +2286,10 @@ export default function Home() {
   const [responseTicker, setResponseTicker] = useState("");
   const [pendingTickers, setPendingTickers] = useState<string[]>([]);
   useEffect(() => { if (!loading) setPendingTickers([]); }, [loading]);
-  const [previewTicker, setPreviewTicker] = useState("");
+  const [previewTickers, setPreviewTickers] = useState<string[]>([]);
   useEffect(() => {
-    if (appPhase !== "home") { setPreviewTicker(""); return; }
-    const t = setTimeout(() => setPreviewTicker(extractTicker(input)), 350);
+    if (appPhase !== "home") { setPreviewTickers([]); return; }
+    const t = setTimeout(() => setPreviewTickers(extractTickers(input)), 350);
     return () => clearTimeout(t);
   }, [input, appPhase]);
   const [selectedAnalysisIndex, setSelectedAnalysisIndex] = useState<number>(-1);
@@ -2821,23 +2840,23 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
             {/* Wizard + bubble — column layout: bubble above Fred */}
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 16 }}>
 
-              {/* Ticker preview bubble — pops in when user types a recognized ticker */}
-              {previewTicker && appPhase === "home" && (
-                <div key={previewTicker} style={{
-                  marginBottom: 12,
-                  animation: "fadeScaleIn 0.25s cubic-bezier(0.34,1.56,0.64,1) forwards",
-                  pointerEvents: "none",
-                  position: "relative",
-                  display: "flex", flexDirection: "column", alignItems: "center",
-                }}>
-                  <BubbleInner symbol={previewTicker} color={symbolColor(previewTicker)} size={54} />
-                  {/* Tail */}
-                  <div style={{ width: 0, height: 0, borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderTop: `6px solid ${symbolColor(previewTicker)}`, opacity: 0.5, marginTop: -1 }} />
+              {/* Ticker preview bubbles — pop in as user types recognized tickers */}
+              {previewTickers.length > 0 && appPhase === "home" && (
+                <div style={{ marginBottom: 12, display: "flex", flexDirection: "column", alignItems: "center", gap: 0, pointerEvents: "none" }}>
+                  <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+                    {previewTickers.map((ticker, i) => (
+                      <div key={ticker} style={{ animation: `fadeScaleIn 0.28s cubic-bezier(0.34,1.56,0.64,1) forwards ${i * 0.06}s`, opacity: 0 }}>
+                        <BubbleInner symbol={ticker} color={symbolColor(ticker)} size={i === 0 ? 54 : 44} />
+                      </div>
+                    ))}
+                  </div>
+                  {/* Tail under center of the row */}
+                  <div style={{ width: 0, height: 0, borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderTop: "6px solid rgba(28,26,27,0.15)", marginTop: 1 }} />
                 </div>
               )}
 
               {/* Tip speech bubble — hidden when ticker preview is showing */}
-              {!previewTicker && (
+              {previewTickers.length === 0 && (
                 <div style={{
                   marginBottom: 12,
                   opacity: (appPhase === "home" && contentVisible) ? (tipVisible ? 1 : 0) : 0,
