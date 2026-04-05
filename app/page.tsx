@@ -792,8 +792,45 @@ const TRANSLATIONS = {
       viewingAnalysis: "Viewing in left panel",
       comparePeers: "Compare peers",
       dividends: "Dividends",
+      priceChart: "Price chart",
       emptyState: "Ask a question to see the\nanalysis here",
       subtitle: "stocks, ETFs, earnings, analyst views, and market trends.",
+      moreTools: "⚡ More tools",
+      // Quick actions
+      qa: [
+        { label: "Show me visuals",        msg: "Can you show me the price chart and key visuals for the stock we're discussing?" },
+        { label: "Compare with 3 peers",   msg: "Compare this stock with exactly 3 of its closest peers — show P/E, revenue, market cap, and dividend yield side by side." },
+        { label: "Latest news",            msg: "What's the latest news for the stock we're discussing?" },
+        { label: "Analyst ratings",        msg: "Show me the analyst ratings breakdown and consensus for this stock." },
+        { label: "Earnings history",       msg: "Show me the earnings per share history for this stock, actual vs estimate, as a chart." },
+        { label: "Key fundamentals",       msg: "Give me a fundamentals snapshot for this stock: P/E, market cap, revenue, profit margin, and debt-to-equity." },
+        { label: "Dividend details",       msg: "What are the dividend details for this stock? Yield, annual rate, and payout history." },
+        { label: "52-week range",          msg: "Where does this stock currently sit relative to its 52-week high and low? Analyze the context." },
+        { label: "Analyst price target",   msg: "What is the analyst consensus price target for this stock, and what does it imply?" },
+        { label: "Sector comparison",      msg: "How does this stock compare to other companies in its sector? Focus on valuation and growth." },
+      ],
+      // Portfolio
+      portfolio: "My Portfolio",
+      portfolioAdd: "+ Add",
+      portfolioAddTitle: "Add Position",
+      portfolioTicker: "Ticker",
+      portfolioShares: "Shares",
+      portfolioAvgCost: "Avg cost per share ($)",
+      portfolioCancel: "Cancel",
+      portfolioConfirm: "Add Position →",
+      portfolioEmpty: "No positions yet.\nClick + Add to build your portfolio.",
+      portfolioLoading: "loading…",
+      portfolioCostBasis: "Cost basis",
+      portfolioCurrentValue: "Current value",
+      portfolioPnl: "Unrealized P&L",
+      portfolioPrompt: "Ask Fred about your portfolio",
+      portfolioPromptSub: "Add positions on the left, then ask factual questions about your holdings.",
+      portfolioSuggestions: [
+        { text: "What's my portfolio worth right now?", sub: "Live valuation" },
+        { text: "Where am I most concentrated?", sub: "Allocation analysis" },
+        { text: "Which position has the highest return?", sub: "Performance breakdown" },
+        { text: "What sectors am I exposed to?", sub: "Sector distribution" },
+      ],
     },
   },
   fr: {
@@ -883,8 +920,45 @@ const TRANSLATIONS = {
       viewingAnalysis: "Affiché dans le panneau gauche",
       comparePeers: "Comparer les pairs",
       dividends: "Dividendes",
+      priceChart: "Graphique de prix",
       emptyState: "Posez une question pour voir\nl'analyse ici",
       subtitle: "actions, FNB, résultats, analyses et tendances de marché.",
+      moreTools: "⚡ Plus d'outils",
+      // Quick actions
+      qa: [
+        { label: "Afficher les visuels",       msg: "Pouvez-vous me montrer le graphique de prix et les visuels clés pour le titre dont nous discutons?" },
+        { label: "Comparer avec 3 pairs",       msg: "Comparez ce titre avec exactement 3 de ses pairs les plus proches — montrez le P/E, les revenus, la capitalisation boursière et le rendement du dividende côte à côte." },
+        { label: "Dernières actualités",        msg: "Quelles sont les dernières nouvelles pour le titre dont nous discutons?" },
+        { label: "Notes des analystes",         msg: "Montrez-moi la répartition des notes des analystes et le consensus pour ce titre." },
+        { label: "Historique des bénéfices",   msg: "Montrez-moi l'historique du BPA pour ce titre, réel vs estimé, sous forme de graphique." },
+        { label: "Données fondamentales",       msg: "Donnez-moi un aperçu des données fondamentales de ce titre: P/E, capitalisation, revenus, marge bénéficiaire et dette/capitaux propres." },
+        { label: "Détails sur les dividendes", msg: "Quels sont les détails des dividendes pour ce titre? Rendement, taux annuel et historique des versements." },
+        { label: "Plage sur 52 semaines",      msg: "Où se situe actuellement ce titre par rapport à son plus haut et son plus bas sur 52 semaines? Analysez le contexte." },
+        { label: "Cible de prix analystes",    msg: "Quelle est la cible de prix consensuelle des analystes pour ce titre et qu'est-ce que cela implique?" },
+        { label: "Comparaison sectorielle",    msg: "Comment ce titre se compare-t-il aux autres entreprises de son secteur? Concentrez-vous sur la valorisation et la croissance." },
+      ],
+      // Portfolio
+      portfolio: "Mon portefeuille",
+      portfolioAdd: "+ Ajouter",
+      portfolioAddTitle: "Ajouter une position",
+      portfolioTicker: "Symbole",
+      portfolioShares: "Actions",
+      portfolioAvgCost: "Coût moyen par action ($)",
+      portfolioCancel: "Annuler",
+      portfolioConfirm: "Ajouter la position →",
+      portfolioEmpty: "Aucune position pour l'instant.\nCliquez sur + Ajouter pour créer votre portefeuille.",
+      portfolioLoading: "chargement…",
+      portfolioCostBasis: "Coût de base",
+      portfolioCurrentValue: "Valeur actuelle",
+      portfolioPnl: "G/P non réalisé",
+      portfolioPrompt: "Demandez à Fred à propos de votre portefeuille",
+      portfolioPromptSub: "Ajoutez des positions à gauche, puis posez des questions factuelles sur vos avoirs.",
+      portfolioSuggestions: [
+        { text: "Quelle est la valeur actuelle de mon portefeuille?", sub: "Valorisation en direct" },
+        { text: "Dans quoi suis-je le plus concentré?", sub: "Analyse d'allocation" },
+        { text: "Quelle position a le meilleur rendement?", sub: "Analyse de performance" },
+        { text: "À quels secteurs suis-je exposé?", sub: "Distribution sectorielle" },
+      ],
     },
   },
 } as const;
@@ -1986,18 +2060,7 @@ function ChartMessage({ chart }: { chart: ChartSpec }) {
   );
 }
 
-const QUICK_ACTIONS = [
-  { label: "Show me visuals", msg: "Can you show me the price chart and key visuals for the stock we're discussing?" },
-  { label: "Compare with 3 peers", msg: "Compare this stock with exactly 3 of its closest peers — show P/E, revenue, market cap, and dividend yield side by side." },
-  { label: "Latest news", msg: "What's the latest news for the stock we're discussing?" },
-  { label: "Analyst ratings", msg: "Show me the analyst ratings breakdown and consensus for this stock." },
-  { label: "Earnings history", msg: "Show me the earnings per share history for this stock, actual vs estimate, as a chart." },
-  { label: "Key fundamentals", msg: "Give me a fundamentals snapshot for this stock: P/E, market cap, revenue, profit margin, and debt-to-equity." },
-  { label: "Dividend details", msg: "What are the dividend details for this stock? Yield, annual rate, and payout history." },
-  { label: "52-week range", msg: "Where does this stock currently sit relative to its 52-week high and low? Analyze the context." },
-  { label: "Analyst price target", msg: "What is the analyst consensus price target for this stock, and what does it imply?" },
-  { label: "Sector comparison", msg: "How does this stock compare to other companies in its sector? Focus on valuation and growth." },
-];
+// Quick actions now live in TRANSLATIONS[lang].qa
 
 function useTypewriter(text: string, speed = 38, startDelay = 600) {
   const [displayed, setDisplayed] = useState("");
@@ -3341,7 +3404,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                               const noChart = !msg.charts || msg.charts.length === 0;
                               const noRatings = !msg.analystRatings || msg.analystRatings.length === 0;
                               const chips = ([
-                                noChart && t && { icon: "trendup", label: "Price chart", prompt: `Show me ${t}'s price chart` },
+                                noChart && t && { icon: "trendup", label: T.priceChart, prompt: `Show me ${t}'s price chart` },
                                 noRatings && t && { icon: "analyst", label: "Analyst view", prompt: `What do analysts say about ${t}?` },
                                 t && !noChart && { icon: "search", label: T.comparePeers, prompt: `Compare ${t} with its main competitors` },
                                 t && { icon: "money", label: T.dividends, prompt: `Show ${t}'s dividend history` },
@@ -3429,7 +3492,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
           <div style={{ backgroundColor: "#f0ece8", borderTop: "1px solid rgba(28,26,27,0.1)", flexShrink: 0 }}>
             {/* Quick-action chips + dropdown */}
             <div style={{ display: "flex", gap: 6, padding: "8px 14px 0", flexWrap: "wrap", alignItems: "center", position: "relative" }} ref={menuRef}>
-              {QUICK_ACTIONS.slice(0, 2).map((chip) => (
+              {T.qa.slice(0, 2).map((chip) => (
                 <button
                   key={chip.label}
                   onClick={() => { sendMessage(chip.msg); setShowActionMenu(false); }}
@@ -3467,7 +3530,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                   display: "flex", alignItems: "center", gap: 4,
                 }}
               >
-                ⚡ More tools
+                {T.moreTools}
                 <span style={{ fontSize: 8 }}>{showActionMenu ? "▲" : "▼"}</span>
               </button>
 
@@ -3482,7 +3545,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                   display: "grid", gridTemplateColumns: "1fr 1fr",
                   gap: 4, width: "min(460px, 92vw)",
                 }}>
-                  {QUICK_ACTIONS.map((action) => (
+                  {T.qa.map((action) => (
                     <button
                       key={action.label}
                       onClick={() => { sendMessage(action.msg); setShowActionMenu(false); }}
@@ -3563,7 +3626,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
               display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0,
             }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: "#1d1a1b", letterSpacing: "-0.01em" }}>
-                📊 My Portfolio
+                📊 {T.portfolio}
               </div>
               <div style={{ display: "flex", gap: 6 }}>
                 <button
@@ -3591,7 +3654,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                   onMouseEnter={e => e.currentTarget.style.backgroundColor = "rgba(204,17,0,0.12)"}
                   onMouseLeave={e => e.currentTarget.style.backgroundColor = showAddForm ? "rgba(204,17,0,0.1)" : "rgba(204,17,0,0.05)"}
                 >
-                  + Add
+                  {T.portfolioAdd}
                 </button>
               </div>
             </div>
@@ -3603,11 +3666,11 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                 backgroundColor: "#ffffff", flexShrink: 0,
               }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: "#1d1a1b", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  Add Position
+                  {T.portfolioAddTitle}
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 6 }}>
                   <div>
-                    <div style={{ fontSize: 10, color: "#888", marginBottom: 3 }}>Ticker</div>
+                    <div style={{ fontSize: 10, color: "#888", marginBottom: 3 }}>{T.portfolioTicker}</div>
                     <input
                       value={addTicker}
                       onChange={e => setAddTicker(e.target.value.toUpperCase())}
@@ -3620,7 +3683,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                     />
                   </div>
                   <div>
-                    <div style={{ fontSize: 10, color: "#888", marginBottom: 3 }}>Shares</div>
+                    <div style={{ fontSize: 10, color: "#888", marginBottom: 3 }}>{T.portfolioShares}</div>
                     <input
                       value={addShares}
                       onChange={e => setAddShares(e.target.value)}
@@ -3635,7 +3698,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                   </div>
                 </div>
                 <div style={{ marginBottom: 8 }}>
-                  <div style={{ fontSize: 10, color: "#888", marginBottom: 3 }}>Avg cost per share ($)</div>
+                  <div style={{ fontSize: 10, color: "#888", marginBottom: 3 }}>{T.portfolioAvgCost}</div>
                   <input
                     value={addCost}
                     onChange={e => setAddCost(e.target.value)}
@@ -3655,7 +3718,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                       flex: 1, padding: "7px", borderRadius: 6, border: "1px solid rgba(28,26,27,0.15)",
                       backgroundColor: "transparent", fontSize: 11, color: "#666", cursor: "pointer",
                     }}
-                  >Cancel</button>
+                  >{T.portfolioCancel}</button>
                   <button
                     onClick={addPosition}
                     disabled={!addTicker.trim() || !addShares || !addCost}
@@ -3665,7 +3728,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                       color: addTicker && addShares && addCost ? "#fff" : "#aaa",
                       fontSize: 11, fontWeight: 600, cursor: addTicker && addShares && addCost ? "pointer" : "not-allowed",
                     }}
-                  >Add Position →</button>
+                  >{T.portfolioConfirm}</button>
                 </div>
               </div>
             )}
@@ -3674,7 +3737,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
             <div style={{ flex: 1, overflowY: "auto", padding: "8px" }}>
               {portfolioPositions.length === 0 ? (
                 <div style={{ padding: "32px 16px", textAlign: "center", color: "#aaa", fontSize: 12, lineHeight: 1.7 }}>
-                  No positions yet.<br/>Click <strong>+ Add</strong> to build your portfolio.
+                  {T.portfolioEmpty.split("\n").map((l, i) => <React.Fragment key={i}>{l}{i === 0 && <br/>}</React.Fragment>)}
                 </div>
               ) : (
                 portfolioPositions.map(p => {
@@ -3723,7 +3786,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                             </div>
                           </div>
                         ) : (
-                          <div style={{ fontSize: 10, color: "#bbb" }}>loading…</div>
+                          <div style={{ fontSize: 10, color: "#bbb" }}>{T.portfolioLoading}</div>
                         )}
                       </div>
                     </div>
@@ -3748,11 +3811,11 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                   backgroundColor: "#ffffff", flexShrink: 0,
                 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                    <span style={{ fontSize: 11, color: "#888" }}>Cost basis</span>
+                    <span style={{ fontSize: 11, color: "#888" }}>{T.portfolioCostBasis}</span>
                     <span style={{ fontSize: 11, fontWeight: 600, color: "#1d1a1b" }}>${totalCost.toLocaleString("en", { maximumFractionDigits: 0 })}</span>
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                    <span style={{ fontSize: 11, color: "#888" }}>Current value</span>
+                    <span style={{ fontSize: 11, color: "#888" }}>{T.portfolioCurrentValue}</span>
                     <span style={{ fontSize: 12, fontWeight: 700, color: "#1d1a1b" }}>${totalValue.toLocaleString("en", { maximumFractionDigits: 0 })}</span>
                   </div>
                   <div style={{
@@ -3760,7 +3823,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                     padding: "6px 10px", borderRadius: 6,
                     backgroundColor: isUp ? "rgba(22,163,74,0.07)" : "rgba(220,38,38,0.07)",
                   }}>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: isUp ? "#16a34a" : "#dc2626" }}>Unrealized P&L</span>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: isUp ? "#16a34a" : "#dc2626" }}>{T.portfolioPnl}</span>
                     <span style={{ fontSize: 12, fontWeight: 700, color: isUp ? "#16a34a" : "#dc2626" }}>
                       {isUp ? "+" : ""}${totalPnl.toLocaleString("en", { maximumFractionDigits: 0 })} ({isUp ? "+" : ""}{totalPct.toFixed(1)}%)
                     </span>
@@ -3778,18 +3841,13 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                 <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, padding: "40px 20px" }}>
                   <PixelWizard />
                   <div style={{ textAlign: "center" }}>
-                    <div style={{ fontSize: 15, fontWeight: 600, color: "#1d1a1b", marginBottom: 6 }}>Ask Fred about your portfolio</div>
+                    <div style={{ fontSize: 15, fontWeight: 600, color: "#1d1a1b", marginBottom: 6 }}>{T.portfolioPrompt}</div>
                     <div style={{ fontSize: 12, color: "#888", maxWidth: 320, lineHeight: 1.6 }}>
-                      Add positions on the left, then ask factual questions about your holdings.
+                      {T.portfolioPromptSub}
                     </div>
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, width: "100%", maxWidth: 420 }}>
-                    {[
-                      { text: "What's my portfolio worth right now?", sub: "Live valuation" },
-                      { text: "Where am I most concentrated?", sub: "Allocation analysis" },
-                      { text: "Which position has the highest return?", sub: "Performance breakdown" },
-                      { text: "What sectors am I exposed to?", sub: "Sector distribution" },
-                    ].map(s => (
+                    {T.portfolioSuggestions.map(s => (
                       <button key={s.text} onClick={() => sendMessage(s.text)} style={{
                         padding: "10px 12px", textAlign: "left", borderRadius: 8,
                         border: "1px solid rgba(28,26,27,0.1)", backgroundColor: "#ffffff",
