@@ -2093,6 +2093,73 @@ function LoadingAssistant({ lang = "en" as Lang }: { lang?: Lang }) {
   );
 }
 
+// ── Orbital loading bar — shown below the orbit scene during AI fetch ────────
+const LOAD_STEPS_EN = ["Fetching market data", "Loading analyst views", "Pulling recent news", "Crunching financials", "Synthesizing insights"];
+const LOAD_STEPS_FR = ["Récupération des données", "Chargement des analystes", "Lecture des actualités", "Analyse des finances", "Synthèse en cours"];
+const SEGMENTS = 16;
+
+function OrbitalLoadingBar({ lang }: { lang: Lang }) {
+  const steps = lang === "fr" ? LOAD_STEPS_FR : LOAD_STEPS_EN;
+  const [step, setStep] = useState(0);
+  const [filled, setFilled] = useState(0);
+
+  useEffect(() => {
+    // Advance label every 1.6s
+    const labelTimer = setInterval(() => setStep(s => Math.min(s + 1, steps.length - 1)), 1600);
+    // Fill segments progressively, a bit random for realism
+    let seg = 0;
+    const fillTimer = setInterval(() => {
+      seg = Math.min(seg + Math.floor(Math.random() * 2) + 1, SEGMENTS - 2); // never reaches 100%
+      setFilled(seg);
+    }, 420);
+    return () => { clearInterval(labelTimer); clearInterval(fillTimer); };
+  }, [steps.length]);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, opacity: 0, animation: "fadeScaleIn 0.6s ease forwards 0.3s" }}>
+      {/* Step label */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: "#cc1100", animation: "blink 1s step-end infinite" }} />
+        <span key={step} style={{ fontSize: 11, color: "#555", letterSpacing: "0.04em", textTransform: "uppercase", fontWeight: 600, opacity: 0, animation: "fadeIn 0.3s ease forwards" }}>
+          {steps[step]}
+        </span>
+      </div>
+
+      {/* Segmented bar */}
+      <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
+        {Array.from({ length: SEGMENTS }).map((_, i) => {
+          const active = i < filled;
+          const isEdge = i === filled - 1;
+          return (
+            <div key={i} style={{
+              width: 22, height: active ? 6 : 3,
+              borderRadius: 3,
+              backgroundColor: active ? "#cc1100" : "rgba(28,26,27,0.1)",
+              opacity: active ? (isEdge ? 0.7 : 1) : 1,
+              boxShadow: isEdge ? "0 0 8px rgba(204,17,0,0.6)" : "none",
+              transition: "height 0.2s ease, background-color 0.3s ease, box-shadow 0.3s ease",
+            }} />
+          );
+        })}
+      </div>
+
+      {/* Sweeping shimmer track */}
+      <div style={{ width: SEGMENTS * 25, height: 2, backgroundColor: "rgba(28,26,27,0.06)", borderRadius: 1, overflow: "hidden", position: "relative" }}>
+        <div style={{
+          position: "absolute", top: 0, left: 0, height: "100%", width: "35%",
+          background: "linear-gradient(90deg, transparent, rgba(204,17,0,0.5), transparent)",
+          animation: "loadingBarMove 1.8s ease-in-out infinite",
+        }} />
+      </div>
+
+      {/* Percentage */}
+      <div style={{ fontSize: 10, color: "#bbb", fontWeight: 600, letterSpacing: "0.06em" }}>
+        {Math.round((filled / SEGMENTS) * 100)}%
+      </div>
+    </div>
+  );
+}
+
 // ── Auth ─────────────────────────────────────────────────────────────────────
 const CREDENTIALS = { username: "admin", password: "Mkt@9274" };
 
@@ -2977,17 +3044,15 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
           position: "relative",
         }}>
           <OrbitScene ticker={orbitTicker} bubbles={activeBubbles} />
-          {/* Geometric Thinking Bubble positioned cleanly above the wizard */}
+          {/* Loading bar below orbit */}
           <div style={{
             position: "absolute",
-            top: "18%",
+            bottom: "16%",
             left: "50%",
-            transform: "translateX(-48%)",
+            transform: "translateX(-50%)",
             zIndex: 100,
-            animation: "fadeScaleIn 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards 0.2s",
-            opacity: 0,
           }}>
-            <LoadingAssistant lang={lang} />
+            <OrbitalLoadingBar lang={lang} />
           </div>
         </div>
       )}
