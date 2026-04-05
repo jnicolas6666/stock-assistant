@@ -2913,7 +2913,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                   <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
                     {previewTickers.map((ticker, i) => (
                       <div key={ticker} style={{ animation: `fadeScaleIn 0.28s cubic-bezier(0.34,1.56,0.64,1) forwards ${i * 0.06}s`, opacity: 0 }}>
-                        <BubbleInner symbol={ticker} color={symbolColor(ticker)} size={i === 0 ? 54 : 44} />
+                        <BubbleInner symbol={ticker} color={symbolColor(ticker)} size={i === 0 ? 62 : 51} />
                       </div>
                     ))}
                   </div>
