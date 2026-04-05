@@ -462,6 +462,52 @@ const ALL_TICKERS: string[] = [
   "EQB","DFY","PWF","CWB","LB","HCG","ECN","FFH","SFC","IAG","PWF","GWL",
   // ── TSX — Clean Energy & Utilities (additions) ───────────────────────────
   "BLX","AQN","CPX","INE","NPI","RNW","BEP","BEPC","TA","HNL","NWH","ACO",
+  // Wave 3 - ~200 New Popular Tickers (NYSE/NASDAQ + TSX)
+  // NYSE/NASDAQ - Tech / Software
+  "IBM","MRVL","FICO","PEGA","DT","TENB","VRNT","FIVN","RAMP","NCNO",
+  "SPSC","TASK","GLBE","EVTC","TNET","PSN","VSAT","CACI","MMS","GDDY",
+  "YELP","ZG","RDFN","SABR","LZ","WK","S","ALAB","RBRK",
+  // NYSE/NASDAQ - Semiconductors / Hardware
+  "KLIC","AMKR","MTSI","ACLS","AEHR","POWI","VICR","BDC",
+  // NYSE/NASDAQ - Finance / Insurance
+  "KNSL","RYAN","ERIE","RHI","MAN","BOKF","HWC","NAVI","PFSI","TREE",
+  "PIPR","MKTX","NTRS","SEIC","BEN","IVZ","AMG","HLNE","EXLS","PLMR","HQY",
+  // NYSE/NASDAQ - Healthcare
+  "ARGX","INSM","ITCI","PTCT","FOLD","TGTX","ADMA","CLDX","VCEL","MRUS",
+  "AMED","OPCH","ENSG","LFST",
+  // NYSE/NASDAQ - Energy / Oilfield Services
+  "LBRT","PTEN","WHD","OII","DNOW","FTI","GTLS","GTES","TDW","KNTK","AM",
+  // NYSE/NASDAQ - Defense / Aerospace / Industrials
+  "BWXT","CW","MOOG","HEI","DRS","AIR","OSIS","ECHO","HTLD","MRTN",
+  // NYSE/NASDAQ - Consumer / Retail / Leisure
+  "DRVN","PRKS","SEAS","FUN","ODP","POST","LANC","VSCO",
+  // NYSE/NASDAQ - Agriculture / Chemicals / Materials
+  "ADM","BG","INGR","TROX","OLIN","SLVM","CLF","ATI","AWK","WTRG",
+  // NYSE/NASDAQ - Space / Deep Tech
+  "SPIR","ASTS",
+  // NYSE/NASDAQ - Smart Beta / Factor / Thematic ETFs
+  "COWZ","CALF","MOAT","QUAL","MTUM","VLUE","USMV","AVUV","AVDV","DFAC",
+  "DFAI","AVEM","VIOV","VONG","VOOV","VTWO","TECL","SOXL","LABU","FNGU",
+  "DRIV","ROBO","AIQ","CLOU","BUZZ",
+  // TSX - Finance / Fintech / Digital Assets
+  "TSU","GLXY","NMX","CF","GCG","MKP",
+  // TSX - Industrials / Business Services
+  "RUS","MTL","FTT","TOT","CWX","LGT","SIS","CFP","KBL","PBL","SXP","TH",
+  "AND","BPF","DEE","DSGX",
+  // TSX - Mining / Royalties
+  "ALS","AMX","G","IVN","MUX","CXB","NGD","OSK","FILO","KRR","MTA","EMX","LGD",
+  // TSX - Energy
+  "MATR","IPCO","GTE",
+  // TSX - Healthcare / Life Sciences
+  "ZYMR","HLS","AIF","PRN",
+  // TSX - All-in-One Portfolio ETFs
+  "XEQT","XGRO","VGRO","VBAL","VEQT","ZGRO","ZBAL","ZCON",
+  // TSX - Bond / Precious Metal ETFs
+  "ZFL","ZFS","ZDB","PSLV","PHYS",
+  // TSX - Crypto / Thematic ETFs
+  "BTCC","BTCX","ETHH","HMMJ","CASH",
+  // TSX - REITs
+  "PFC","BTB","FRO",
 ];
 const ALL_TICKERS_SET = new Set(ALL_TICKERS);
 
