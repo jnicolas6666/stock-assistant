@@ -1724,10 +1724,10 @@ function CollapsibleSection({ title, content, delay = 0, defaultOpen = false, ch
       }
       parts = next;
     }
-    // Strip any remaining unknown emoji from string segments
-    return parts.map((p, i) =>
+    // Only strip surrogate-pair emoji (SMP range) — preserves accented Latin chars (é è à ê etc.)
+    return parts.map((p) =>
       typeof p === "string"
-        ? p.replace(/[^\x00-\x7F]/g, '').trim()
+        ? p.replace(/[\uD800-\uDFFF]/g, '').trim()
         : p
     );
   })();
