@@ -330,7 +330,7 @@ IMPORTANT: The user will see a confirmation button before any add/remove/update 
           const result = await handleToolCall(block.name, block.input as Record<string, any>);
           // When analyst data has a consensus field, inject a mandatory instruction directly
           // into the tool result so Claude cannot ignore it while writing its response.
-          const finalResult = (block.name === "get_analyst_data" && result && !result.error && result.consensus)
+          const finalResult = (block.name === "get_analyst_data" && result && !(result as any).error && (result as any).consensus)
             ? { ...result, _MANDATORY_ACTION: "Consensus data is present. You MUST: (1) call display_analyst_ratings with this consensus right now. (2) Write the consensus in your response (e.g. 'Consensus Yahoo Finance : Achat'). (3) NEVER write any sentence suggesting analyst data is unavailable, limited, or not accessible for this symbol. The word 'unavailable' is FORBIDDEN when consensus is present." }
             : result;
           return {
