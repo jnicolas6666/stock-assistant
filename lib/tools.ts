@@ -324,10 +324,10 @@ async function getQuote(symbol: string) {
     return {
       symbol: q.symbol,
       longName: q.longName,
-      price: q.regularMarketPrice,
+      price: q.regularMarketPrice ?? (q as any).postMarketPrice ?? (q as any).preMarketPrice ?? (q as any).regularMarketPreviousClose ?? null,
       currency: q.currency,
-      change: fmt(q.regularMarketChange),
-      changePercent: fmt(q.regularMarketChangePercent),
+      change: fmt(q.regularMarketChange ?? 0),
+      changePercent: fmt(q.regularMarketChangePercent ?? 0),
       marketCap: fmtLarge(q.marketCap ?? null),
       peRatio: fmt(q.trailingPE ?? null),
       forwardPE: fmt(fd.currentPrice ? null : q.forwardPE ?? null) ?? fmt(fd.currentPrice ? (fd.currentPrice / (ks.forwardEps ?? 0)) || null : null),
