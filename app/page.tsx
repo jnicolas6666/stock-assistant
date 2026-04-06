@@ -2576,10 +2576,16 @@ export default function Home() {
 
   useEffect(() => {
     if (!loading && messages.length > 0 && appPhase === "portfolio") {
-      const lastIdx = messages.reduceRight((found: number, m: Message, idx: number) =>
+      // Prefer messages with sections or charts; fall back to any non-empty assistant message
+      const lastStructured = messages.reduceRight((found: number, m: Message, idx: number) =>
+        found === -1 && m.role === "assistant" && !m.isFollowUp &&
+        (parseMessageSections(m.content) !== null || (m.charts && m.charts.length > 0))
+          ? idx : found, -1);
+      const lastAny = messages.reduceRight((found: number, m: Message, idx: number) =>
         found === -1 && m.role === "assistant" && !m.isFollowUp && m.content.trim().length > 0
           ? idx : found, -1);
-      if (lastIdx !== -1) setPortfolioSelectedAnalysisIndex(lastIdx);
+      const target = lastStructured !== -1 ? lastStructured : lastAny;
+      if (target !== -1) setPortfolioSelectedAnalysisIndex(target);
     }
   }, [messages, loading, appPhase]);
 
@@ -2783,7 +2789,7 @@ export default function Home() {
   }
 
   function buildPortfolioContext(): string {
-    if (portfolioPositions.length === 0) return "";
+    if (portfolioPositions.length === 0) return "PORTFOLIO MODE ACTIVE\nThe portfolio is currently empty — no positions have been added yet.";
     let totalCost = 0, totalValue = 0;
     const lines = portfolioPositions.map(p => {
       const lp = livePrices[p.ticker];
@@ -3406,7 +3412,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                       <CollapsibleSection key={`${selectedAnalysisIndex}-${si}`} title={s.title} content={s.content} delay={si * 0.04} defaultOpen={false} openAll={chatSectionsOpen} />
                     ))}
                     {latestAiMsg.analystRatings && latestAiMsg.analystRatings.length > 0 && (
-                      <CollapsibleSection title="Analyst Ratings" delay={sections.length * 0.04}>
+                      <CollapsibleSection title="Analyst Ratings" delay={sections.length * 0.04} openAll={chatSectionsOpen}>
                         <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 4 }}>
                           {latestAiMsg.analystRatings.map((rating, ri) => (
                             <AnalystRatingsCard key={ri} data={rating} />
