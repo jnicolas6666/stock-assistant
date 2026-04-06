@@ -2693,7 +2693,7 @@ export default function Home() {
     const results: Record<string, LivePrice> = {};
     await Promise.all(portfolioPositions.map(async (p) => {
       try {
-        const res = await fetch(`/api/quote?symbol=${p.ticker}`);
+        const res = await fetch(`/api/price?symbol=${p.ticker}`);
         const d = await res.json();
         if (d.price != null) {
           results[p.ticker] = {
@@ -2727,7 +2727,7 @@ export default function Home() {
     setPortfolioPositions(updated);
     setAddTicker(""); setAddShares(""); setAddCost(""); setShowAddForm(false);
     // fetch live price for new position
-    fetch(`/api/quote?symbol=${ticker}`).then(r => r.json()).then(d => {
+    fetch(`/api/price?symbol=${ticker}`).then(r => r.json()).then(d => {
       if (d.price != null) setLivePrices(prev => ({ ...prev, [ticker]: {
         price: d.price, currency: d.currency || "USD",
         change: d.change || 0, changePercent: d.changePercent || 0,
@@ -2752,7 +2752,7 @@ export default function Home() {
         }
         return [...prev, newPos];
       });
-      fetch(`/api/quote?symbol=${newPos.ticker}`).then(r => r.json()).then(d => {
+      fetch(`/api/price?symbol=${newPos.ticker}`).then(r => r.json()).then(d => {
         if (d.price != null) setLivePrices(prev => ({ ...prev, [newPos.ticker]: { price: d.price, currency: d.currency || "USD", change: d.change || 0, changePercent: d.changePercent || 0, name: d.longName || d.shortName || newPos.ticker, lastUpdated: Date.now() } }));
       }).catch(() => {});
     } else if (action.actionType === "remove") {
