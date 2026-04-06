@@ -3132,14 +3132,9 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
           <button
             id="fred-demo-premium"
             onClick={() => {
-              preDemoPositionsRef.current = portfolioPositions;
-              setPortfolioPositions(DEMO_PORTFOLIO_POSITIONS);
-              setMessages([]);
-              setPortfolioSelectedAnalysisIndex(-1);
-              setAppPhase("portfolio");
-              setDemoMode("portfolio");
+              goHome();
+              setDemoMode("home");
               setDemoStep(0);
-              setTimeout(() => fetchLivePrices(), 400);
             }}
             style={{
               fontSize: 11, fontWeight: 600, padding: "4px 11px", borderRadius: 6,
@@ -4735,7 +4730,23 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                 {T.skipBtn}
               </button>
               <button
-                onClick={() => isLast ? exitDemo() : setDemoStep(demoStep + 1)}
+                onClick={() => {
+                  if (isLast && demoMode === "home") {
+                    // Transition from home tour → portfolio tour
+                    preDemoPositionsRef.current = portfolioPositions;
+                    setPortfolioPositions(DEMO_PORTFOLIO_POSITIONS);
+                    setMessages([]);
+                    setPortfolioSelectedAnalysisIndex(-1);
+                    setAppPhase("portfolio");
+                    setDemoMode("portfolio");
+                    setDemoStep(0);
+                    setTimeout(() => fetchLivePrices(), 400);
+                  } else if (isLast && demoMode === "portfolio") {
+                    exitDemo();
+                  } else {
+                    setDemoStep(demoStep + 1);
+                  }
+                }}
                 style={{
                   padding: "9px 24px", borderRadius: 8, fontSize: 12, fontWeight: 600,
                   border: "none", backgroundColor: "#cc1100",
@@ -4743,7 +4754,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                   boxShadow: "0 2px 12px rgba(204,17,0,0.35)",
                 }}
               >
-                {isLast ? T.letsGoBtn : T.nextBtn}
+                {isLast && demoMode === "portfolio" ? T.letsGoBtn : isLast && demoMode === "home" ? (lang === "fr" ? "Simulateur →" : "Simulator →") : T.nextBtn}
               </button>
             </div>
           </div>
