@@ -806,6 +806,14 @@ const TRANSLATIONS = {
       "The Premium menu unlocks the Portfolio Simulator — build a hypothetical portfolio and I'll track it with live prices.",
       "That's the tour! I cover US and Canadian markets — equities, ETFs, earnings, and more. Go ahead, ask me anything!",
     ],
+    portfolioDemoSteps: [
+      "Welcome to the Portfolio Simulator! This is where you can build and track a hypothetical portfolio with live market data. Let me walk you through it!",
+      "The left panel shows your simulated positions. Each card displays the live price, your cost basis, and unrealized P&L. You can add or remove positions anytime using the + Add button.",
+      "This allocation chart updates in real time — it shows how your capital is distributed across positions. A quick read on concentration risk.",
+      "The center panel is where my analysis lives. Expandable sections, live charts, and a detailed breakdown of portfolio performance — all generated on demand.",
+      "The right panel is your chat interface. Ask me anything about your holdings — performance, risk, sector exposure. If I propose changes, a confirmation card will appear here.",
+      "That's the tour! Try asking me 'Which position has the highest return?' or 'What sectors am I exposed to?' to get started.",
+    ],
     loadingPhrases: [
       "Gathering market intelligence...",
       "Consulting the financial scrolls...",
@@ -921,6 +929,31 @@ const TRANSLATIONS = {
         { text: "Which position has the highest return?", sub: "Performance breakdown" },
         { text: "What sectors am I exposed to?", sub: "Sector distribution" },
       ],
+      // i18n — toggle buttons
+      expandAll: "▼ Expand all",
+      collapseAll: "▲ Collapse all",
+      // i18n — chips
+      analystView: "Analyst view",
+      chipPriceChart: (t: string) => `Show me ${t}'s price chart`,
+      chipAnalyst: (t: string) => `What do analysts say about ${t}?`,
+      chipPeers: (t: string) => `Compare ${t} with its main competitors`,
+      chipDividends: (t: string) => `Show ${t}'s dividend history`,
+      // i18n — collapsible section
+      analyzing: "analyzing…",
+      // i18n — portfolio confirm card
+      proposedChanges: (n: number) => `Proposed changes (${n})`,
+      estimatedTotal: "Estimated total",
+      confirmAll: "Confirm all →",
+      dismiss: "Dismiss",
+      // i18n — price badge
+      pricesAsOf: (time: string) => `Prices as of ${time}`,
+      marketsClosed: "Markets may be closed — cached prices",
+      noLivePrice: "no live price",
+      // i18n — center panel
+      analysisHere: "Analysis will appear here",
+      askOnRight: "Ask a question on the right →",
+      viewingPanel: "Viewing in panel",
+      viewAnalysisPortfolio: "View analysis →",
     },
   },
   fr: {
@@ -954,6 +987,14 @@ const TRANSLATIONS = {
       "Après ma réponse, une vue à deux panneaux s'ouvre. Le côté gauche affiche l'analyse approfondie — sections extensibles, graphiques en direct, données d'initiés.",
       "Le menu Premium déverrouille le Simulateur de portefeuille — construisez un portefeuille hypothétique et je le suivrai avec des prix en direct.",
       "C'est la visite! Je couvre les marchés américains et canadiens — actions, FNB, résultats et plus. Allez-y, posez-moi n'importe quoi!",
+    ],
+    portfolioDemoSteps: [
+      "Bienvenue dans le Simulateur de portefeuille! C'est ici que vous construisez et suivez un portefeuille hypothétique avec des données en direct. Laissez-moi vous faire la visite!",
+      "Le panneau gauche affiche vos positions simulées. Chaque carte montre le prix en direct, votre coût de base et le gain/perte non réalisé. Vous pouvez ajouter ou retirer des positions via le bouton + Ajouter.",
+      "Ce graphique d'allocation se met à jour en temps réel — il montre comment votre capital est réparti entre les positions. Un coup d'œil sur la concentration.",
+      "Le panneau central contient mon analyse. Sections expansibles, graphiques en direct et bilan détaillé de la performance du portefeuille — générés à la demande.",
+      "Le panneau de droite est votre interface de chat. Posez-moi vos questions sur vos avoirs — performance, risque, exposition sectorielle. Si je propose des modifications, une carte de confirmation apparaît ici.",
+      "C'est la visite! Essayez 'Quelle position a le meilleur rendement?' ou 'À quels secteurs suis-je exposé?' pour commencer.",
     ],
     loadingPhrases: [
       "Analyse en cours...",
@@ -1049,6 +1090,31 @@ const TRANSLATIONS = {
         { text: "Quelle position a le meilleur rendement?", sub: "Analyse de performance" },
         { text: "À quels secteurs suis-je exposé?", sub: "Distribution sectorielle" },
       ],
+      // i18n — toggle buttons
+      expandAll: "▼ Tout développer",
+      collapseAll: "▲ Tout réduire",
+      // i18n — chips
+      analystView: "Avis d'analystes",
+      chipPriceChart: (t: string) => `Montre-moi le graphique de cours de ${t}`,
+      chipAnalyst: (t: string) => `Que disent les analystes sur ${t}?`,
+      chipPeers: (t: string) => `Compare ${t} avec ses principaux pairs`,
+      chipDividends: (t: string) => `Montre l'historique des dividendes de ${t}`,
+      // i18n — collapsible section
+      analyzing: "analyse en cours…",
+      // i18n — portfolio confirm card
+      proposedChanges: (n: number) => `Modifications proposées (${n})`,
+      estimatedTotal: "Total estimé",
+      confirmAll: "Confirmer tout →",
+      dismiss: "Annuler",
+      // i18n — price badge
+      pricesAsOf: (time: string) => `Prix actualisés à ${time}`,
+      marketsClosed: "Marchés fermés — prix en cache",
+      noLivePrice: "prix indisponible",
+      // i18n — center panel
+      analysisHere: "L'analyse apparaîtra ici",
+      askOnRight: "Posez une question à droite →",
+      viewingPanel: "Affiché au centre",
+      viewAnalysisPortfolio: "Voir l'analyse →",
     },
   },
 } as const;
@@ -1270,6 +1336,30 @@ function buildDemoSteps(lang: Lang): DemoStep[] {
     text: TRANSLATIONS[lang].demoSteps[i] ?? TRANSLATIONS.en.demoSteps[i],
   }));
 }
+
+const PORTFOLIO_DEMO_LAYOUTS: Omit<DemoStep, "text">[] = [
+  { fredLeft: "50%", fredTop: "45%" },
+  { fredLeft: "20%", fredTop: "55%", flip: true, highlightId: "port-demo-left" },
+  { fredLeft: "20%", fredTop: "28%", flip: true, highlightId: "port-demo-donut" },
+  { fredLeft: "55%", fredTop: "20%", highlightId: "port-demo-center" },
+  { fredLeft: "82%", fredTop: "50%", highlightId: "port-demo-right" },
+  { fredLeft: "50%", fredTop: "45%" },
+];
+
+function buildPortfolioDemoSteps(lang: Lang): DemoStep[] {
+  return PORTFOLIO_DEMO_LAYOUTS.map((layout, i) => ({
+    ...layout,
+    text: TRANSLATIONS[lang].portfolioDemoSteps[i] ?? TRANSLATIONS.en.portfolioDemoSteps[i],
+  }));
+}
+
+const DEMO_PORTFOLIO_POSITIONS: Position[] = [
+  { id: "demo-1", ticker: "RY.TO",   shares: 10, avgCost: 140.50 },
+  { id: "demo-2", ticker: "TD.TO",   shares: 12, avgCost: 81.75  },
+  { id: "demo-3", ticker: "BNS.TO",  shares: 15, avgCost: 67.20  },
+  { id: "demo-4", ticker: "ENB.TO",  shares: 20, avgCost: 54.80  },
+  { id: "demo-5", ticker: "SHOP.TO", shares:  3, avgCost: 114.00 },
+];
 
 // Keep DEMO_STEPS as a const for backward compat (unused at runtime — replaced by buildDemoSteps)
 const DEMO_STEPS = buildDemoSteps("en");
@@ -1866,8 +1956,8 @@ const MD_COMPONENTS_SECTION = {
   a: ({ children }: any) => <span style={{ color: "#cc1100" }}>{children}</span>,
 };
 
-function CollapsibleSection({ title, content, delay = 0, defaultOpen = false, openAll, children }: {
-  title: string; content?: string; delay?: number; defaultOpen?: boolean; openAll?: boolean | null; children?: React.ReactNode;
+function CollapsibleSection({ title, content, delay = 0, defaultOpen = false, openAll, children, loadingText = "analyzing…" }: {
+  title: string; content?: string; delay?: number; defaultOpen?: boolean; openAll?: boolean | null; children?: React.ReactNode; loadingText?: string;
 }) {
   // Strip non-ASCII (emoji) for SECTION_COLORS lookup, then build icon nodes for display
   const cleanTitle = title.replace(/[^\x00-\x7F]/g, '').trim();
@@ -1938,7 +2028,7 @@ function CollapsibleSection({ title, content, delay = 0, defaultOpen = false, op
       }}>
         <span style={{ flex: 1, fontSize: 11, fontWeight: 700, color: "#1c1a1b", letterSpacing: "0.01em" }}>{titleNodes}</span>
         {phase === "loading" && (
-          <span style={{ fontSize: 9, color: "#bbb", marginRight: 6 }}>analyzing…</span>
+          <span style={{ fontSize: 9, color: "#bbb", marginRight: 6 }}>{loadingText}</span>
         )}
         {!isOverview && (
           <svg width="10" height="6" viewBox="0 0 10 6" fill="none"
@@ -2599,6 +2689,8 @@ export default function Home() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [isShockwave, setIsShockwave] = useState(false);
   const [demoStep, setDemoStep] = useState<number | null>(null);
+  const [demoMode, setDemoMode] = useState<"home" | "portfolio">("home");
+  const preDemoPositionsRef = React.useRef<Position[]>([]);
   const [tipIndex, setTipIndex] = useState(0);
   const [tipVisible, setTipVisible] = useState(true);
   const [addTicker, setAddTicker] = useState("");
@@ -2662,12 +2754,24 @@ export default function Home() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appPhase, lang]);
 
+  function exitDemo() {
+    setDemoStep(null);
+    if (demoMode === "portfolio") {
+      setPortfolioPositions(preDemoPositionsRef.current);
+      preDemoPositionsRef.current = [];
+      setMessages([]);
+      setLivePrices({});
+      goHome();
+    }
+    setDemoMode("home");
+  }
+
   // Escape key exits demo
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") setDemoStep(null); };
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") exitDemo(); };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, []);
+  }, [demoMode]);
 
   function goHome() {
     setAppPhase("home");
@@ -3027,7 +3131,16 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
           {/* Demo button — always visible */}
           <button
             id="fred-demo-premium"
-            onClick={() => { goHome(); setDemoStep(0); }}
+            onClick={() => {
+              preDemoPositionsRef.current = portfolioPositions;
+              setPortfolioPositions(DEMO_PORTFOLIO_POSITIONS);
+              setMessages([]);
+              setPortfolioSelectedAnalysisIndex(-1);
+              setAppPhase("portfolio");
+              setDemoMode("portfolio");
+              setDemoStep(0);
+              setTimeout(() => fetchLivePrices(), 400);
+            }}
             style={{
               fontSize: 11, fontWeight: 600, padding: "4px 11px", borderRadius: 6,
               border: "1px solid rgba(28,26,27,0.18)", backgroundColor: "transparent",
@@ -3404,15 +3517,15 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                           onMouseEnter={e => { e.currentTarget.style.color = "#cc1100"; e.currentTarget.style.borderColor = "#cc1100"; }}
                           onMouseLeave={e => { e.currentTarget.style.color = "#888"; e.currentTarget.style.borderColor = "rgba(28,26,27,0.12)"; }}
                         >
-                          {chatSectionsOpen === true ? "▲ Collapse all" : "▼ Expand all"}
+                          {chatSectionsOpen === true ? T.collapseAll : T.expandAll}
                         </button>
                       </div>
                     )}
                     {sections.map((s, si) => (
-                      <CollapsibleSection key={`${selectedAnalysisIndex}-${si}`} title={s.title} content={s.content} delay={si * 0.04} defaultOpen={false} openAll={chatSectionsOpen} />
+                      <CollapsibleSection key={`${selectedAnalysisIndex}-${si}`} title={s.title} content={s.content} delay={si * 0.04} defaultOpen={false} openAll={chatSectionsOpen} loadingText={T.analyzing} />
                     ))}
                     {latestAiMsg.analystRatings && latestAiMsg.analystRatings.length > 0 && (
-                      <CollapsibleSection title="Analyst Ratings" delay={sections.length * 0.04} openAll={chatSectionsOpen}>
+                      <CollapsibleSection title="Analyst Ratings" delay={sections.length * 0.04} openAll={chatSectionsOpen} loadingText={T.analyzing}>
                         <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 4 }}>
                           {latestAiMsg.analystRatings.map((rating, ri) => (
                             <AnalystRatingsCard key={ri} data={rating} />
@@ -3630,10 +3743,10 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                               const noChart = !msg.charts || msg.charts.length === 0;
                               const noRatings = !msg.analystRatings || msg.analystRatings.length === 0;
                               const chips = ([
-                                noChart && t && { icon: "trendup", label: T.priceChart, prompt: `Show me ${t}'s price chart` },
-                                noRatings && t && { icon: "analyst", label: "Analyst view", prompt: `What do analysts say about ${t}?` },
-                                t && !noChart && { icon: "search", label: T.comparePeers, prompt: `Compare ${t} with its main competitors` },
-                                t && { icon: "money", label: T.dividends, prompt: `Show ${t}'s dividend history` },
+                                noChart && t && { icon: "trendup", label: T.priceChart, prompt: T.chipPriceChart(t) },
+                                noRatings && t && { icon: "analyst", label: T.analystView, prompt: T.chipAnalyst(t) },
+                                t && !noChart && { icon: "search", label: T.comparePeers, prompt: T.chipPeers(t) },
+                                t && { icon: "money", label: T.dividends, prompt: T.chipDividends(t) },
                               ].filter(Boolean) as Array<{ icon: string; label: string; prompt: string }>).slice(0, 2);
                               if (!chips.length) return null;
                               return (
@@ -3841,7 +3954,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
         <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
 
           {/* ── LEFT PANEL: Positions ─────────────────────────────────────── */}
-          <div style={{
+          <div id="port-demo-left" style={{
             width: 300, flexShrink: 0, display: "flex", flexDirection: "column",
             borderRight: "1px solid rgba(28,26,27,0.1)", backgroundColor: "#fafaf8",
             overflow: "hidden",
@@ -3876,7 +3989,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
             {pricesFetchedAt && portfolioPositions.length > 0 && (
               <div style={{ padding: "4px 14px", fontSize: 9, color: pricesFailed ? "#ef4444" : "#aaa", backgroundColor: pricesFailed ? "rgba(239,68,68,0.05)" : "transparent", flexShrink: 0, display: "flex", alignItems: "center", gap: 4 }}>
                 <div style={{ width: 5, height: 5, borderRadius: "50%", backgroundColor: pricesFailed ? "#ef4444" : "#22c55e" }} />
-                {pricesFailed ? (lang === "fr" ? "Marchés fermés — prix en cache" : "Markets may be closed — cached prices") : (lang === "fr" ? `Prix actualisés à ${pricesFetchedAt.toLocaleTimeString("fr-CA", { hour: "2-digit", minute: "2-digit" })}` : `Prices as of ${pricesFetchedAt.toLocaleTimeString("en-CA", { hour: "2-digit", minute: "2-digit" })}`)}
+                {pricesFailed ? T.marketsClosed : T.pricesAsOf(pricesFetchedAt.toLocaleTimeString(lang === "fr" ? "fr-CA" : "en-CA", { hour: "2-digit", minute: "2-digit" }))}
               </div>
             )}
 
@@ -3909,7 +4022,9 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
             <div style={{ flex: 1, overflowY: "auto" }}>
               {/* Allocation donut */}
               {portfolioPositions.length >= 2 && (
-                <PortfolioDonut positions={portfolioPositions} livePrices={livePrices} colorFn={symbolColor} />
+                <div id="port-demo-donut">
+                  <PortfolioDonut positions={portfolioPositions} livePrices={livePrices} colorFn={symbolColor} />
+                </div>
               )}
 
               {/* Positions list */}
@@ -3995,7 +4110,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                                 <div style={{ fontSize: 11, fontWeight: 600, color: "#bbb" }}>${cost.toFixed(0)}</div>
                                 <div style={{ fontSize: 9, color: "#ccc", display: "flex", alignItems: "center", gap: 3, justifyContent: "flex-end" }}>
                                   <div style={{ width: 5, height: 5, borderRadius: "50%", backgroundColor: fetchingPrices ? "#f59e0b" : "#d1d5db" }} />
-                                  {fetchingPrices ? (lang === "fr" ? "chargement…" : "fetching…") : (lang === "fr" ? "prix indisponible" : "no live price")}
+                                  {fetchingPrices ? T.portfolioLoading : T.noLivePrice}
                                 </div>
                               </div>
                             )}
@@ -4040,7 +4155,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
           </div>
 
           {/* ── CENTER PANEL: Analysis ─────────────────────────────────────── */}
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", backgroundColor: "#f9f7f5" }}>
+          <div id="port-demo-center" style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", backgroundColor: "#f9f7f5" }}>
             <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
               {(() => {
                 const selMsg = portfolioSelectedAnalysisIndex >= 0 ? messages[portfolioSelectedAnalysisIndex] : null;
@@ -4049,8 +4164,8 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                     <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, opacity: 0.5 }}>
                       <PixelWizard />
                       <div style={{ textAlign: "center" as const, color: "#888", fontSize: 13 }}>
-                        {lang === "fr" ? "L'analyse apparaîtra ici" : "Analysis will appear here"}
-                        <br /><span style={{ fontSize: 11 }}>{lang === "fr" ? "Posez une question à droite →" : "Ask a question on the right →"}</span>
+                        {T.analysisHere}
+                        <br /><span style={{ fontSize: 11 }}>{T.askOnRight}</span>
                       </div>
                     </div>
                   );
@@ -4076,12 +4191,12 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                           onMouseEnter={e => { e.currentTarget.style.color = "#cc1100"; e.currentTarget.style.borderColor = "#cc1100"; }}
                           onMouseLeave={e => { e.currentTarget.style.color = "#888"; e.currentTarget.style.borderColor = "rgba(28,26,27,0.12)"; }}
                         >
-                          {portfolioSectionsOpen === true ? "▲ Collapse all" : "▼ Expand all"}
+                          {portfolioSectionsOpen === true ? T.collapseAll : T.expandAll}
                         </button>
                       </div>
                     )}
                     {sections ? sections.map((sec, si) => (
-                      <CollapsibleSection key={`${portfolioSelectedAnalysisIndex}-${si}`} title={sec.title} content={sec.content} delay={si * 0.08} defaultOpen={false} openAll={portfolioSectionsOpen} />
+                      <CollapsibleSection key={`${portfolioSelectedAnalysisIndex}-${si}`} title={sec.title} content={sec.content} delay={si * 0.08} defaultOpen={false} openAll={portfolioSectionsOpen} loadingText={T.analyzing} />
                     )) : (
                       <div style={{ fontSize: 14, lineHeight: 1.75, color: "#2c2a29" }}>
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>{selMsg.content}</ReactMarkdown>
@@ -4097,7 +4212,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
           </div>
 
           {/* ── RIGHT PANEL: Chat ──────────────────────────────────────────── */}
-          <div style={{ width: 340, flexShrink: 0, display: "flex", flexDirection: "column", borderLeft: "1px solid rgba(28,26,27,0.1)", backgroundColor: "#ffffff", overflow: "hidden" }}>
+          <div id="port-demo-right" style={{ width: 340, flexShrink: 0, display: "flex", flexDirection: "column", borderLeft: "1px solid rgba(28,26,27,0.1)", backgroundColor: "#ffffff", overflow: "hidden" }}>
 
             {/* Chat thread */}
             <div style={{ flex: 1, overflowY: "auto", padding: "16px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
@@ -4157,7 +4272,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                             style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 600, color: isSelectedHere ? "#888" : "#cc1100", background: "none", border: "none", cursor: isSelectedHere ? "default" : "pointer", padding: 0 }}
                           >
                             <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><rect x="1" y="9" width="3" height="6" rx="1" fill="currentColor" opacity="0.6"/><rect x="6" y="5" width="3" height="10" rx="1" fill="currentColor" opacity="0.8"/><rect x="11" y="2" width="3" height="13" rx="1" fill="currentColor"/></svg>
-                            {isSelectedHere ? (lang === "fr" ? "Affiché au centre" : "Viewing in panel") : (lang === "fr" ? "Voir l'analyse →" : "View analysis →")}
+                            {isSelectedHere ? T.viewingPanel : T.viewAnalysisPortfolio}
                           </button>
                         </>
                       ) : (
@@ -4194,7 +4309,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
               return (
                 <div style={{ margin: "0 10px 6px", padding: "12px 14px", borderRadius: 10, backgroundColor: "rgba(204,17,0,0.04)", border: "1px solid rgba(204,17,0,0.2)", flexShrink: 0 }}>
                   <div style={{ fontSize: 10, fontWeight: 700, color: "#cc1100", textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: 8 }}>
-                    {lang === "fr" ? `Modifications proposées (${actions.length})` : `Proposed changes (${actions.length})`}
+                    {T.proposedChanges(actions.length)}
                   </div>
                   <div style={{ marginBottom: 10, display: "flex", flexDirection: "column" as const, gap: 4 }}>
                     {actions.map((action, ai) => {
@@ -4216,7 +4331,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                     const total = actions.reduce((s, a) => s + (a.shares && a.avgCost ? a.shares * a.avgCost : 0), 0);
                     return total > 0 ? (
                       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 11, fontWeight: 700 }}>
-                        <span style={{ color: "#888" }}>{lang === "fr" ? "Total estimé" : "Estimated total"}</span>
+                        <span style={{ color: "#888" }}>{T.estimatedTotal}</span>
                         <span style={{ color: "#1d1a1b" }}>${total.toLocaleString("en", { maximumFractionDigits: 0 })}</span>
                       </div>
                     ) : null;
@@ -4230,11 +4345,11 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                         setTimeout(() => fetchLivePrices(), 600);
                       }}
                       style={{ flex: 2, padding: "7px", borderRadius: 6, border: "none", backgroundColor: "#cc1100", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
-                    >{lang === "fr" ? "Confirmer tout →" : "Confirm all →"}</button>
+                    >{T.confirmAll}</button>
                     <button
                       onClick={() => setMessages(prev => prev.map(m => m === pendingMsg ? { ...m, portfolioActions: [] } : m))}
                       style={{ flex: 1, padding: "7px", borderRadius: 6, border: "1px solid rgba(28,26,27,0.15)", backgroundColor: "transparent", fontSize: 11, color: "#666", cursor: "pointer" }}
-                    >{lang === "fr" ? "Annuler" : "Dismiss"}</button>
+                    >{T.dismiss}</button>
                   </div>
                 </div>
               );
@@ -4508,7 +4623,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
 
       {/* ── Demo overlay ──────────────────────────────────────────────────── */}
       {demoStep !== null && (() => {
-        const activeDemoSteps = buildDemoSteps(lang);
+        const activeDemoSteps = demoMode === "portfolio" ? buildPortfolioDemoSteps(lang) : buildDemoSteps(lang);
         const step = activeDemoSteps[demoStep];
         const isLast = demoStep === activeDemoSteps.length - 1;
         return (
@@ -4520,7 +4635,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                 backgroundColor: step.highlightId ? "transparent" : "rgba(245,242,238,0.82)",
                 pointerEvents: "auto",
               }}
-              onClick={() => setDemoStep(null)}
+              onClick={exitDemo}
             />
 
             {/* Spotlight — box-shadow punches a clear hole around the target, dims everything else */}
@@ -4530,7 +4645,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
               const r = el.getBoundingClientRect();
               return (
                 <div
-                  onClick={() => setDemoStep(null)}
+                  onClick={exitDemo}
                   style={{
                     position: "fixed",
                     left: r.left - 10, top: r.top - 10,
@@ -4609,7 +4724,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
               display: "flex", gap: 10, pointerEvents: "auto", zIndex: 9003,
             }}>
               <button
-                onClick={() => setDemoStep(null)}
+                onClick={exitDemo}
                 style={{
                   padding: "9px 20px", borderRadius: 8, fontSize: 12,
                   border: "1px solid rgba(28,26,27,0.15)", backgroundColor: "#fff",
@@ -4620,7 +4735,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                 {T.skipBtn}
               </button>
               <button
-                onClick={() => isLast ? setDemoStep(null) : setDemoStep(demoStep + 1)}
+                onClick={() => isLast ? exitDemo() : setDemoStep(demoStep + 1)}
                 style={{
                   padding: "9px 24px", borderRadius: 8, fontSize: 12, fontWeight: 600,
                   border: "none", backgroundColor: "#cc1100",
