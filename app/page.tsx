@@ -1221,7 +1221,7 @@ function AnalystRatingsCard({ data }: { data: AnalystRatingsSpec }) {
           <div style={{ fontSize: 16, fontWeight: 700, color: "#888" }}>{data.totalAnalysts}</div>
           <div style={{ fontSize: 10, color: "#555", marginTop: 1 }}>Total</div>
         </div>
-        {data.buyChangeVsLastMonth != null && (
+        {data.buyChangeVsLastMonth != null && data.buyChangeVsLastMonth !== 0 && (
           <div style={{ flex: 1, textAlign: "center" as const }}>
             <div style={{
               fontSize: 14, fontWeight: 700,
