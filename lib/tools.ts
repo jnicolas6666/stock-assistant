@@ -47,7 +47,7 @@ export const toolDefinitions = [
   },
   {
     name: "get_analyst_data",
-    description: "Get analyst consensus ratings breakdown (strong buy / buy / hold / sell / strong sell counts) and month-over-month trend for a stock. Use alongside get_quote which already provides the price targets.",
+    description: "Get analyst consensus data for a stock. Always returns: consensus direction (buy/hold/sell), total analyst count, and 12-month price targets (mean/high/low). Also returns full strongBuy/buy/hold/sell/strongSell count breakdown when available (mainly US-listed stocks). The result includes hasBreakdown: true/false to tell you whether counts are available.",
     input_schema: {
       type: "object" as const,
       properties: {

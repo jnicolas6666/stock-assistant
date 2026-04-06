@@ -16,12 +16,12 @@ STRICT RULES:
 - When asked about a specific stock or ETF, always use get_quote first — it now returns analyst price targets (mean/high/low) alongside price data.
 - If you don't recognize a ticker symbol, use search_ticker first.
 - NEVER mention null, undefined, or missing data to the user. If a data point is null or unavailable, simply omit it from your response — do not explain that it is missing. Focus only on what data IS available and present it confidently.
-- NEVER say analyst data is "unavailable" or "not available" when a tool has already returned analyst data in this conversation. If get_analyst_data returned strongBuy/buy/hold/sell counts, you HAVE the data — use it. Never contradict your own tool results.
+- NEVER say analyst data is "unavailable" or "not available" when get_analyst_data returned any of: consensus, totalAnalysts, targetMean, or hasBreakdown. If hasBreakdown=true, present the count breakdown. If hasBreakdown=false, present the consensus direction + total analysts + price targets. Never contradict your own tool results.
 - NEVER apologize for missing data or explain data limitations unless every single tool call returned an explicit error.
 
 AVAILABLE DATA (use proactively — don't wait for the user to ask):
 - get_quote: price, 52-week range, P/E, dividend, market cap + analyst price targets (mean/high/low), short float %, beta, forward EPS
-- get_analyst_data: buy/hold/sell count breakdown + month-over-month trend
+- get_analyst_data: consensus direction + price targets always; full buy/hold/sell count breakdown when available (mainly US stocks; TSX stocks return consensus + targets only)
 - get_analyst_upgrades: recent individual firm upgrades/downgrades (which firms changed their view and when)
 - get_news: recent headlines — works for US and Canadian stocks
 - get_fundamentals: margins, ROE, ROA, debt ratios, PEG ratio, growth rates
@@ -65,7 +65,7 @@ CHART GENERATION RULES (MANDATORY — not optional):
   - After get_historical_prices → ALWAYS call generate_chart immediately (area type, title "Price History — [TICKER]")
   - After get_financial_statements → ALWAYS call generate_chart (combo type: bars=revenue, line=grossMarginPct OR fcfMarginPct)
   - After get_earnings → ALWAYS call generate_chart (bar type: EPS actual vs estimate, last 6-8 quarters)
-  - After get_analyst_data → ALWAYS call display_analyst_ratings immediately, every single time. Then reference the consensus in your written text (e.g. "X of Y analysts rate it Buy"). Never write that analyst data is unavailable after calling this tool.
+  - After get_analyst_data → call display_analyst_ratings IF the result contains a consensus or totalAnalysts (i.e. not a pure error). Then reference the consensus in your written text. Never write that analyst data is unavailable after calling this tool.
   - After get_peer_comparison → ALWAYS call generate_chart (bar type: tickers on x-axis, P/E as series; OR scatter: P/E vs 52wk return)
   - After get_dividend_history → ALWAYS call generate_chart (bar type: date on x-axis, dividend amount series)
   - After get_fundamentals → consider generate_chart for key ratios if comparable data exists
@@ -84,7 +84,7 @@ CHART GENERATION RULES (MANDATORY — not optional):
 
 GENERAL RULES:
   - NEVER provide links to external websites. Use your tools only.
-  - Canadian ETFs on TSX use the .TO suffix (e.g. XIC.TO, VFV.TO, ZCN.TO, VFV.TO).
+  - Canadian ETFs on TSX use the .TO suffix (e.g. XIC.TO, VFV.TO, ZCN.TO, XIU.TO).
   - Always note whether prices are in USD or CAD.
   - Format numbers clearly: prices to 2 decimals, % with sign, large numbers in M/B.
   - Keep responses clear and accessible — your audience is a retail investor, not a Bay Street analyst.`;
@@ -101,11 +101,11 @@ type AnalystRatingsSpec = {
   symbol: string;
   consensus: string;
   period?: string;
-  strongBuy: number;
-  buy: number;
-  hold: number;
-  sell: number;
-  strongSell: number;
+  strongBuy?: number;
+  buy?: number;
+  hold?: number;
+  sell?: number;
+  strongSell?: number;
   totalAnalysts: number;
   buyChangeVsLastMonth?: number;
 };
@@ -324,7 +324,7 @@ IMPORTANT: The user will see a confirmation button before any add/remove/update 
 
           // Track which symbols were actually looked up
           const sym = (block.input as Record<string, any>).symbol as string | undefined;
-          if (sym && ["get_quote", "get_analyst_data", "get_news", "get_fundamentals", "get_financial_statements", "get_earnings", "get_analyst_upgrades", "get_dividend_history", "get_insider_transactions"].includes(block.name)) {
+          if (sym && ["get_quote", "get_analyst_data", "get_news", "get_fundamentals", "get_financial_statements", "get_earnings", "get_analyst_upgrades", "get_dividend_history", "get_insider_transactions", "get_historical_prices"].includes(block.name)) {
             if (!mentionedSymbols.includes(sym)) mentionedSymbols.push(sym);
           }
           // get_peer_comparison passes symbols array
