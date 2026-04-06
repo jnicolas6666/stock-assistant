@@ -304,22 +304,22 @@ async function searchTicker(query: string) {
 
 async function getQuote(symbol: string) {
   try {
-    // Fetch basic quote + extended summary (price targets, short interest) in parallel
-    const [q, summary, summaryFallback] = await Promise.all([
+    // Fetch basic quote + extended summaries in parallel — each module call is isolated
+    // so a validation failure on one module never kills the others
+    const [q, fdSummary, ksSummary] = await Promise.all([
       yahooFinance.quote(symbol, {}, FETCH_OPTS),
       yahooFinance.quoteSummary(symbol, {
-        modules: ["financialData", "defaultKeyStatistics"] as any,
+        modules: ["financialData"] as any,
         fetchOptions: FETCH_OPTS.fetchOptions,
       } as any).catch(() => null),
-      // Fallback: recommendationTrend also contains financialData price targets
       yahooFinance.quoteSummary(symbol, {
-        modules: ["recommendationTrend", "financialData"] as any,
+        modules: ["defaultKeyStatistics"] as any,
         fetchOptions: FETCH_OPTS.fetchOptions,
       } as any).catch(() => null),
     ]);
 
-    const fd = (summary as any)?.financialData ?? (summaryFallback as any)?.financialData ?? {};
-    const ks = (summary as any)?.defaultKeyStatistics ?? {};
+    const fd = (fdSummary as any)?.financialData ?? {};
+    const ks = (ksSummary as any)?.defaultKeyStatistics ?? {};
 
     return {
       symbol: q.symbol,
@@ -361,12 +361,18 @@ async function getQuote(symbol: string) {
 async function getAnalystData(symbol: string) {
   try {
     // Primary: Yahoo Finance recommendationTrend — works for US and Canadian stocks
-    const summary = await yahooFinance.quoteSummary(symbol, {
-      modules: ["recommendationTrend", "financialData"] as any,
+    // Fetch modules separately so a financialData validation failure doesn't kill analyst ratings
+    const trendSummary = await yahooFinance.quoteSummary(symbol, {
+      modules: ["recommendationTrend"] as any,
       fetchOptions: FETCH_OPTS.fetchOptions,
     } as any).catch(() => null);
 
-    const trend: any[] = (summary as any)?.recommendationTrend?.trend ?? [];
+    const fdSummary = await yahooFinance.quoteSummary(symbol, {
+      modules: ["financialData"] as any,
+      fetchOptions: FETCH_OPTS.fetchOptions,
+    } as any).catch(() => null);
+
+    const trend: any[] = (trendSummary as any)?.recommendationTrend?.trend ?? [];
     if (trend.length > 0) {
       const latest = trend[0]; // period "0m" = current month
       const prev = trend[1] ?? null;   // "-1m"
@@ -374,7 +380,7 @@ async function getAnalystData(symbol: string) {
       const bullish = (latest.strongBuy ?? 0) + (latest.buy ?? 0);
       const bearish = (latest.sell ?? 0) + (latest.strongSell ?? 0);
       const buyChange = prev ? ((latest.buy + latest.strongBuy) - (prev.buy + prev.strongBuy)) : null;
-      const fd = (summary as any)?.financialData ?? {};
+      const fd = (fdSummary as any)?.financialData ?? {};
 
       return {
         period: "current",
@@ -505,25 +511,31 @@ async function getFundamentals(symbol: string) {
     const sym = fh(symbol);
 
     // Finnhub only supports US-listed stocks — skip entirely for Canadian symbols
-    // For Canadian stocks, fetch assetProfile from Yahoo to get sector/industry/employees
-    const yahooModules = isCanadian
-      ? ["defaultKeyStatistics", "financialData", "assetProfile"] as any
-      : ["defaultKeyStatistics", "financialData"] as any;
-
-    const [profileRes, metricsRes, summaryRes] = await Promise.allSettled([
+    // Each Yahoo module is fetched separately so a validation failure on one never kills the others
+    const [profileRes, metricsRes, ksRes, fdRes, apRes] = await Promise.allSettled([
       isCanadian ? Promise.resolve({}) : finnhubGet(`/stock/profile2?symbol=${sym}`),
       isCanadian ? Promise.resolve({}) : finnhubGet(`/stock/metric?symbol=${sym}&metric=all`),
       yahooFinance.quoteSummary(symbol, {
-        modules: yahooModules,
+        modules: ["defaultKeyStatistics"] as any,
         fetchOptions: FETCH_OPTS.fetchOptions,
       } as any),
+      yahooFinance.quoteSummary(symbol, {
+        modules: ["financialData"] as any,
+        fetchOptions: FETCH_OPTS.fetchOptions,
+      } as any),
+      isCanadian
+        ? yahooFinance.quoteSummary(symbol, {
+            modules: ["assetProfile"] as any,
+            fetchOptions: FETCH_OPTS.fetchOptions,
+          } as any)
+        : Promise.resolve({}),
     ]);
 
     const profile = profileRes.status === "fulfilled" ? profileRes.value : {};
     const m = metricsRes.status === "fulfilled" ? (metricsRes.value?.metric ?? {}) : {};
-    const ks = summaryRes.status === "fulfilled" ? ((summaryRes.value as any)?.defaultKeyStatistics ?? {}) : {};
-    const fd = summaryRes.status === "fulfilled" ? ((summaryRes.value as any)?.financialData ?? {}) : {};
-    const ap = summaryRes.status === "fulfilled" ? ((summaryRes.value as any)?.assetProfile ?? {}) : {};
+    const ks = ksRes.status === "fulfilled" ? ((ksRes.value as any)?.defaultKeyStatistics ?? {}) : {};
+    const fd = fdRes.status === "fulfilled" ? ((fdRes.value as any)?.financialData ?? {}) : {};
+    const ap = apRes.status === "fulfilled" ? ((apRes.value as any)?.assetProfile ?? {}) : {};
 
     return {
       sector: ap?.sector ?? profile?.finnhubIndustry,
@@ -575,14 +587,28 @@ async function getFundamentals(symbol: string) {
 
 async function getFinancialStatements(symbol: string) {
   try {
-    const summary = await yahooFinance.quoteSummary(symbol, {
-      modules: ["incomeStatementHistory", "cashflowStatementHistory", "balanceSheetHistory"] as any,
-      fetchOptions: FETCH_OPTS.fetchOptions,
-    } as any);
+    // Fetch each statement module separately — a validation failure on one won't kill the others
+    const [incomeRes, cashflowRes, balanceRes] = await Promise.allSettled([
+      yahooFinance.quoteSummary(symbol, {
+        modules: ["incomeStatementHistory"] as any,
+        fetchOptions: FETCH_OPTS.fetchOptions,
+      } as any),
+      yahooFinance.quoteSummary(symbol, {
+        modules: ["cashflowStatementHistory"] as any,
+        fetchOptions: FETCH_OPTS.fetchOptions,
+      } as any),
+      yahooFinance.quoteSummary(symbol, {
+        modules: ["balanceSheetHistory"] as any,
+        fetchOptions: FETCH_OPTS.fetchOptions,
+      } as any),
+    ]);
 
-    const income: any[] = (summary as any)?.incomeStatementHistory?.incomeStatementHistory ?? [];
-    const cashflow: any[] = (summary as any)?.cashflowStatementHistory?.cashflowStatements ?? [];
-    const balance: any[] = (summary as any)?.balanceSheetHistory?.balanceSheetStatements ?? [];
+    const income: any[] = incomeRes.status === "fulfilled"
+      ? ((incomeRes.value as any)?.incomeStatementHistory?.incomeStatementHistory ?? []) : [];
+    const cashflow: any[] = cashflowRes.status === "fulfilled"
+      ? ((cashflowRes.value as any)?.cashflowStatementHistory?.cashflowStatements ?? []) : [];
+    const balance: any[] = balanceRes.status === "fulfilled"
+      ? ((balanceRes.value as any)?.balanceSheetHistory?.balanceSheetStatements ?? []) : [];
 
     if (income.length === 0 && cashflow.length === 0) {
       return { error: "Financial statements not available for this security (may be an ETF or data unavailable)." };
