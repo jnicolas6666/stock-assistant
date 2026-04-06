@@ -334,7 +334,7 @@ async function getQuote(symbol: string) {
       changePercent: fmt(q.regularMarketChangePercent ?? 0),
       marketCap: fmtLarge(q.marketCap ?? null),
       peRatio: fmt(q.trailingPE ?? null),
-      forwardPE: fmt(fd.currentPrice ? null : q.forwardPE ?? null) ?? fmt(fd.currentPrice ? (fd.currentPrice / (ks.forwardEps ?? 0)) || null : null),
+      forwardPE: fmt(q.forwardPE ?? null) ?? fmt(fd.currentPrice && ks.forwardEps ? (fd.currentPrice / ks.forwardEps) : null),
       dividendYield: fmt(q.trailingAnnualDividendYield ?? null, 4),
       dividendRate: fmt(q.trailingAnnualDividendRate ?? null),
       fiftyTwoWeekHigh: fmt(q.fiftyTwoWeekHigh ?? null),
@@ -593,7 +593,7 @@ async function getFundamentals(symbol: string) {
       // Valuation
       peRatioAnnual: fmt(m.peNormalizedAnnual ?? null),
       peTTM: fmt(m.peTTM ?? null),
-      forwardPE: fmt(ks.forwardPE ?? null),
+      forwardPE: fmt(fd.currentPrice && ks.forwardEps ? (fd.currentPrice / ks.forwardEps) : null),
       priceToBook: fmt(m.pbAnnual ?? ks.priceToBook ?? null),
       priceToSales: fmt(m.psTTM ?? null),
       pegRatio: fmt(ks.pegRatio ?? null),
@@ -759,9 +759,9 @@ async function getEarnings(symbol: string) {
       if (Array.isArray(data) && data.length > 0) {
         return data.slice(0, 8).map((e: any) => ({
           quarter: e.period,
-          actual: e.actual,
-          estimate: e.estimate,
-          surprise: e.surprise,
+          actual: fmt(e.actual ?? null),
+          estimate: fmt(e.estimate ?? null),
+          surprise: fmt(e.surprise ?? null),
           surprisePercent: e.surprisePercent != null ? fmt(e.surprisePercent) : null,
         }));
       }
