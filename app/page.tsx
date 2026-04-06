@@ -3521,20 +3521,18 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                         {msg.content.split(/\n#{2,3}\s/)[0].trim()}
                       </ReactMarkdown>
                       {/* "Added to analysis" badge */}
-                      <button
-                        onClick={() => setSelectedAnalysisIndex(parentIdx)}
+                      <div
                         style={{
                           display: "flex", alignItems: "center", gap: 6,
                           marginTop: 10, padding: "6px 12px", borderRadius: 8,
-                          border: `1.5px solid ${selectedAnalysisIndex === parentIdx ? "#22c55e" : "rgba(34,197,94,0.35)"}`,
-                          backgroundColor: selectedAnalysisIndex === parentIdx ? "rgba(34,197,94,0.1)" : "rgba(34,197,94,0.06)",
-                          color: "#16a34a", fontSize: 11, fontWeight: 600, cursor: "pointer",
-                          transition: "all 0.15s",
+                          border: "1.5px solid rgba(34,197,94,0.35)",
+                          backgroundColor: "rgba(34,197,94,0.06)",
+                          color: "#16a34a", fontSize: 11, fontWeight: 600,
                         }}
                       >
                         <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="#16a34a" strokeWidth="1.5"/><polyline points="5,8 7,10 11,6" stroke="#16a34a" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                        {selectedAnalysisIndex === parentIdx ? T.viewingAnalysis : T.viewAnalysis}
-                      </button>
+                        {lang === "fr" ? "Ajouté à l'analyse" : "Added to analysis"}
+                      </div>
                     </div>
                   </div>
                 );
