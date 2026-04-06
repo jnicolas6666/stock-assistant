@@ -1147,6 +1147,7 @@ function AnalystRatingsCard({ data }: { data: AnalystRatingsSpec }) {
 
   const bullish = data.strongBuy + data.buy;
   const bearish = data.sell + data.strongSell;
+  const hasBreakdown = bars.some(b => b.count > 0);
 
   return (
     <div style={{
@@ -1185,43 +1186,59 @@ function AnalystRatingsCard({ data }: { data: AnalystRatingsSpec }) {
       </div>
 
       {/* Rating bars */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 14 }}>
-        {bars.map((b) => (
-          <div key={b.label} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ width: 72, fontSize: 11, color: "#666", textAlign: "right" as const, flexShrink: 0 }}>{b.label}</div>
-            <div style={{ flex: 1, height: 6, backgroundColor: "rgba(28,26,27,0.06)", borderRadius: 3, overflow: "hidden" }}>
-              <div style={{
-                height: "100%",
-                width: `${total > 0 ? (b.count / total) * 100 : 0}%`,
-                backgroundColor: b.color,
-                borderRadius: 3,
-                transition: "width 0.4s ease",
-              }} />
+      {hasBreakdown ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 14 }}>
+          {bars.map((b) => (
+            <div key={b.label} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ width: 72, fontSize: 11, color: "#666", textAlign: "right" as const, flexShrink: 0 }}>{b.label}</div>
+              <div style={{ flex: 1, height: 6, backgroundColor: "rgba(28,26,27,0.06)", borderRadius: 3, overflow: "hidden" }}>
+                <div style={{
+                  height: "100%",
+                  width: `${total > 0 ? (b.count / total) * 100 : 0}%`,
+                  backgroundColor: b.color,
+                  borderRadius: 3,
+                  transition: "width 0.4s ease",
+                }} />
+              </div>
+              <div style={{ width: 20, fontSize: 11, color: "#555", textAlign: "right" as const, flexShrink: 0 }}>{b.count}</div>
             </div>
-            <div style={{ width: 20, fontSize: 11, color: "#555", textAlign: "right" as const, flexShrink: 0 }}>{b.count}</div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{
+          marginBottom: 14, padding: "10px 12px",
+          backgroundColor: "rgba(28,26,27,0.03)",
+          borderRadius: 6,
+          fontSize: 11, color: "#888",
+          textAlign: "center" as const,
+        }}>
+          Detailed breakdown not available for this symbol
+        </div>
+      )}
 
       {/* Footer stats */}
       <div style={{ display: "flex", gap: 12, borderTop: "1px solid rgba(28,26,27,0.06)", paddingTop: 10 }}>
-        <div style={{ flex: 1, textAlign: "center" as const }}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: "#22c55e" }}>{bullish}</div>
-          <div style={{ fontSize: 10, color: "#555", marginTop: 1 }}>Bullish</div>
-        </div>
-        <div style={{ flex: 1, textAlign: "center" as const }}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: "#888" }}>{data.hold}</div>
-          <div style={{ fontSize: 10, color: "#555", marginTop: 1 }}>Hold</div>
-        </div>
-        <div style={{ flex: 1, textAlign: "center" as const }}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: "#ef4444" }}>{bearish}</div>
-          <div style={{ fontSize: 10, color: "#555", marginTop: 1 }}>Bearish</div>
-        </div>
+        {hasBreakdown && (
+          <>
+            <div style={{ flex: 1, textAlign: "center" as const }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "#22c55e" }}>{bullish}</div>
+              <div style={{ fontSize: 10, color: "#555", marginTop: 1 }}>Bullish</div>
+            </div>
+            <div style={{ flex: 1, textAlign: "center" as const }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "#888" }}>{data.hold}</div>
+              <div style={{ fontSize: 10, color: "#555", marginTop: 1 }}>Hold</div>
+            </div>
+            <div style={{ flex: 1, textAlign: "center" as const }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "#ef4444" }}>{bearish}</div>
+              <div style={{ fontSize: 10, color: "#555", marginTop: 1 }}>Bearish</div>
+            </div>
+          </>
+        )}
         <div style={{ flex: 1, textAlign: "center" as const }}>
           <div style={{ fontSize: 16, fontWeight: 700, color: "#888" }}>{data.totalAnalysts}</div>
-          <div style={{ fontSize: 10, color: "#555", marginTop: 1 }}>Total</div>
+          <div style={{ fontSize: 10, color: "#555", marginTop: 1 }}>Analystes</div>
         </div>
-        {data.buyChangeVsLastMonth != null && data.buyChangeVsLastMonth !== 0 && (
+        {hasBreakdown && data.buyChangeVsLastMonth != null && data.buyChangeVsLastMonth !== 0 && (
           <div style={{ flex: 1, textAlign: "center" as const }}>
             <div style={{
               fontSize: 14, fontWeight: 700,

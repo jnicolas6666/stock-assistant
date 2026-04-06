@@ -138,7 +138,7 @@ export const toolDefinitions = [
   },
   {
     name: "display_analyst_ratings",
-    description: "Render a visual analyst ratings card in the UI. Call this whenever you have analyst consensus data to display — after calling get_analyst_data. Pass all the rating counts and the overall consensus.",
+    description: "Render a visual analyst ratings card in the UI. Call this whenever you have analyst data — after get_analyst_data returns data. When hasBreakdown=false in the tool result, pass strongBuy=0, buy=0, hold=0, sell=0, strongSell=0 and set consensus from the returned consensus field.",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -153,7 +153,7 @@ export const toolDefinitions = [
         totalAnalysts: { type: "number" },
         buyChangeVsLastMonth: { type: "number", description: "Change in bullish count vs last month (positive = more bullish)" },
       },
-      required: ["symbol", "consensus", "strongBuy", "buy", "hold", "sell", "strongSell", "totalAnalysts"],
+      required: ["symbol", "consensus", "totalAnalysts"],
     },
   },
   {
@@ -379,17 +379,21 @@ async function yfRest(symbol: string, module: string): Promise<any> {
 async function getAnalystData(symbol: string) {
   try {
     // NO_VALIDATE bypasses schema validation — TSX stocks have fields that trip yahoo-finance2
-    const trendSummary = await yahooFinance.quoteSummary(symbol, {
-      modules: ["recommendationTrend"] as any,
-      fetchOptions: FETCH_OPTS.fetchOptions,
-    } as any, NO_VALIDATE).catch(() => null);
-
-    const fdSummary = await yahooFinance.quoteSummary(symbol, {
-      modules: ["financialData"] as any,
-      fetchOptions: FETCH_OPTS.fetchOptions,
-    } as any, NO_VALIDATE).catch(() => null);
+    // Run both calls in parallel
+    const [trendSummary, fdSummary] = await Promise.all([
+      yahooFinance.quoteSummary(symbol, {
+        modules: ["recommendationTrend"] as any,
+        fetchOptions: FETCH_OPTS.fetchOptions,
+      } as any, NO_VALIDATE).catch(() => null),
+      yahooFinance.quoteSummary(symbol, {
+        modules: ["financialData"] as any,
+        fetchOptions: FETCH_OPTS.fetchOptions,
+      } as any, NO_VALIDATE).catch(() => null),
+    ]);
 
     const trend: any[] = (trendSummary as any)?.recommendationTrend?.trend ?? [];
+    const fd = (fdSummary as any)?.financialData ?? {};
+
     if (trend.length > 0) {
       const latest = trend[0]; // period "0m" = current month
       const prev = trend[1] ?? null;   // "-1m"
@@ -397,27 +401,26 @@ async function getAnalystData(symbol: string) {
       const bullish = (latest.strongBuy ?? 0) + (latest.buy ?? 0);
       const bearish = (latest.sell ?? 0) + (latest.strongSell ?? 0);
       const buyChange = prev ? ((latest.buy + latest.strongBuy) - (prev.buy + prev.strongBuy)) : null;
-      const fd = (fdSummary as any)?.financialData ?? {};
 
       return {
+        hasBreakdown: true,
         period: "current",
-        strongBuy: latest.strongBuy,
-        buy: latest.buy,
-        hold: latest.hold,
-        sell: latest.sell,
-        strongSell: latest.strongSell,
+        strongBuy: latest.strongBuy ?? 0,
+        buy: latest.buy ?? 0,
+        hold: latest.hold ?? 0,
+        sell: latest.sell ?? 0,
+        strongSell: latest.strongSell ?? 0,
         totalAnalysts: total,
         bullishCount: bullish,
         bearishCount: bearish,
         buyChangeVsLastMonth: buyChange,
-        // Price targets from Yahoo (same call)
         targetMean: fmt(fd.targetMeanPrice ?? null),
         targetHigh: fmt(fd.targetHighPrice ?? null),
         targetLow: fmt(fd.targetLowPrice ?? null),
         numberOfAnalystOpinions: fd.numberOfAnalystOpinions ?? null,
         trend: trend.slice(0, 3).map((r: any) => ({
           period: r.period,
-          strongBuy: r.strongBuy, buy: r.buy, hold: r.hold, sell: r.sell, strongSell: r.strongSell,
+          strongBuy: r.strongBuy ?? 0, buy: r.buy ?? 0, hold: r.hold ?? 0, sell: r.sell ?? 0, strongSell: r.strongSell ?? 0,
         })),
       };
     }
@@ -434,25 +437,44 @@ async function getAnalystData(symbol: string) {
         const bearish = (latest.sell ?? 0) + (latest.strongSell ?? 0);
         const buyChange = prev ? ((latest.buy + latest.strongBuy) - (prev.buy + prev.strongBuy)) : null;
         return {
+          hasBreakdown: true,
           period: latest.period,
-          strongBuy: latest.strongBuy,
-          buy: latest.buy,
-          hold: latest.hold,
-          sell: latest.sell,
-          strongSell: latest.strongSell,
+          strongBuy: latest.strongBuy ?? 0,
+          buy: latest.buy ?? 0,
+          hold: latest.hold ?? 0,
+          sell: latest.sell ?? 0,
+          strongSell: latest.strongSell ?? 0,
           totalAnalysts: total,
           bullishCount: bullish,
           bearishCount: bearish,
           buyChangeVsLastMonth: buyChange,
+          targetMean: fmt(fd.targetMeanPrice ?? null),
+          targetHigh: fmt(fd.targetHighPrice ?? null),
+          targetLow: fmt(fd.targetLowPrice ?? null),
           trend: recs.slice(0, 3).map((r: any) => ({
             period: r.period,
-            strongBuy: r.strongBuy, buy: r.buy, hold: r.hold, sell: r.sell, strongSell: r.strongSell,
+            strongBuy: r.strongBuy ?? 0, buy: r.buy ?? 0, hold: r.hold ?? 0, sell: r.sell ?? 0, strongSell: r.strongSell ?? 0,
           })),
         };
       }
     }
 
-    return { error: "No analyst ratings data available for this symbol." };
+    // Last resort: return partial data from financialData (consensus direction + price targets, no breakdown)
+    if (fd.recommendationKey || fd.numberOfAnalystOpinions) {
+      return {
+        hasBreakdown: false,
+        period: "current",
+        consensus: fd.recommendationKey ?? "hold",
+        totalAnalysts: fd.numberOfAnalystOpinions ?? 0,
+        strongBuy: 0, buy: 0, hold: 0, sell: 0, strongSell: 0,
+        targetMean: fmt(fd.targetMeanPrice ?? null),
+        targetHigh: fmt(fd.targetHighPrice ?? null),
+        targetLow: fmt(fd.targetLowPrice ?? null),
+        numberOfAnalystOpinions: fd.numberOfAnalystOpinions ?? null,
+      };
+    }
+
+    return { error: "No analyst data available for this symbol." };
   } catch (e: any) {
     return { error: e.message };
   }
