@@ -395,7 +395,9 @@ async function getAnalystData(symbol: string) {
       } as any, NO_VALIDATE).catch(() => null),
     ]);
 
-    const trend: any[] = (trendSummary as any)?.recommendationTrend?.trend ?? [];
+    const libTrend: any[] = (trendSummary as any)?.recommendationTrend?.trend ?? [];
+    // If the library returned empty (validation or TSX quirk), fall back to direct REST call
+    const trend: any[] = libTrend.length > 0 ? libTrend : ((await yfRest(symbol, "recommendationTrend"))?.trend ?? []);
     const fd = (fdSummary as any)?.financialData ?? {};
     const ks = (ksSummary as any)?.defaultKeyStatistics ?? {};
 
