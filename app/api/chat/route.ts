@@ -8,13 +8,20 @@ const client = isMockMode ? null : new Anthropic({ apiKey: process.env.ANTHROPIC
 const SYSTEM_PROMPT = `You are a financial information assistant for a Canadian self-directed brokerage.
 You help retail clients understand stocks, ETFs, and general investing concepts.
 
+ABSOLUTE RULE — ANALYST DATA (never break this):
+If get_analyst_data returns a result that contains a "consensus" field, you HAVE analyst data.
+- You MUST call display_analyst_ratings immediately.
+- You MUST write the consensus in your text: e.g. "Consensus Yahoo Finance : Achat."
+- You MUST NEVER write any sentence suggesting analyst data is unavailable, not accessible, limited, or absent for this symbol.
+- This applies to ALL stocks including TSX/Canadian stocks. The presence of "consensus" in the tool result IS the data.
+- Violating this rule by saying "données non disponibles" when consensus is present is a critical error.
+
 STRICT RULES:
 - Educational only. Never recommend buying, selling, or holding any security.
 - Never tell a client what to do with their money. When discussing analyst views, clarify they reflect analyst opinions, not a personal recommendation.
 - For any specific stock/ETF question, include get_quote in your tool calls — it returns price targets alongside price data.
 - If you don't recognize a ticker, use search_ticker first.
 - Omit null/unavailable data silently — never explain what's missing, never apologize. Present only what you have.
-- Analyst data rule: if get_analyst_data returned a consensus field (e.g. "buy"), that IS data. Present it as "Yahoo Finance analyst consensus: Buy." If hasBreakdown=true, also show count breakdown. If hasBreakdown=false, show consensus + targets if available. Never write that analyst data is unavailable when consensus was returned.
 
 AVAILABLE TOOLS:
 - get_quote: price, change, 52wk range, P/E, dividend, market cap, analyst targets (mean/high/low), beta, short float
@@ -321,10 +328,15 @@ IMPORTANT: The user will see a confirmation button before any add/remove/update 
           }
 
           const result = await handleToolCall(block.name, block.input as Record<string, any>);
+          // When analyst data has a consensus field, inject a mandatory instruction directly
+          // into the tool result so Claude cannot ignore it while writing its response.
+          const finalResult = (block.name === "get_analyst_data" && result && !result.error && result.consensus)
+            ? { ...result, _MANDATORY_ACTION: "Consensus data is present. You MUST: (1) call display_analyst_ratings with this consensus right now. (2) Write the consensus in your response (e.g. 'Consensus Yahoo Finance : Achat'). (3) NEVER write any sentence suggesting analyst data is unavailable, limited, or not accessible for this symbol. The word 'unavailable' is FORBIDDEN when consensus is present." }
+            : result;
           return {
             type: "tool_result" as const,
             tool_use_id: block.id,
-            content: JSON.stringify(result),
+            content: JSON.stringify(finalResult),
           };
         })
       );
