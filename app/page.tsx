@@ -1138,15 +1138,15 @@ function AnalystRatingsCard({ data }: { data: AnalystRatingsSpec }) {
   const total = data.totalAnalysts || 1;
 
   const bars = [
-    { label: "Strong Buy", count: data.strongBuy, color: "#22c55e" },
-    { label: "Buy",        count: data.buy,        color: "#86efac" },
-    { label: "Hold",       count: data.hold,       color: "#facc15" },
-    { label: "Sell",       count: data.sell,       color: "#f97316" },
-    { label: "Strong Sell",count: data.strongSell, color: "#ef4444" },
+    { label: "Strong Buy", count: data.strongBuy ?? 0, color: "#22c55e" },
+    { label: "Buy",        count: data.buy        ?? 0, color: "#86efac" },
+    { label: "Hold",       count: data.hold       ?? 0, color: "#facc15" },
+    { label: "Sell",       count: data.sell       ?? 0, color: "#f97316" },
+    { label: "Strong Sell",count: data.strongSell ?? 0, color: "#ef4444" },
   ];
 
-  const bullish = data.strongBuy + data.buy;
-  const bearish = data.sell + data.strongSell;
+  const bullish = (data.strongBuy ?? 0) + (data.buy ?? 0);
+  const bearish  = (data.sell ?? 0) + (data.strongSell ?? 0);
   const hasBreakdown = bars.some(b => b.count > 0);
 
   return (

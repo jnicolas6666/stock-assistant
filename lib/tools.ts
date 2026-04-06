@@ -379,8 +379,8 @@ async function yfRest(symbol: string, module: string): Promise<any> {
 async function getAnalystData(symbol: string) {
   try {
     // NO_VALIDATE bypasses schema validation — TSX stocks have fields that trip yahoo-finance2
-    // Run both calls in parallel
-    const [trendSummary, fdSummary] = await Promise.all([
+    // Fetch 3 modules in parallel for best coverage
+    const [trendSummary, fdSummary, ksSummary] = await Promise.all([
       yahooFinance.quoteSummary(symbol, {
         modules: ["recommendationTrend"] as any,
         fetchOptions: FETCH_OPTS.fetchOptions,
@@ -389,10 +389,15 @@ async function getAnalystData(symbol: string) {
         modules: ["financialData"] as any,
         fetchOptions: FETCH_OPTS.fetchOptions,
       } as any, NO_VALIDATE).catch(() => null),
+      yahooFinance.quoteSummary(symbol, {
+        modules: ["defaultKeyStatistics"] as any,
+        fetchOptions: FETCH_OPTS.fetchOptions,
+      } as any, NO_VALIDATE).catch(() => null),
     ]);
 
     const trend: any[] = (trendSummary as any)?.recommendationTrend?.trend ?? [];
     const fd = (fdSummary as any)?.financialData ?? {};
+    const ks = (ksSummary as any)?.defaultKeyStatistics ?? {};
 
     if (trend.length > 0) {
       const latest = trend[0]; // period "0m" = current month
@@ -459,18 +464,20 @@ async function getAnalystData(symbol: string) {
       }
     }
 
-    // Last resort: return partial data from financialData (consensus direction + price targets, no breakdown)
-    if (fd.recommendationKey || fd.numberOfAnalystOpinions) {
+    // Last resort: return consensus direction + targets from financialData/defaultKeyStatistics
+    // Do NOT return count fields (strongBuy etc.) — omitting them is cleaner than returning zeros
+    // and prevents Claude from thinking "I have 0 buys" which triggers "non disponibles" language
+    const consensusKey = fd.recommendationKey ?? null;
+    const analystCount = fd.numberOfAnalystOpinions ?? ks.numberOfAnalystOpinions ?? null;
+    if (consensusKey) {
       return {
         hasBreakdown: false,
-        period: "current",
-        consensus: fd.recommendationKey ?? "hold",
-        totalAnalysts: fd.numberOfAnalystOpinions ?? 0,
-        strongBuy: 0, buy: 0, hold: 0, sell: 0, strongSell: 0,
+        consensus: consensusKey,
+        totalAnalysts: analystCount,
         targetMean: fmt(fd.targetMeanPrice ?? null),
         targetHigh: fmt(fd.targetHighPrice ?? null),
         targetLow: fmt(fd.targetLowPrice ?? null),
-        numberOfAnalystOpinions: fd.numberOfAnalystOpinions ?? null,
+        note: "Aggregate count breakdown not available via public API for this symbol. Consensus direction and targets are from Yahoo Finance financialData.",
       };
     }
 
