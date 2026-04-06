@@ -1866,12 +1866,20 @@ const MD_COMPONENTS_SECTION = {
   a: ({ children }: any) => <span style={{ color: "#cc1100" }}>{children}</span>,
 };
 
-function CollapsibleSection({ title, content, delay = 0, defaultOpen = false, children }: {
-  title: string; content?: string; delay?: number; defaultOpen?: boolean; children?: React.ReactNode;
+function CollapsibleSection({ title, content, delay = 0, defaultOpen = false, openAll, children }: {
+  title: string; content?: string; delay?: number; defaultOpen?: boolean; openAll?: boolean | null; children?: React.ReactNode;
 }) {
-  const [phase, setPhase] = React.useState<"closed" | "loading" | "open">(defaultOpen ? "open" : "closed");
   // Strip non-ASCII (emoji) for SECTION_COLORS lookup, then build icon nodes for display
   const cleanTitle = title.replace(/[^\x00-\x7F]/g, '').trim();
+  const isOverview = /^(overview|aperçu|vue d'ensemble|resumen)$/i.test(cleanTitle);
+  const [phase, setPhase] = React.useState<"closed" | "loading" | "open">(isOverview || defaultOpen ? "open" : "closed");
+
+  // React to openAll toggle — but never collapse/expand Overview
+  useEffect(() => {
+    if (isOverview) return;
+    if (openAll === true) setPhase("open");
+    else if (openAll === false) setPhase("closed");
+  }, [openAll, isOverview]);
   const color = SECTION_COLORS[cleanTitle] ?? SECTION_COLORS[title] ?? "#888";
   const titleNodes = (() => {
     const knownEmoji = Object.keys(EMOJI_TO_ICON);
@@ -1897,6 +1905,7 @@ function CollapsibleSection({ title, content, delay = 0, defaultOpen = false, ch
   })();
 
   const toggle = () => {
+    if (isOverview) return;
     if (phase === "loading") return;
     if (phase === "open") { setPhase("closed"); return; }
     setPhase("loading");
@@ -1912,10 +1921,10 @@ function CollapsibleSection({ title, content, delay = 0, defaultOpen = false, ch
       backgroundColor: "#fff",
       overflow: "hidden",
     }}>
-      <button onClick={toggle} style={{
+      <div onClick={isOverview ? undefined : toggle} style={{
         width: "100%", display: "flex", alignItems: "center", gap: 8,
         padding: "9px 12px 9px 14px",
-        background: "none", border: "none", cursor: "pointer",
+        background: "none", border: "none", cursor: isOverview ? "default" : "pointer",
         textAlign: "left",
         borderLeft: `3px solid ${color}`,
       }}>
@@ -1923,11 +1932,13 @@ function CollapsibleSection({ title, content, delay = 0, defaultOpen = false, ch
         {phase === "loading" && (
           <span style={{ fontSize: 9, color: "#bbb", marginRight: 6 }}>analyzing…</span>
         )}
-        <svg width="10" height="6" viewBox="0 0 10 6" fill="none"
-          style={{ transform: phase === "open" ? "rotate(180deg)" : "none", transition: "transform 0.2s ease", color: "#bbb", flexShrink: 0 }}>
-          <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
-      </button>
+        {!isOverview && (
+          <svg width="10" height="6" viewBox="0 0 10 6" fill="none"
+            style={{ transform: phase === "open" ? "rotate(180deg)" : "none", transition: "transform 0.2s ease", color: "#bbb", flexShrink: 0 }}>
+            <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        )}
+      </div>
 
       {phase === "loading" && (
         <div style={{ padding: "10px 14px 14px 17px", borderTop: "1px solid rgba(28,26,27,0.06)" }}>
@@ -2543,6 +2554,7 @@ export default function Home() {
     return () => clearTimeout(t);
   }, [input, appPhase]);
   const [selectedAnalysisIndex, setSelectedAnalysisIndex] = useState<number>(-1);
+  const [chatSectionsOpen, setChatSectionsOpen] = useState<boolean | null>(null);
   // Auto-select the newest analysis when a response arrives (skip follow-up messages)
   useEffect(() => {
     if (!loading && messages.length > 0) {
@@ -2563,6 +2575,7 @@ export default function Home() {
       if (lastIdx !== -1) setPortfolioSelectedAnalysisIndex(lastIdx);
     }
   }, [messages, loading, appPhase]);
+
   const [suggestions, setSuggestions] = useState(() => getRandomSuggestions("en"));
   const [expandedCharts, setExpandedCharts] = useState<Record<number, boolean>>({});
   const [showActionMenu, setShowActionMenu] = useState(false);
@@ -2580,6 +2593,10 @@ export default function Home() {
   const [addCost, setAddCost] = useState("");
   const [fetchingPrices, setFetchingPrices] = useState(false);
   const [portfolioSelectedAnalysisIndex, setPortfolioSelectedAnalysisIndex] = useState<number>(-1);
+  const [portfolioSectionsOpen, setPortfolioSectionsOpen] = useState<boolean | null>(null);
+  // Reset toggle-all state whenever a new analysis is selected
+  useEffect(() => { setChatSectionsOpen(null); }, [selectedAnalysisIndex]);
+  useEffect(() => { setPortfolioSectionsOpen(null); }, [portfolioSelectedAnalysisIndex]);
   const [editingPositionId, setEditingPositionId] = useState<string | null>(null);
   const [editShares, setEditShares] = useState("");
   const [editCost, setEditCost] = useState("");
@@ -3362,8 +3379,24 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                         </div>
                       );
                     })()}
+                    {/* Toggle all button */}
+                    {sections && sections.length > 1 && (
+                      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+                        <button
+                          onClick={() => setChatSectionsOpen(prev => prev === true ? false : true)}
+                          style={{
+                            fontSize: 11, color: "#888", background: "none", border: "1px solid rgba(28,26,27,0.12)",
+                            borderRadius: 6, padding: "4px 10px", cursor: "pointer", display: "flex", alignItems: "center", gap: 5,
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.color = "#cc1100"; e.currentTarget.style.borderColor = "#cc1100"; }}
+                          onMouseLeave={e => { e.currentTarget.style.color = "#888"; e.currentTarget.style.borderColor = "rgba(28,26,27,0.12)"; }}
+                        >
+                          {chatSectionsOpen === true ? "▲ Collapse all" : "▼ Expand all"}
+                        </button>
+                      </div>
+                    )}
                     {sections.map((s, si) => (
-                      <CollapsibleSection key={si} title={s.title} content={s.content} delay={si * 0.04} defaultOpen={si === 0} />
+                      <CollapsibleSection key={si} title={s.title} content={s.content} delay={si * 0.04} defaultOpen={false} openAll={chatSectionsOpen} />
                     ))}
                     {latestAiMsg.analystRatings && latestAiMsg.analystRatings.length > 0 && (
                       <CollapsibleSection title="Analyst Ratings" delay={sections.length * 0.04}>
@@ -3829,7 +3862,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
             </div>
 
             {/* Price freshness indicator */}
-            {pricesFetchedAt && (
+            {pricesFetchedAt && portfolioPositions.length > 0 && (
               <div style={{ padding: "4px 14px", fontSize: 9, color: pricesFailed ? "#ef4444" : "#aaa", backgroundColor: pricesFailed ? "rgba(239,68,68,0.05)" : "transparent", flexShrink: 0, display: "flex", alignItems: "center", gap: 4 }}>
                 <div style={{ width: 5, height: 5, borderRadius: "50%", backgroundColor: pricesFailed ? "#ef4444" : "#22c55e" }} />
                 {pricesFailed ? (lang === "fr" ? "Marchés fermés — prix en cache" : "Markets may be closed — cached prices") : (lang === "fr" ? `Prix actualisés à ${pricesFetchedAt.toLocaleTimeString("fr-CA", { hour: "2-digit", minute: "2-digit" })}` : `Prices as of ${pricesFetchedAt.toLocaleTimeString("en-CA", { hour: "2-digit", minute: "2-digit" })}`)}
@@ -4015,8 +4048,23 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                       </div>
                     )}
                     {/* Sections */}
+                    {sections && sections.length > 1 && (
+                      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+                        <button
+                          onClick={() => setPortfolioSectionsOpen(prev => prev === true ? false : true)}
+                          style={{
+                            fontSize: 11, color: "#888", background: "none", border: "1px solid rgba(28,26,27,0.12)",
+                            borderRadius: 6, padding: "4px 10px", cursor: "pointer", display: "flex", alignItems: "center", gap: 5,
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.color = "#cc1100"; e.currentTarget.style.borderColor = "#cc1100"; }}
+                          onMouseLeave={e => { e.currentTarget.style.color = "#888"; e.currentTarget.style.borderColor = "rgba(28,26,27,0.12)"; }}
+                        >
+                          {portfolioSectionsOpen === true ? "▲ Collapse all" : "▼ Expand all"}
+                        </button>
+                      </div>
+                    )}
                     {sections ? sections.map((sec, si) => (
-                      <CollapsibleSection key={si} title={sec.title} content={sec.content} delay={si * 80} defaultOpen={si === 0} />
+                      <CollapsibleSection key={si} title={sec.title} content={sec.content} delay={si * 80} defaultOpen={false} openAll={portfolioSectionsOpen} />
                     )) : (
                       <div style={{ fontSize: 14, lineHeight: 1.75, color: "#2c2a29" }}>
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>{selMsg.content}</ReactMarkdown>
@@ -4079,7 +4127,14 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                     }}>
                       {isUser ? msg.content : sections ? (
                         <>
-                          {preamble && <p style={{ margin: "0 0 6px", fontSize: 12, lineHeight: 1.6 }}>{preamble}</p>}
+                          {preamble && (
+                            <div style={{ marginBottom: 6, fontSize: 12, lineHeight: 1.6 }}>
+                              <ReactMarkdown remarkPlugins={[remarkGfm]} components={{
+                                p: ({ children }) => <p style={{ margin: "2px 0" }}>{children}</p>,
+                                strong: ({ children }) => <strong style={{ fontWeight: 700 }}>{children}</strong>,
+                              }}>{preamble}</ReactMarkdown>
+                            </div>
+                          )}
                           <button
                             onClick={() => setPortfolioSelectedAnalysisIndex(i)}
                             style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 600, color: isSelectedHere ? "#888" : "#cc1100", background: "none", border: "none", cursor: isSelectedHere ? "default" : "pointer", padding: 0 }}
@@ -4114,33 +4169,54 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
               <div ref={bottomRef} />
             </div>
 
-            {/* Pending portfolio action confirmation */}
+            {/* Pending portfolio action confirmation — batched single card */}
             {(() => {
               const pendingMsg = [...messages].reverse().find(m => m.role === "assistant" && m.portfolioActions && m.portfolioActions.length > 0);
-              if (!pendingMsg || !pendingMsg.portfolioActions) return null;
+              if (!pendingMsg || !pendingMsg.portfolioActions || pendingMsg.portfolioActions.length === 0) return null;
+              const actions = pendingMsg.portfolioActions;
               return (
-                <div style={{ margin: "0 10px 6px", padding: "10px 12px", borderRadius: 10, backgroundColor: "rgba(204,17,0,0.05)", border: "1px solid rgba(204,17,0,0.2)", flexShrink: 0 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: "#cc1100", textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: 6 }}>
-                    {lang === "fr" ? "Action proposée" : "Proposed Action"}
+                <div style={{ margin: "0 10px 6px", padding: "12px 14px", borderRadius: 10, backgroundColor: "rgba(204,17,0,0.04)", border: "1px solid rgba(204,17,0,0.2)", flexShrink: 0 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: "#cc1100", textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: 8 }}>
+                    {lang === "fr" ? `Modifications proposées (${actions.length})` : `Proposed changes (${actions.length})`}
                   </div>
-                  {pendingMsg.portfolioActions.map((action, ai) => (
-                    <div key={ai} style={{ fontSize: 12, color: "#1d1a1b", marginBottom: 8 }}>
-                      <div style={{ marginBottom: 6, lineHeight: 1.5 }}>{action.note}</div>
-                      <div style={{ display: "flex", gap: 6 }}>
-                        <button
-                          onClick={() => {
-                            applyPortfolioAction(action);
-                            setMessages(prev => prev.map(m => m === pendingMsg ? { ...m, portfolioActions: [] } : m));
-                          }}
-                          style={{ flex: 2, padding: "6px", borderRadius: 6, border: "none", backgroundColor: "#cc1100", color: "#fff", fontSize: 11, fontWeight: 600, cursor: "pointer" }}
-                        >{lang === "fr" ? "Confirmer" : "Confirm"}</button>
-                        <button
-                          onClick={() => setMessages(prev => prev.map(m => m === pendingMsg ? { ...m, portfolioActions: [] } : m))}
-                          style={{ flex: 1, padding: "6px", borderRadius: 6, border: "1px solid rgba(28,26,27,0.15)", backgroundColor: "transparent", fontSize: 11, color: "#666", cursor: "pointer" }}
-                        >{lang === "fr" ? "Annuler" : "Dismiss"}</button>
+                  <div style={{ marginBottom: 10, display: "flex", flexDirection: "column" as const, gap: 4 }}>
+                    {actions.map((action, ai) => {
+                      const icon = action.actionType === "add" ? "+" : action.actionType === "remove" ? "−" : "✎";
+                      const iconColor = action.actionType === "add" ? "#16a34a" : action.actionType === "remove" ? "#dc2626" : "#f59e0b";
+                      const estValue = action.shares && action.avgCost ? action.shares * action.avgCost : null;
+                      return (
+                        <div key={ai} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, padding: "4px 0", borderBottom: "1px solid rgba(28,26,27,0.06)" }}>
+                          <span style={{ fontWeight: 700, color: iconColor, fontSize: 13, width: 14, flexShrink: 0 }}>{icon}</span>
+                          <span style={{ fontWeight: 700, color: "#1d1a1b", minWidth: 60 }}>{action.ticker}</span>
+                          {action.shares && <span style={{ color: "#555" }}>{action.shares} sh</span>}
+                          {action.avgCost && <span style={{ color: "#888" }}>@ ${action.avgCost.toFixed(2)}</span>}
+                          {estValue && <span style={{ marginLeft: "auto", fontWeight: 600, color: "#1d1a1b" }}>${estValue.toLocaleString("en", { maximumFractionDigits: 0 })}</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {actions.some(a => a.shares && a.avgCost) && (() => {
+                    const total = actions.reduce((s, a) => s + (a.shares && a.avgCost ? a.shares * a.avgCost : 0), 0);
+                    return total > 0 ? (
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 11, fontWeight: 700 }}>
+                        <span style={{ color: "#888" }}>{lang === "fr" ? "Total estimé" : "Estimated total"}</span>
+                        <span style={{ color: "#1d1a1b" }}>${total.toLocaleString("en", { maximumFractionDigits: 0 })}</span>
                       </div>
-                    </div>
-                  ))}
+                    ) : null;
+                  })()}
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button
+                      onClick={() => {
+                        actions.forEach(action => applyPortfolioAction(action));
+                        setMessages(prev => prev.map(m => m === pendingMsg ? { ...m, portfolioActions: [] } : m));
+                      }}
+                      style={{ flex: 2, padding: "7px", borderRadius: 6, border: "none", backgroundColor: "#cc1100", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
+                    >{lang === "fr" ? "Confirmer tout →" : "Confirm all →"}</button>
+                    <button
+                      onClick={() => setMessages(prev => prev.map(m => m === pendingMsg ? { ...m, portfolioActions: [] } : m))}
+                      style={{ flex: 1, padding: "7px", borderRadius: 6, border: "1px solid rgba(28,26,27,0.15)", backgroundColor: "transparent", fontSize: 11, color: "#666", cursor: "pointer" }}
+                    >{lang === "fr" ? "Annuler" : "Dismiss"}</button>
+                  </div>
                 </div>
               );
             })()}

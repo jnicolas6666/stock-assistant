@@ -201,7 +201,38 @@ export async function POST(req: NextRequest) {
     ? "\n\nIMPORTANT: Always respond entirely in French. Use formal French (vous)."
     : "";
   const baseSystem = SYSTEM_PROMPT + langSuffix;
-  const portfolioModInstructions = portfolioContext ? `\n\nPORTFOLIO MODIFICATION: You can modify the user's portfolio by calling add_portfolio_position, remove_portfolio_position, or update_portfolio_position. Use these when the user explicitly asks to add, remove, or update a position. The user will see a confirmation button before any change is applied. After calling a modification tool, write a short natural-language message confirming what you proposed (e.g. "I've proposed adding 50 shares of NVDA at $120 — confirm in the panel below.").` : "";
+  const portfolioModInstructions = portfolioContext ? `
+
+PORTFOLIO MODE — YOU ARE NOW IN PORTFOLIO SIMULATOR MODE. Different rules apply:
+
+BUILDING A PORTFOLIO (when user says "build", "create", "make", "suggest", "give me" a portfolio):
+1. If the user gives a budget, use it. If not, assume $100,000 CAD total.
+2. Decide allocation strategy (equal weight unless user specifies otherwise).
+3. Call get_quote for EACH ticker to get the current price.
+4. Calculate shares = Math.floor(allocation_per_stock / current_price). Minimum 1 share.
+5. Call add_portfolio_position for EACH stock — this is MANDATORY. You MUST call this tool for every position you propose. Do not skip this step.
+6. Structure your response with ## Overview first (summary of strategy + total budget + number of positions), then other sections.
+7. Optionally call generate_chart for an allocation breakdown.
+
+If the user's request is too vague (no sector, no style, no budget), ask 1-2 targeted questions before proceeding.
+
+MODIFYING THE PORTFOLIO (when user says "add", "remove", "delete", "sell", "update", "change"):
+- ALWAYS call the matching tool: add_portfolio_position, remove_portfolio_position, or update_portfolio_position.
+- Do this FIRST before writing your response text.
+- After calling the tool, write a short confirmation message.
+
+ANALYZING THE EXISTING PORTFOLIO:
+- Focus ONLY on the positions listed in the portfolio context above.
+- Discuss P&L, allocation %, concentration risk, sector exposure.
+- You may call get_quote for fresh prices if discussing current value.
+- Do NOT do generic market research unrelated to the user's actual holdings.
+
+RESPONSE STRUCTURE (MANDATORY in portfolio mode):
+- Your response MUST always start with ## Overview — a 2-4 sentence summary of what you did or analyzed.
+- Then add other ## sections as needed.
+- The Overview must be the very first section.
+
+IMPORTANT: The user will see a confirmation button before any add/remove/update takes effect. You do not need to ask for confirmation in your text — just call the tool and explain what you proposed.` : "";
   const activeSystem = portfolioContext
     ? baseSystem + "\n\n" + portfolioContext + portfolioModInstructions
     : baseSystem;
