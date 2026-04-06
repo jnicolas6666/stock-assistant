@@ -2569,8 +2569,7 @@ export default function Home() {
   useEffect(() => {
     if (!loading && messages.length > 0 && appPhase === "portfolio") {
       const lastIdx = messages.reduceRight((found: number, m: Message, idx: number) =>
-        found === -1 && m.role === "assistant" && !m.isFollowUp &&
-        (parseMessageSections(m.content) !== null || (m.charts && m.charts.length > 0))
+        found === -1 && m.role === "assistant" && !m.isFollowUp && m.content.trim().length > 0
           ? idx : found, -1);
       if (lastIdx !== -1) setPortfolioSelectedAnalysisIndex(lastIdx);
     }
@@ -3980,7 +3979,13 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                                 </div>
                               </div>
                             ) : (
-                              <div style={{ fontSize: 10, color: "#bbb" }}>{T.portfolioLoading}</div>
+                              <div style={{ textAlign: "right" as const }}>
+                                <div style={{ fontSize: 11, fontWeight: 600, color: "#bbb" }}>${cost.toFixed(0)}</div>
+                                <div style={{ fontSize: 9, color: "#ccc", display: "flex", alignItems: "center", gap: 3, justifyContent: "flex-end" }}>
+                                  <div style={{ width: 5, height: 5, borderRadius: "50%", backgroundColor: fetchingPrices ? "#f59e0b" : "#d1d5db" }} />
+                                  {fetchingPrices ? (lang === "fr" ? "chargement…" : "fetching…") : (lang === "fr" ? "prix indisponible" : "no live price")}
+                                </div>
+                              </div>
                             )}
                           </div>
                         )}
@@ -4209,6 +4214,8 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                       onClick={() => {
                         actions.forEach(action => applyPortfolioAction(action));
                         setMessages(prev => prev.map(m => m === pendingMsg ? { ...m, portfolioActions: [] } : m));
+                        // Fetch live prices for all newly added tickers after a short delay
+                        setTimeout(() => fetchLivePrices(), 600);
                       }}
                       style={{ flex: 2, padding: "7px", borderRadius: 6, border: "none", backgroundColor: "#cc1100", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
                     >{lang === "fr" ? "Confirmer tout →" : "Confirm all →"}</button>
