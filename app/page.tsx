@@ -1873,13 +1873,21 @@ function CollapsibleSection({ title, content, delay = 0, defaultOpen = false, op
   const cleanTitle = title.replace(/[^\x00-\x7F]/g, '').trim();
   const isOverview = /^(overview|aperçu|vue d'ensemble|resumen)$/i.test(cleanTitle);
   const [phase, setPhase] = React.useState<"closed" | "loading" | "open">(isOverview || defaultOpen ? "open" : "closed");
+  const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // React to openAll toggle — but never collapse/expand Overview
   useEffect(() => {
     if (isOverview) return;
-    if (openAll === true) setPhase("open");
-    else if (openAll === false) setPhase("closed");
+    if (openAll === true) {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      setPhase("open");
+    } else if (openAll === false) {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      setPhase("closed");
+    }
   }, [openAll, isOverview]);
+
+  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
   const color = SECTION_COLORS[cleanTitle] ?? SECTION_COLORS[title] ?? "#888";
   const titleNodes = (() => {
     const knownEmoji = Object.keys(EMOJI_TO_ICON);
@@ -1909,7 +1917,7 @@ function CollapsibleSection({ title, content, delay = 0, defaultOpen = false, op
     if (phase === "loading") return;
     if (phase === "open") { setPhase("closed"); return; }
     setPhase("loading");
-    setTimeout(() => setPhase("open"), 1300);
+    timerRef.current = setTimeout(() => setPhase("open"), 1300);
   };
 
   return (
@@ -3395,7 +3403,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                       </div>
                     )}
                     {sections.map((s, si) => (
-                      <CollapsibleSection key={si} title={s.title} content={s.content} delay={si * 0.04} defaultOpen={false} openAll={chatSectionsOpen} />
+                      <CollapsibleSection key={`${selectedAnalysisIndex}-${si}`} title={s.title} content={s.content} delay={si * 0.04} defaultOpen={false} openAll={chatSectionsOpen} />
                     ))}
                     {latestAiMsg.analystRatings && latestAiMsg.analystRatings.length > 0 && (
                       <CollapsibleSection title="Analyst Ratings" delay={sections.length * 0.04}>
@@ -4067,7 +4075,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                       </div>
                     )}
                     {sections ? sections.map((sec, si) => (
-                      <CollapsibleSection key={si} title={sec.title} content={sec.content} delay={si * 80} defaultOpen={false} openAll={portfolioSectionsOpen} />
+                      <CollapsibleSection key={`${portfolioSelectedAnalysisIndex}-${si}`} title={sec.title} content={sec.content} delay={si * 80} defaultOpen={false} openAll={portfolioSectionsOpen} />
                     )) : (
                       <div style={{ fontSize: 14, lineHeight: 1.75, color: "#2c2a29" }}>
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>{selMsg.content}</ReactMarkdown>
