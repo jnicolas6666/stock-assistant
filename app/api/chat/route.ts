@@ -84,7 +84,7 @@ GENERAL RULES:
   - Keep responses clear and accessible — your audience is a retail investor, not a Bay Street analyst.`;
 
 type ChartSpec = {
-  type: "line" | "bar" | "area";
+  type: "line" | "bar" | "area" | "combo" | "scatter";
   title: string;
   data: Record<string, any>[];
   xKey: string;
