@@ -318,8 +318,8 @@ async function getQuote(symbol: string) {
       } as any).catch(() => null),
     ]);
 
-    const fd = (fdSummary as any)?.financialData ?? {};
-    const ks = (ksSummary as any)?.defaultKeyStatistics ?? {};
+    const fd = (fdSummary as any)?.financialData ?? await yfRest(symbol, "financialData") ?? {};
+    const ks = (ksSummary as any)?.defaultKeyStatistics ?? await yfRest(symbol, "defaultKeyStatistics") ?? {};
 
     return {
       symbol: q.symbol,
@@ -358,10 +358,23 @@ async function getQuote(symbol: string) {
   }
 }
 
+// Direct Yahoo Finance REST call — bypasses yahoo-finance2 validation entirely.
+// Use as fallback whenever the lib returns null/empty due to validation errors on TSX stocks.
+async function yfRest(symbol: string, module: string): Promise<any> {
+  try {
+    const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=${module}`;
+    const res = await fetch(url, { headers: YF_HEADERS, cache: "no-store" });
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json?.quoteSummary?.result?.[0]?.[module] ?? null;
+  } catch {
+    return null;
+  }
+}
+
 async function getAnalystData(symbol: string) {
   try {
-    // Primary: Yahoo Finance recommendationTrend — works for US and Canadian stocks
-    // Fetch modules separately so a financialData validation failure doesn't kill analyst ratings
+    // Primary: yahoo-finance2 lib call
     const trendSummary = await yahooFinance.quoteSummary(symbol, {
       modules: ["recommendationTrend"] as any,
       fetchOptions: FETCH_OPTS.fetchOptions,
@@ -372,7 +385,9 @@ async function getAnalystData(symbol: string) {
       fetchOptions: FETCH_OPTS.fetchOptions,
     } as any).catch(() => null);
 
-    const trend: any[] = (trendSummary as any)?.recommendationTrend?.trend ?? [];
+    // Fallback to direct REST if yahoo-finance2 validation silently killed the lib call
+    const libTrend: any[] = (trendSummary as any)?.recommendationTrend?.trend ?? [];
+    const trend: any[] = libTrend.length > 0 ? libTrend : ((await yfRest(symbol, "recommendationTrend"))?.trend ?? []);
     if (trend.length > 0) {
       const latest = trend[0]; // period "0m" = current month
       const prev = trend[1] ?? null;   // "-1m"
@@ -533,9 +548,15 @@ async function getFundamentals(symbol: string) {
 
     const profile = profileRes.status === "fulfilled" ? profileRes.value : {};
     const m = metricsRes.status === "fulfilled" ? (metricsRes.value?.metric ?? {}) : {};
-    const ks = ksRes.status === "fulfilled" ? ((ksRes.value as any)?.defaultKeyStatistics ?? {}) : {};
-    const fd = fdRes.status === "fulfilled" ? ((fdRes.value as any)?.financialData ?? {}) : {};
-    const ap = apRes.status === "fulfilled" ? ((apRes.value as any)?.assetProfile ?? {}) : {};
+    const ks = ksRes.status === "fulfilled"
+      ? ((ksRes.value as any)?.defaultKeyStatistics ?? {})
+      : await yfRest(symbol, "defaultKeyStatistics") ?? {};
+    const fd = fdRes.status === "fulfilled"
+      ? ((fdRes.value as any)?.financialData ?? {})
+      : await yfRest(symbol, "financialData") ?? {};
+    const ap = apRes.status === "fulfilled"
+      ? ((apRes.value as any)?.assetProfile ?? {})
+      : (isCanadian ? await yfRest(symbol, "assetProfile") ?? {} : {});
 
     return {
       sector: ap?.sector ?? profile?.finnhubIndustry,
@@ -604,11 +625,14 @@ async function getFinancialStatements(symbol: string) {
     ]);
 
     const income: any[] = incomeRes.status === "fulfilled"
-      ? ((incomeRes.value as any)?.incomeStatementHistory?.incomeStatementHistory ?? []) : [];
+      ? ((incomeRes.value as any)?.incomeStatementHistory?.incomeStatementHistory ?? [])
+      : ((await yfRest(symbol, "incomeStatementHistory"))?.incomeStatementHistory ?? []);
     const cashflow: any[] = cashflowRes.status === "fulfilled"
-      ? ((cashflowRes.value as any)?.cashflowStatementHistory?.cashflowStatements ?? []) : [];
+      ? ((cashflowRes.value as any)?.cashflowStatementHistory?.cashflowStatements ?? [])
+      : ((await yfRest(symbol, "cashflowStatementHistory"))?.cashflowStatements ?? []);
     const balance: any[] = balanceRes.status === "fulfilled"
-      ? ((balanceRes.value as any)?.balanceSheetHistory?.balanceSheetStatements ?? []) : [];
+      ? ((balanceRes.value as any)?.balanceSheetHistory?.balanceSheetStatements ?? [])
+      : ((await yfRest(symbol, "balanceSheetHistory"))?.balanceSheetStatements ?? []);
 
     if (income.length === 0 && cashflow.length === 0) {
       return { error: "Financial statements not available for this security (may be an ETF or data unavailable)." };
