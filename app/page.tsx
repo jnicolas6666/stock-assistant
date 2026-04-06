@@ -4075,7 +4075,7 @@ When discussing this portfolio: present only factual metrics (allocation %, sect
                       </div>
                     )}
                     {sections ? sections.map((sec, si) => (
-                      <CollapsibleSection key={`${portfolioSelectedAnalysisIndex}-${si}`} title={sec.title} content={sec.content} delay={si * 80} defaultOpen={false} openAll={portfolioSectionsOpen} />
+                      <CollapsibleSection key={`${portfolioSelectedAnalysisIndex}-${si}`} title={sec.title} content={sec.content} delay={si * 0.08} defaultOpen={false} openAll={portfolioSectionsOpen} />
                     )) : (
                       <div style={{ fontSize: 14, lineHeight: 1.75, color: "#2c2a29" }}>
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>{selMsg.content}</ReactMarkdown>
