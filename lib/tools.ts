@@ -2,6 +2,10 @@ import YahooFinance from "yahoo-finance2";
 
 const yahooFinance = new YahooFinance({ validation: { logErrors: false } });
 
+// Pass as 3rd arg to any quoteSummary call — disables schema validation so TSX stocks
+// with unexpected/missing fields don't throw and silently return null.
+const NO_VALIDATE = { validateResult: false } as any;
+
 // Spoof a browser User-Agent so Vercel's server IPs don't get blocked by Yahoo Finance
 const FETCH_OPTS = {
   fetchOptions: {
@@ -311,15 +315,15 @@ async function getQuote(symbol: string) {
       yahooFinance.quoteSummary(symbol, {
         modules: ["financialData"] as any,
         fetchOptions: FETCH_OPTS.fetchOptions,
-      } as any).catch(() => null),
+      } as any, NO_VALIDATE).catch(() => null),
       yahooFinance.quoteSummary(symbol, {
         modules: ["defaultKeyStatistics"] as any,
         fetchOptions: FETCH_OPTS.fetchOptions,
-      } as any).catch(() => null),
+      } as any, NO_VALIDATE).catch(() => null),
     ]);
 
-    const fd = (fdSummary as any)?.financialData ?? await yfRest(symbol, "financialData") ?? {};
-    const ks = (ksSummary as any)?.defaultKeyStatistics ?? await yfRest(symbol, "defaultKeyStatistics") ?? {};
+    const fd = (fdSummary as any)?.financialData ?? {};
+    const ks = (ksSummary as any)?.defaultKeyStatistics ?? {};
 
     return {
       symbol: q.symbol,
@@ -374,20 +378,18 @@ async function yfRest(symbol: string, module: string): Promise<any> {
 
 async function getAnalystData(symbol: string) {
   try {
-    // Primary: yahoo-finance2 lib call
+    // NO_VALIDATE bypasses schema validation — TSX stocks have fields that trip yahoo-finance2
     const trendSummary = await yahooFinance.quoteSummary(symbol, {
       modules: ["recommendationTrend"] as any,
       fetchOptions: FETCH_OPTS.fetchOptions,
-    } as any).catch(() => null);
+    } as any, NO_VALIDATE).catch(() => null);
 
     const fdSummary = await yahooFinance.quoteSummary(symbol, {
       modules: ["financialData"] as any,
       fetchOptions: FETCH_OPTS.fetchOptions,
-    } as any).catch(() => null);
+    } as any, NO_VALIDATE).catch(() => null);
 
-    // Fallback to direct REST if yahoo-finance2 validation silently killed the lib call
-    const libTrend: any[] = (trendSummary as any)?.recommendationTrend?.trend ?? [];
-    const trend: any[] = libTrend.length > 0 ? libTrend : ((await yfRest(symbol, "recommendationTrend"))?.trend ?? []);
+    const trend: any[] = (trendSummary as any)?.recommendationTrend?.trend ?? [];
     if (trend.length > 0) {
       const latest = trend[0]; // period "0m" = current month
       const prev = trend[1] ?? null;   // "-1m"
@@ -461,7 +463,7 @@ async function getAnalystUpgrades(symbol: string) {
     const summary = await yahooFinance.quoteSummary(symbol, {
       modules: ["upgradeDowngradeHistory"] as any,
       fetchOptions: FETCH_OPTS.fetchOptions,
-    } as any);
+    } as any, NO_VALIDATE);
 
     const history: any[] = (summary as any)?.upgradeDowngradeHistory?.history ?? [];
     if (history.length === 0) return { error: "No recent upgrade/downgrade data available." };
@@ -533,30 +535,24 @@ async function getFundamentals(symbol: string) {
       yahooFinance.quoteSummary(symbol, {
         modules: ["defaultKeyStatistics"] as any,
         fetchOptions: FETCH_OPTS.fetchOptions,
-      } as any),
+      } as any, NO_VALIDATE),
       yahooFinance.quoteSummary(symbol, {
         modules: ["financialData"] as any,
         fetchOptions: FETCH_OPTS.fetchOptions,
-      } as any),
+      } as any, NO_VALIDATE),
       isCanadian
         ? yahooFinance.quoteSummary(symbol, {
             modules: ["assetProfile"] as any,
             fetchOptions: FETCH_OPTS.fetchOptions,
-          } as any)
+          } as any, NO_VALIDATE)
         : Promise.resolve({}),
     ]);
 
     const profile = profileRes.status === "fulfilled" ? profileRes.value : {};
     const m = metricsRes.status === "fulfilled" ? (metricsRes.value?.metric ?? {}) : {};
-    const ks = ksRes.status === "fulfilled"
-      ? ((ksRes.value as any)?.defaultKeyStatistics ?? {})
-      : await yfRest(symbol, "defaultKeyStatistics") ?? {};
-    const fd = fdRes.status === "fulfilled"
-      ? ((fdRes.value as any)?.financialData ?? {})
-      : await yfRest(symbol, "financialData") ?? {};
-    const ap = apRes.status === "fulfilled"
-      ? ((apRes.value as any)?.assetProfile ?? {})
-      : (isCanadian ? await yfRest(symbol, "assetProfile") ?? {} : {});
+    const ks = ksRes.status === "fulfilled" ? ((ksRes.value as any)?.defaultKeyStatistics ?? {}) : {};
+    const fd = fdRes.status === "fulfilled" ? ((fdRes.value as any)?.financialData ?? {}) : {};
+    const ap = apRes.status === "fulfilled" ? ((apRes.value as any)?.assetProfile ?? {}) : {};
 
     return {
       sector: ap?.sector ?? profile?.finnhubIndustry,
@@ -613,26 +609,23 @@ async function getFinancialStatements(symbol: string) {
       yahooFinance.quoteSummary(symbol, {
         modules: ["incomeStatementHistory"] as any,
         fetchOptions: FETCH_OPTS.fetchOptions,
-      } as any),
+      } as any, NO_VALIDATE),
       yahooFinance.quoteSummary(symbol, {
         modules: ["cashflowStatementHistory"] as any,
         fetchOptions: FETCH_OPTS.fetchOptions,
-      } as any),
+      } as any, NO_VALIDATE),
       yahooFinance.quoteSummary(symbol, {
         modules: ["balanceSheetHistory"] as any,
         fetchOptions: FETCH_OPTS.fetchOptions,
-      } as any),
+      } as any, NO_VALIDATE),
     ]);
 
     const income: any[] = incomeRes.status === "fulfilled"
-      ? ((incomeRes.value as any)?.incomeStatementHistory?.incomeStatementHistory ?? [])
-      : ((await yfRest(symbol, "incomeStatementHistory"))?.incomeStatementHistory ?? []);
+      ? ((incomeRes.value as any)?.incomeStatementHistory?.incomeStatementHistory ?? []) : [];
     const cashflow: any[] = cashflowRes.status === "fulfilled"
-      ? ((cashflowRes.value as any)?.cashflowStatementHistory?.cashflowStatements ?? [])
-      : ((await yfRest(symbol, "cashflowStatementHistory"))?.cashflowStatements ?? []);
+      ? ((cashflowRes.value as any)?.cashflowStatementHistory?.cashflowStatements ?? []) : [];
     const balance: any[] = balanceRes.status === "fulfilled"
-      ? ((balanceRes.value as any)?.balanceSheetHistory?.balanceSheetStatements ?? [])
-      : ((await yfRest(symbol, "balanceSheetHistory"))?.balanceSheetStatements ?? []);
+      ? ((balanceRes.value as any)?.balanceSheetHistory?.balanceSheetStatements ?? []) : [];
 
     if (income.length === 0 && cashflow.length === 0) {
       return { error: "Financial statements not available for this security (may be an ETF or data unavailable)." };
@@ -713,7 +706,7 @@ async function getEarnings(symbol: string) {
     const summary = await yahooFinance.quoteSummary(symbol, {
       modules: ["earningsHistory"] as any,
       fetchOptions: FETCH_OPTS.fetchOptions,
-    } as any).catch(() => null);
+    } as any, NO_VALIDATE).catch(() => null);
 
     const history: any[] = (summary as any)?.earningsHistory?.history ?? [];
     if (history.length > 0) {
@@ -860,7 +853,7 @@ async function getInsiderTransactions(symbol: string) {
     const summary = await yahooFinance.quoteSummary(symbol, {
       modules: ["insiderTransactions"] as any,
       fetchOptions: FETCH_OPTS.fetchOptions,
-    } as any);
+    } as any, NO_VALIDATE);
     const transactions: any[] = (summary as any)?.insiderTransactions?.transactions ?? [];
     if (transactions.length === 0) return { error: "No insider transaction data available." };
     return transactions.slice(0, 15).map((t: any) => ({
